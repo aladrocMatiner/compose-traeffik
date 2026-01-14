@@ -51,16 +51,19 @@ fi
 
 log_info "Bootstrapping Step-CA server for the first time..."
 
-# Use heredoc for multi-line command and pipe passwords securely
+# Use temporary files inside the container to pass passwords securely
 docker compose --env-file .env --profile stepca exec -T "$CA_CONTAINER_NAME" bash -c "
+    echo \"${STEP_CA_PASSWORD}\" > /tmp/ca_password.txt
+    echo \"${STEP_CA_ADMIN_PROVISIONER_PASSWORD}\" > /tmp/admin_password.txt
     step ca init \
         --name \"${STEP_CA_NAME}\" \
         --dns \"${STEP_CA_DNS}\" \
-        --address ":9000" \
+        --address \":9000\" \
         --provisioner \"admin\" \
-        --password-file /dev/stdin <<EOF
-${STEP_CA_PASSWORD}
-EOF
+        --password-file /tmp/admin_password.txt \
+        --ssh \
+        < /tmp/ca_password.txt
+    rm /tmp/ca_password.txt /tmp/admin_password.txt
 "
 
 # Note: The above is a bit tricky with nested heredocs.
