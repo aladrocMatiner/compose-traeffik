@@ -41,24 +41,32 @@ services:
       - certs-data:/certs                               # Volume for ACME storage
       # For TLS Mode A (local self-signed certificates)
       - ./certs/local:/etc/certs/local:ro
+
+  # Demo service: whoami
+  whoami:
+    image: traefik/whoami
+    container_name: whoami
+    restart: unless-stopped
+    networks:
+      - proxy
     labels:
-      # Enable Traefik for itself (for dashboard or health checks)
       - "traefik.enable=true"
-      # Global HTTP to HTTPS redirection (if enabled via env var)
-      - "traefik.http.routers.http-catchall.entrypoints=web"
-      - "traefik.http.routers.http-catchall.rule=HostRegexp(`{host:.+}`)"
-      - "traefik.http.routers.http-catchall.middlewares=redirect-to-https@file"
-      # Dashboard router (only if TRAEFIK_DASHBOARD is 'true')
-      - "traefik.http.routers.traefik-dashboard.rule=Host(`traefik.${DEV_DOMAIN}`)"
-      - "traefik.http.routers.traefik-dashboard.entrypoints=websecure"
-      - "traefik.http.routers.traefik-dashboard.service=api@internal"
-      - "traefik.http.routers.traefik-dashboard.tls=true"
-      # Define which TLS resolver to use for the dashboard based on active profile
-      - "traefik.http.routers.traefik-dashboard.tls.certresolver=${TLS_CERT_RESOLVER:-}"
-      # Healthcheck endpoint (if ping is enabled)
-      - "traefik.http.routers.traefik-ping.rule=Host(`traefik.${DEV_DOMAIN}`) && PathPrefix(`/ping`)"
-      - "traefik.http.routers.traefik-ping.entrypoints=web"
-      - "traefik.http.routers.traefik-ping.service=ping@internal"
+      # HTTP router for optional redirect
+      - "traefik.http.routers.whoami-web.rule=Host(`${DEV_DOMAIN}`)"
+      - "traefik.http.routers.whoami-web.entrypoints=web"
+      - "traefik.http.routers.whoami-web.middlewares=redirect-to-https@file"
+      # HTTPS router
+      - "traefik.http.routers.whoami-websecure.rule=Host(`${DEV_DOMAIN}`)"
+      - "traefik.http.routers.whoami-websecure.entrypoints=websecure"
+      - "traefik.http.routers.whoami-websecure.service=whoami-service"
+      - "traefik.http.routers.whoami-websecure.tls=true"
+      # Define which TLS resolver to use for whoami based on active profile
+      # Default (Mode A) uses `file` provider, so no certresolver needed here for file-based TLS.
+      - "traefik.http.routers.whoami-websecure.tls.certresolver=${TLS_CERT_RESOLVER:-}"
+      # Service definition
+      - "traefik.http.services.whoami-service.loadbalancer.server.port=80"
+      # Add security headers middleware
+      - "traefik.http.routers.whoami-websecure.middlewares=security-headers@file"
 
   # Demo service: whoami
   whoami:
