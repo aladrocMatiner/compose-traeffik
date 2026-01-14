@@ -33,6 +33,9 @@ To get your stack up and running quickly with locally generated self-signed cert
 5.  **Access the demo service:**
     Open your browser to `https://whoami.local.test`. You should see the `whoami` service's output, served over HTTPS.
 
+    > **Warning about Traefik Dashboard:**
+    > If you enable the Traefik dashboard by setting `TRAEFIK_DASHBOARD=true` in your `.env` file, it becomes accessible at `https://traefik.local.test/dashboard/`. Be aware that for local development convenience, the dashboard API is configured with `insecure: true`, meaning it has **no authentication**. Do not expose this publicly.
+
 ---
 
 ## Table of Contents
