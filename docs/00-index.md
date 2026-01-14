@@ -40,6 +40,8 @@ To get your stack up and running quickly with locally generated self-signed cert
 This is an overview of the documentation available and what's coming next.
 
 ### Foundational Guides
+*   [Repo Facts (Source of Truth)](90-facts.md)
+*   [Documentation Quality Checklist](98-doc-qa.md)
 *   [Style Guide](99-style-guide.md) - How to write consistent and high-quality documentation.
 *   [Glossary](99-glossary.md) - Definitions for key terms and concepts used in this repository.
 
