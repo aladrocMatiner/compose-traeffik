@@ -24,19 +24,6 @@ SHELL := /bin/bash # Ensure bash is used for shell commands
 -include .env
 .EXPORT_ALL_VARIABLES:
 
-# --- Helper Functions ---
-
-# Function to check for required commands
-check_command() {
-    command -v "$$1" >/dev/null 2>&1 || { echo >&2 "Error: $$1 is not installed. Aborting."; exit 1; }
-}
-
-# Function to echo commands and then execute them
-run_command() {
-    echo "$$@"
-    "$$@"
-}
-
 # --- Docker Compose Commands ---
 
 # Helper to construct compose command with profiles
@@ -47,12 +34,12 @@ COMPOSE_PROFILES_ARG := $(if $(COMPOSE_PROFILES),--profile $(subst ',', --profil
 # Start the stack
 up:
 	@echo "Starting Docker Compose stack with profiles: ${COMPOSE_PROFILES}"
-	$(call run_command, ./scripts/up.sh $(COMPOSE_PROFILES_ARG))
+	./scripts/up.sh $(COMPOSE_PROFILES_ARG)
 
 # Stop the stack
 down:
 	@echo "Stopping Docker Compose stack with profiles: ${COMPOSE_PROFILES}"
-	$(call run_command, ./scripts/down.sh $(COMPOSE_PROFILES_ARG))
+	./scripts/down.sh $(COMPOSE_PROFILES_ARG)
 
 # Restart the stack
 restart: down up
@@ -60,18 +47,18 @@ restart: down up
 # View logs for all services
 logs:
 	@echo "Showing logs for Docker Compose stack with profiles: ${COMPOSE_PROFILES}"
-	$(call run_command, ./scripts/logs.sh $(COMPOSE_PROFILES_ARG))
+	./scripts/logs.sh $(COMPOSE_PROFILES_ARG)
 
 # List running services
 ps:
 	@echo "Listing services for Docker Compose stack with profiles: ${COMPOSE_PROFILES}"
-	$(call run_command, $(COMPOSE_BASE) $(COMPOSE_PROFILES_ARG) $(COMPOSE_OPTS) ps)
+	$(COMPOSE_BASE) $(COMPOSE_PROFILES_ARG) $(COMPOSE_OPTS) ps
 
 # --- Certificate Management (Mode A: Local Self-Signed) ---
 
 certs-local:
 	@echo "Generating local self-signed certificates..."
-	$(call run_command, ./scripts/certs-selfsigned-generate.sh)
+	./scripts/certs-selfsigned-generate.sh
 
 # --- Certificate Management (Mode B: Let's Encrypt with Certbot) ---
 
@@ -79,35 +66,35 @@ certs-local:
 certs-le-issue:
 	@echo "Attempting to issue Let's Encrypt certificate via Certbot..."
 	@if [ -z "$(ACME_EMAIL)" ]; then echo "Error: ACME_EMAIL not set in .env. Aborting."; exit 1; fi
-	$(call run_command, ./scripts/certbot-issue.sh)
+	./scripts/certbot-issue.sh
 
 certs-le-renew:
 	@echo "Attempting to renew Let's Encrypt certificate via Certbot..."
-	$(call run_command, ./scripts/certbot-renew.sh)
+	./scripts/certbot-renew.sh
 
 # --- Certificate Management (Mode C: Step-CA) ---
 
 # Start step-ca service
 stepca-up:
 	@echo "Starting Step-CA service..."
-	$(call run_command, COMPOSE_PROFILES=stepca $(COMPOSE_BASE) $(COMPOSE_OPTS) up -d step-ca)
+	COMPOSE_PROFILES=stepca $(COMPOSE_BASE) $(COMPOSE_OPTS) up -d step-ca
 
 # Stop step-ca service
 stepca-down:
 	@echo "Stopping Step-CA service..."
-	$(call run_command, COMPOSE_PROFILES=stepca $(COMPOSE_BASE) $(COMPOSE_OPTS) down step-ca)
+	COMPOSE_PROFILES=stepca $(COMPOSE_BASE) $(COMPOSE_OPTS) down step-ca
 
 # Bootstrap step-ca server
 stepca-bootstrap: stepca-up
 	@echo "Bootstrapping Step-CA server..."
 	@if [ -z "$(STEP_CA_ADMIN_PROVISIONER_PASSWORD)" ] || [ -z "$(STEP_CA_PASSWORD)" ]; then echo "Error: STEP_CA_ADMIN_PROVISIONER_PASSWORD or STEP_CA_PASSWORD not set in .env. Aborting."; exit 1; fi
-	$(call run_command, ./scripts/stepca-bootstrap.sh)
+	./scripts/stepca-bootstrap.sh
 
 # --- Testing ---
 
 test:
 	@echo "Running smoke tests..."
-	$(call run_command, ./scripts/healthcheck.sh)
+	./scripts/healthcheck.sh
 
 # --- Help ---
 
