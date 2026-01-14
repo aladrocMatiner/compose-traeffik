@@ -42,6 +42,28 @@ Maintain a consistent document structure for all major guides and service docume
     *   When showing a command that uses an env var, use shell syntax (e.g., `echo $DEV_DOMAIN`).
     *   When describing a variable, use `DEV_DOMAIN` (code block) for the name.
 
+### Example Conventions
+
+To ensure consistency and accuracy, adhere to these conventions when presenting examples:
+
+*   **Initial Setup**: Always show `cp .env.example .env` as the first step for local configuration.
+    ```bash
+    cp .env.example .env
+    ```
+*   **Environment Variable Usage**: Use actual environment variable names (e.g., `$DEV_DOMAIN`) in command examples, rather than hardcoding values.
+    ```bash
+    echo "Accessing whoami at: https://whoami.$DEV_DOMAIN"
+    ```
+*   **Profile Usage Pattern**: When demonstrating Docker Compose profile activation, use the `COMPOSE_PROFILES=<profile_name> make <target>` pattern.
+    ```bash
+    COMPOSE_PROFILES=le make up
+    ```
+*   **Verification Commands**: For HTTP/HTTPS verification, use `curl -vk https://<hostname>/` (or similar) adapting to the specific hostname variable.
+    ```bash
+    curl -vk "https://whoami.$DEV_DOMAIN/"
+    ```
+*   **Grounding in Facts**: All examples must align with the factual details documented in `docs/90-facts.md` (e.g., correct make targets, script names, network names).
+
 ---
 
 ## 4. Security Callouts
