@@ -12,11 +12,12 @@ global:
 entryPoints:
   web:
     address: ":80"
-    # Optional: Enable redirection to websecure for all HTTP traffic
-    # This middleware is defined dynamically in middlewares.yml
+    # Enable redirection to websecure for all HTTP traffic IF HTTP_TO_HTTPS_REDIRECT is true.
+    # Otherwise, disable this middleware on the entrypoint.
     http:
       middlewares:
-        - "redirect-to-https@file"
+        ${HTTP_TO_HTTPS_REDIRECT:?Error: HTTP_TO_HTTPS_REDIRECT not set. Must be true or false.}:
+          - "redirect-to-https@file"
   websecure:
     address: ":443"
     http:
