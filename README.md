@@ -76,18 +76,30 @@ For a more detailed Quickstart, including host configuration and CA trust instru
 
 ## Table of Contents
 
-*   [**Architecture Overview**](docs/architecture.md)
-*   [**Requirements and Host Configuration**](docs/requirements.md)
-*   [**Quickstart: Local Self-Signed TLS (Mode A)**](docs/quickstart-mode-a.md)
-*   [**Traefik & Routing**](docs/traefik-routing.md)
-    *   [Adding a New Service](docs/traefik-routing.md#adding-a-new-service)
-    *   [Traefik Dashboard](docs/traefik-routing.md#traefik-dashboard)
-*   [**TLS Modes**](docs/tls-modes.md) (This will be a general overview, linking to specifics)
-    *   [Mode B: Let's Encrypt via Certbot](docs/tls-mode-b-letsencrypt.md)
-    *   [Mode C: Smallstep `step-ca` as Internal ACME Server](docs/tls-mode-c-stepca.md)
-*   [**Compose, Make & Scripts Usage**](docs/compose-make-scripts.md)
-*   [**Testing & Troubleshooting**](docs/testing-troubleshooting.md)
-*   [**Glossary and Style Guide**](docs/glossary-style-guide.md)
+*   [**Documentation Index**](docs/00-index.md)
+*   [**Repo Facts (Source of Truth)**](docs/90-facts.md)
+*   [**Documentation Quality Checklist**](docs/98-doc-qa.md)
+*   [**Style Guide**](docs/99-style-guide.md)
+*   [**Glossary**](docs/99-glossary.md)
+
+---
+
+### Planned Documentation (Coming Soon)
+*   Architecture Overview (planned)
+*   Compose Usage & Profiles (planned)
+*   Makefile & Scripts Operations (planned)
+*   Service Documentation (planned)
+    *   Traefik (planned)
+    *   Whoami (planned)
+    *   Certbot (planned)
+    *   Step-CA (planned)
+*   TLS Mode Guides (planned)
+    *   Mode A: Local Self-Signed CA + Certificates (planned)
+    *   Mode B: Let's Encrypt via Certbot (planned)
+    *   Mode C: Smallstep `step-ca` as Internal ACME Server (planned)
+*   How-to: Add a New Service (planned)
+*   Testing & Troubleshooting (planned)
+*   Troubleshooting (planned)
 
 ## Documentation
 
