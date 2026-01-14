@@ -22,7 +22,7 @@ SHELL := /bin/bash # Ensure bash is used for shell commands
 # Include .env for environment variables if it exists.
 # This makes variables in .env available to the Makefile.
 -include .env
-export
+.EXPORT_ALL_VARIABLES:
 
 # --- Helper Functions ---
 
