@@ -1,0 +1,38 @@
+# .gitignore for Traefik Docker Compose Edge Stack
+
+# --- Generated sensitive files and directories ---
+# Certificates and keys
+certs/local-ca/
+certs/local/
+
+# Certbot data
+certbot/conf/
+certbot/www/
+
+# Step-CA data and config
+step-ca/config/
+step-ca/secrets/
+step-ca/data/
+
+# Traefik ACME storage (from certs-data volume)
+# Although a Docker volume, local paths *could* be inadvertently created or referenced.
+# Better to explicitly ignore any local files that might match these patterns.
+acme-le.json
+acme-stepca.json
+
+# --- Environment files ---
+.env
+
+# --- Local development artifacts ---
+# macOS
+.DS_Store
+
+# IDEs and editors
+.idea/
+.vscode/
+*.swp
+*~
+
+# Build artifacts
+*.log
+*.tmp
