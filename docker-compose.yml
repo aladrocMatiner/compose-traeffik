@@ -1,0 +1,133 @@
+# File: docker-compose.yml
+version: '3.8'
+
+# Defined networks
+networks:
+  proxy:
+    # Use 'external: true' if you want to use an existing 'proxy' network.
+    # Otherwise, Traefik will create it, and it will be project-scoped.
+    # For simplicity and isolation, we let Docker Compose create it here.
+    name: traefik-proxy # Explicitly name the network to avoid default naming
+  stepca-internal:
+    name: stepca-internal
+    internal: true # Make this network internal so only services on it can access each other
+
+# Defined volumes
+volumes:
+  certs-data: # For Traefik's ACME storage
+    name: traefik-certs-data
+  stepca-data: # For step-ca persistent data
+    name: stepca-data
+
+services:
+  # Traefik service definition
+  traefik:
+    image: ${TRAEFIK_IMAGE:-traefik:v3.0}
+    container_name: traefik
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "80:80"   # HTTP entrypoint
+      - "443:443" # HTTPS entrypoint
+    networks:
+      - proxy
+    environment:
+      - TZ=UTC
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro # Static configuration
+      - ./traefik/dynamic:/etc/traefik/dynamic:ro       # Dynamic configuration directory
+      - certs-data:/certs                               # Volume for ACME storage
+      # For TLS Mode A (local self-signed certificates)
+      - ./certs/local:/etc/certs/local:ro
+    labels:
+      # Enable Traefik for itself (for dashboard or health checks)
+      - "traefik.enable=true"
+      # Global HTTP to HTTPS redirection (if enabled via env var)
+      - "traefik.http.routers.http-catchall.entrypoints=web"
+      - "traefik.http.routers.http-catchall.rule=HostRegexp(`{host:.+}`)"
+      - "traefik.http.routers.http-catchall.middlewares=redirect-to-https@file"
+      # Dashboard router (only if TRAEFIK_DASHBOARD is 'true')
+      - "traefik.http.routers.traefik-dashboard.rule=Host(`traefik.${DEV_DOMAIN}`)"
+      - "traefik.http.routers.traefik-dashboard.entrypoints=websecure"
+      - "traefik.http.routers.traefik-dashboard.service=api@internal"
+      - "traefik.http.routers.traefik-dashboard.tls=true"
+      # Define which TLS resolver to use for the dashboard based on active profile
+      - "traefik.http.routers.traefik-dashboard.tls.certresolver=${TLS_CERT_RESOLVER:-}"
+      # Healthcheck endpoint (if ping is enabled)
+      - "traefik.http.routers.traefik-ping.rule=Host(`traefik.${DEV_DOMAIN}`) && PathPrefix(`/ping`)"
+      - "traefik.http.routers.traefik-ping.entrypoints=web"
+      - "traefik.http.routers.traefik-ping.service=ping@internal"
+
+  # Demo service: whoami
+  whoami:
+    image: traefik/whoami
+    container_name: whoami
+    restart: unless-stopped
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      # HTTP router for optional redirect
+      - "traefik.http.routers.whoami-web.rule=Host(`${DEV_DOMAIN}`)"
+      - "traefik.http.routers.whoami-web.entrypoints=web"
+      - "traefik.http.routers.whoami-web.middlewares=redirect-to-https@file"
+      # HTTPS router
+      - "traefik.http.routers.whoami-websecure.rule=Host(`${DEV_DOMAIN}`)"
+      - "traefik.http.routers.whoami-websecure.entrypoints=websecure"
+      - "traefik.http.routers.whoami-websecure.service=whoami-service"
+      - "traefik.http.routers.whoami-websecure.tls=true"
+      # Define which TLS resolver to use for whoami based on active profile
+      # Default (Mode A) uses `file` provider, so no certresolver needed here for file-based TLS.
+      - "traefik.http.routers.whoami-websecure.tls.certresolver=${TLS_CERT_RESOLVER:-}"
+      # Service definition
+      - "traefik.http.services.whoami-service.loadbalancer.server.port=80"
+      # Add security headers middleware
+      - "traefik.http.routers.whoami-websecure.middlewares=security-headers@file"
+
+  # Certbot service (profile 'le' for Let's Encrypt)
+  certbot:
+    image: certbot/certbot:latest
+    container_name: certbot
+    profiles:
+      - le
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    # Keep container running for manual execution
+    command: ["tail", "-f", "/dev/null"]
+
+  # Step-CA service (profile 'stepca' for Smallstep CA)
+  step-ca:
+    image: smallstep/step-ca:latest
+    container_name: step-ca
+    profiles:
+      - stepca
+    # Using internal networks for security; Traefik will proxy it
+    networks:
+      - stepca-internal
+      - proxy # Also connect to proxy network so Traefik can find it
+    environment:
+      # These variables are used by the step-ca bootstrap script for initial setup
+      # Actual passwords should be stored in secrets and passed more securely in production
+      - STEP_CA_NAME=${STEP_CA_NAME:-Local Dev CA}
+      - STEP_CA_DNS=step-ca,localhost,127.0.0.1,step-ca.${DEV_DOMAIN}
+      - STEP_CA_ADDR=:9000
+      - STEP_CA_DB_DSN=bolt.db
+    volumes:
+      - ./step-ca/config:/home/step/config
+      - ./step-ca/secrets:/home/step/secrets
+      - stepca-data:/home/step/data # Persistent data for certs, etc.
+    # Expose internally on the stepca-internal network for Traefik to reach it
+    # No host ports opened directly
+    labels:
+      # Expose step-ca via Traefik for ACME challenges and root CA download
+      - "traefik.enable=true"
+      - "traefik.http.routers.stepca-websecure.rule=Host(`step-ca.${DEV_DOMAIN}`)"
+      - "traefik.http.routers.stepca-websecure.entrypoints=websecure"
+      - "traefik.http.routers.stepca-websecure.service=stepca-service"
+      - "traefik.http.routers.stepca-websecure.tls=true"
+      - "traefik.http.routers.stepca-websecure.tls.certresolver=stepca-resolver" # Must use stepca-resolver
+      - "traefik.http.services.stepca-service.loadbalancer.server.port=9000" # Internal port of step-ca
+      - "traefik.http.routers.stepca-websecure.middlewares=security-headers@file"

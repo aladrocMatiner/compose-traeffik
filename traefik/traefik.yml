@@ -1,0 +1,92 @@
+# File: traefik/traefik.yml
+#
+# Traefik Static Configuration
+# This file defines Traefik's global settings, entrypoints, and providers.
+#
+
+global:
+  checkNewVersion: true
+  sendAnonymousUsage: false
+
+# Entrypoints define the ports Traefik listens on.
+entryPoints:
+  web:
+    address: ":80"
+    # Optional: Enable redirection to websecure for all HTTP traffic
+    # This middleware is defined dynamically in middlewares.yml
+    http:
+      middlewares:
+        - "redirect-to-https@file"
+  websecure:
+    address: ":443"
+    http:
+      tls:
+        # Default TLS configuration. Certificates are managed dynamically.
+        # This can be overridden by specific routers.
+        # For Mode A, dynamic/tls.yml will provide file-based certs.
+        # For ACME resolvers (LE/Step-CA), certs are managed automatically.
+
+# Providers tell Traefik where to find its dynamic configuration.
+providers:
+  # Docker provider: automatically discovers services and their Traefik labels.
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false # Only expose services with 'traefik.enable=true' label
+    network: traefik-proxy # Only listen to services on this network
+    # Optional: Watch for changes in Docker (defaults to true)
+    # watch: true
+
+  # File provider: loads dynamic configuration from YAML files.
+  file:
+    directory: /etc/traefik/dynamic # Directory containing dynamic config files
+    watch: true # Watch for changes in the dynamic config files
+
+# API and Dashboard configuration.
+# The dashboard is disabled by default for security.
+api:
+  dashboard: ${TRAEFIK_DASHBOARD:-false} # Enable dashboard if TRAEFIK_DASHBOARD is true in .env
+  insecure: ${TRAEFIK_DASHBOARD:-false} # Allow access without authentication for local dev dashboard
+
+# Log configuration
+log:
+  level: INFO # DEBUG, INFO, WARNING, ERROR, FATAL, PANIC
+  format: common # json or common
+  # filePath: "/var/log/traefik.log" # Uncomment to log to a file
+
+# --- Certificates Resolvers ---
+# These are used by Traefik's ACME client to obtain TLS certificates.
+# Only one resolver will be active at a time based on the `TLS_CERT_RESOLVER` env var.
+
+# Let's Encrypt resolver (for Mode B, profile 'le')
+# Activated when TLS_CERT_RESOLVER is 'le-resolver'
+# Requires an email and storage.
+certificatesResolvers:
+  le-resolver:
+    acme:
+      email: ${ACME_EMAIL}
+      storage: /certs/acme-le.json # Store ACME data in a persistent volume
+      caServer: $(if ${LETSENCRYPT_STAGING},https://acme-staging-v02.api.letsencrypt.org/directory,https://acme-v02.api.letsencrypt.org/directory)
+      httpChallenge:
+        entryPoint: web # Use HTTP-01 challenge on the 'web' entrypoint
+        # For certbot integration, you might point to certbot's webroot:
+        # If using certbot to *issue* certs, Traefik just reads the files.
+        # If Traefik *itself* is doing ACME, it needs to serve the challenge.
+        # Given the requirements, Traefik uses its own ACME solver, not Certbot's webroot.
+        # However, Certbot is requested in requirements, implying it's used for *issuance*,
+        # and Traefik then reads those files. This design means Certbot does the challenge,
+        # and Traefik picks up the result.
+        # Let's stick to Traefik solving ACME if a resolver is defined.
+        # If the user wants certbot to issue, they won't use this resolver.
+        # So, the `certbot` service in compose is for *manual* certbot use.
+        # This resolver is for Traefik *itself* to get LE certs.
+
+  # Step-CA resolver (for Mode C, profile 'stepca')
+  # Activated when TLS_CERT_RESOLVER is 'stepca-resolver'
+  # Points to the internal step-ca service for ACME challenges.
+  stepca-resolver:
+    acme:
+      email: ${ACME_EMAIL} # Email is still required by ACME protocol
+      storage: /certs/acme-stepca.json # Separate storage for step-ca ACME data
+      caServer: https://step-ca.${DEV_DOMAIN}:9000/acme/acme/directory # ACME directory URL of the step-ca service
+      httpChallenge:
+        entryPoint: web # Use HTTP-01 challenge on the 'web' entrypoint
