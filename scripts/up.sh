@@ -14,15 +14,16 @@ SCRIPT_DIR=$(dirname "$0")
 
 load_env
 
+COMPOSE_PROFILES_ARG="${1:-}" # Accept COMPOSE_PROFILES_ARG as the first argument, default to empty if not provided
+
 log_info "Checking for docker and docker compose..."
 check_command "docker"
 check_command "docker compose"
 
 log_info "Starting Docker Compose stack..."
-# Ensure COMPOSE_PROFILES_ARG is respected from Makefile or env
-DOCKER_COMPOSE_COMMAND="docker compose --env-file .env ${COMPOSE_PROFILES_ARG:-} up -d"
-log_info "Executing: ${DOCKER_COMPOSE_COMMAND} $*"
-eval "${DOCKER_COMPOSE_COMMAND} $*"
+DOCKER_COMPOSE_COMMAND="docker compose --env-file .env ${COMPOSE_PROFILES_ARG} up -d"
+log_info "Executing: ${DOCKER_COMPOSE_COMMAND}"
+eval "${DOCKER_COMPOSE_COMMAND}"
 
 log_success "Docker Compose stack started."
 log_info "Run 'make logs' to view service logs."
