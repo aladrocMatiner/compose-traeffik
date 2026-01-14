@@ -1,3 +1,5 @@
+VIBE CODING WIP
+
 # Traefik Docker Compose Edge Stack
 
 This repository provides a flexible and easily extensible Docker Compose-based "edge stack" centered on [Traefik Proxy](https://traefik.io/) (latest stable version). It's designed for local development environments, making it easy to add new services, manage TLS certificates, and validate routing.
