@@ -47,12 +47,12 @@ COMPOSE_PROFILES_ARG := $(if $(COMPOSE_PROFILES),--profile $(subst ',', --profil
 # Start the stack
 up:
 	@echo "Starting Docker Compose stack with profiles: ${COMPOSE_PROFILES}"
-	$(call run_command, $(COMPOSE_BASE) $(COMPOSE_PROFILES_ARG) $(COMPOSE_OPTS) up -d)
+	$(call run_command, ./scripts/up.sh)
 
 # Stop the stack
 down:
 	@echo "Stopping Docker Compose stack with profiles: ${COMPOSE_PROFILES}"
-	$(call run_command, $(COMPOSE_BASE) $(COMPOSE_PROFILES_ARG) $(COMPOSE_OPTS) down)
+	$(call run_command, ./scripts/down.sh)
 
 # Restart the stack
 restart: down up
@@ -60,7 +60,7 @@ restart: down up
 # View logs for all services
 logs:
 	@echo "Showing logs for Docker Compose stack with profiles: ${COMPOSE_PROFILES}"
-	$(call run_command, $(COMPOSE_BASE) $(COMPOSE_PROFILES_ARG) $(COMPOSE_OPTS) logs -f)
+	$(call run_command, ./scripts/logs.sh)
 
 # List running services
 ps:
