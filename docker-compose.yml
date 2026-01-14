@@ -68,32 +68,6 @@ services:
       # Add security headers middleware
       - "traefik.http.routers.whoami-websecure.middlewares=security-headers@file"
 
-  # Demo service: whoami
-  whoami:
-    image: traefik/whoami
-    container_name: whoami
-    restart: unless-stopped
-    networks:
-      - proxy
-    labels:
-      - "traefik.enable=true"
-      # HTTP router for optional redirect
-      - "traefik.http.routers.whoami-web.rule=Host(`${DEV_DOMAIN}`)"
-      - "traefik.http.routers.whoami-web.entrypoints=web"
-      - "traefik.http.routers.whoami-web.middlewares=redirect-to-https@file"
-      # HTTPS router
-      - "traefik.http.routers.whoami-websecure.rule=Host(`${DEV_DOMAIN}`)"
-      - "traefik.http.routers.whoami-websecure.entrypoints=websecure"
-      - "traefik.http.routers.whoami-websecure.service=whoami-service"
-      - "traefik.http.routers.whoami-websecure.tls=true"
-      # Define which TLS resolver to use for whoami based on active profile
-      # Default (Mode A) uses `file` provider, so no certresolver needed here for file-based TLS.
-      - "traefik.http.routers.whoami-websecure.tls.certresolver=${TLS_CERT_RESOLVER:-}"
-      # Service definition
-      - "traefik.http.services.whoami-service.loadbalancer.server.port=80"
-      # Add security headers middleware
-      - "traefik.http.routers.whoami-websecure.middlewares=security-headers@file"
-
   # Certbot service (profile 'le' for Let's Encrypt)
   certbot:
     image: certbot/certbot:latest
