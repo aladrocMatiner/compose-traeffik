@@ -70,8 +70,8 @@ This repository sets up a Docker Compose-based Traefik edge stack, integrating a
 *   `scripts/logs.sh`: Shows real-time Docker Compose logs.
 *   `scripts/healthcheck.sh`: Orchestrates running all smoke tests.
 *   `scripts/certs-selfsigned-generate.sh`: Generates local CA and leaf certificates for Mode A.
-*   `scripts/certbot-issue.sh`: Issues new Let's Encrypt certificates using Certbot.
-*   `scripts/certbot-renew.sh`: Renews existing Let's Encrypt certificates using Certbot.
+*   `scripts/certbot-issue.sh`: Issues new Let's Encrypt certificates using Certbot. **Note**: Currently hardcodes domains for issuance.
+*   `scripts/certbot-renew.sh`: Renews existing Let's Encrypt certificates using Certbot. **Note**: Currently hardcodes domains for renewal.
 *   `scripts/stepca-bootstrap.sh`: Initializes and configures the Smallstep `step-ca` server.
 
 ## Tests
