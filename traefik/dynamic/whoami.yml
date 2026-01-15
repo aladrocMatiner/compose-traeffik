@@ -1,0 +1,28 @@
+# File: traefik/dynamic/whoami.yml
+#
+# Dynamic configuration for the whoami service when docker provider is disabled.
+#
+
+http:
+  routers:
+    whoami-web:
+      rule: "Host(`whoami.local.test`)"
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-to-https
+      service: whoami-service
+    whoami-websecure:
+      rule: "Host(`whoami.local.test`)"
+      entryPoints:
+        - websecure
+      middlewares:
+        - security-headers
+      service: whoami-service
+      tls: {}
+
+  services:
+    whoami-service:
+      loadBalancer:
+        servers:
+          - url: "http://whoami:80"

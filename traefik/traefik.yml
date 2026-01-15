@@ -12,28 +12,13 @@ global:
 entryPoints:
   web:
     address: ":80"
-    http:
-      middlewares:
-        - "redirect-to-https@file"
   websecure:
     address: ":443"
-    http:
-      tls:
-        # Default TLS configuration. Certificates are managed dynamically.
-        # This can be overridden by specific routers.
-        # For Mode A, dynamic/tls.yml will provide file-based certs.
-        # For ACME resolvers (LE/Step-CA), certs are managed automatically.
+  traefik:
+    address: ":8080"
 
 # Providers tell Traefik where to find its dynamic configuration.
 providers:
-  # Docker provider: automatically discovers services and their Traefik labels.
-  docker:
-    endpoint: "unix:///var/run/docker.sock"
-    exposedByDefault: false # Only expose services with 'traefik.enable=true' label
-    network: traefik-proxy # Only listen to services on this network
-    # Optional: Watch for changes in Docker (defaults to true)
-    # watch: true
-
   # File provider: loads dynamic configuration from YAML files.
   file:
     directory: /etc/traefik/dynamic # Directory containing dynamic config files
@@ -42,11 +27,11 @@ providers:
 # API and Dashboard configuration.
 # The dashboard is disabled by default for security.
 api:
-  dashboard: ${TRAEFIK_DASHBOARD:-false} # Enable dashboard if TRAEFIK_DASHBOARD is true in .env
-  insecure: ${TRAEFIK_DASHBOARD:-false} # Allow access without authentication for local dev dashboard
+  dashboard: false # Enable dashboard if TRAEFIK_DASHBOARD is true in .env
+  insecure: false # Allow access without authentication for local dev dashboard
 
 ping:
-  entryPoint: websecure
+  entryPoint: traefik
 
 # Log configuration
 log:
@@ -64,9 +49,9 @@ log:
 certificatesResolvers:
   le-resolver:
     acme:
-      email: ${ACME_EMAIL}
+      email: you@example.com
       storage: /certs/acme-le.json # Store ACME data in a persistent volume
-      caServer: ${LETSENCRYPT_CA_SERVER:-https://acme-staging-v02.api.letsencrypt.org/directory}
+      caServer: https://acme-staging-v02.api.letsencrypt.org/directory
       httpChallenge:
         entryPoint: web # Use HTTP-01 challenge on the 'web' entrypoint
         # For certbot integration, you might point to certbot's webroot:
@@ -86,8 +71,8 @@ certificatesResolvers:
   # Points to the internal step-ca service for ACME challenges.
   stepca-resolver:
     acme:
-      email: ${ACME_EMAIL} # Email is still required by ACME protocol
+      email: you@example.com # Email is still required by ACME protocol
       storage: /certs/acme-stepca.json # Separate storage for step-ca ACME data
-      caServer: https://step-ca.${DEV_DOMAIN}:9000/acme/acme/directory # ACME directory URL of the step-ca service
+      caServer: https://step-ca.local.test:9000/acme/acme/directory # ACME directory URL of the step-ca service
       httpChallenge:
         entryPoint: web # Use HTTP-01 challenge on the 'web' entrypoint

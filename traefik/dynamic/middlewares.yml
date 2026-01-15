@@ -29,7 +29,6 @@ http:
         sslRedirect: true # Force HTTP to HTTPS redirection (though also handled by redirect-to-https)
         browserXssFilter: true
         contentTypeNosniff: true
-        forceTextHtml: false
         # The following headers are added if not already present
         customResponseHeaders:
           X-Frame-Options: "DENY"

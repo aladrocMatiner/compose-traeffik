@@ -30,10 +30,12 @@ services:
     ports:
       - "80:80"   # HTTP entrypoint
       - "443:443" # HTTPS entrypoint
+      - "8080:8080" # Traefik ping/health entrypoint
     networks:
       - proxy
     environment:
       - TZ=UTC
+      - DOCKER_API_VERSION=1.44
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro # Static configuration

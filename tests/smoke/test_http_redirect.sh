@@ -35,8 +35,10 @@ log_info "Checking HTTP to HTTPS redirect for ${TARGET_HTTP_URL}..."
 # -w %{url_effective}: Print the final URL after redirects.
 
 FINAL_URL=$(curl -k -s -L -o /dev/null -w "%{url_effective}" "${TARGET_HTTP_URL}")
+FINAL_URL_STRIPPED="${FINAL_URL%/}"
+TARGET_HTTPS_URL_STRIPPED="${TARGET_HTTPS_URL%/}"
 
-if [ "$FINAL_URL" = "${TARGET_HTTPS_URL}" ]; then
+if [ "$FINAL_URL_STRIPPED" = "${TARGET_HTTPS_URL_STRIPPED}" ]; then
     log_success "HTTP to HTTPS redirect successful. Final URL: ${FINAL_URL}"
     exit 0
 else

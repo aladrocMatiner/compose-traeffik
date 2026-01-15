@@ -15,12 +15,11 @@ load_env
 check_env_var "DEV_DOMAIN"
 check_command "curl"
 
-TRAEFIK_HEALTH_URL="https://traefik.${DEV_DOMAIN}/ping"
+TRAEFIK_HEALTH_URL="http://traefik.${DEV_DOMAIN}:8080/ping"
 
 log_info "Checking Traefik readiness at ${TRAEFIK_HEALTH_URL}..."
 
 # Use curl to hit Traefik's ping endpoint.
-# -k: Insecure, allows self-signed certs (useful for local dev until CA is trusted).
 # -s: Silent, doesn't show progress meter.
 # -o /dev/null: Discard output.
 # -w %{http_code}: Print HTTP status code.
