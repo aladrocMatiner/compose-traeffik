@@ -17,7 +17,7 @@ tls:
       # this cert to certain hostnames, but by default Traefik will use it
       # if it's the only certificate or matches SNI.
       # domains:
-      #   main: "whoami.local.test"
+      #   main: "whoami.__DEV_DOMAIN__"
       #   sans:
-      #     - "traefik.local.test"
-      #     - "step-ca.local.test"
+      #     - "traefik.__DEV_DOMAIN__"
+      #     - "step-ca.__DEV_DOMAIN__"

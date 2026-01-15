@@ -23,6 +23,9 @@ acme-stepca.json
 # Traefik BasicAuth credentials
 traefik/auth/dns-ui.htpasswd
 
+# Rendered Traefik dynamic config
+traefik/dynamic-rendered/
+
 # --- Environment files ---
 .env
 

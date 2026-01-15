@@ -1,3 +1,4 @@
+#!/bin/bash
 # File: tests/smoke/test_tls_handshake.sh
 #
 # Smoke test: Verifies TLS handshake and certificate details for whoami service.

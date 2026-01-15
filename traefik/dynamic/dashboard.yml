@@ -6,7 +6,7 @@
 http:
   routers:
     traefik-dashboard:
-      rule: "Host(`traefik.local.test`)"
+      rule: "Host(`traefik.__DEV_DOMAIN__`)"
       entryPoints:
         - traefik
       middlewares:

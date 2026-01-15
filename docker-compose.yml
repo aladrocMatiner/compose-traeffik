@@ -39,7 +39,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro # Static configuration
-      - ./traefik/dynamic:/etc/traefik/dynamic:ro       # Dynamic configuration directory
+      - ./traefik/dynamic-rendered:/etc/traefik/dynamic:ro # Dynamic configuration directory (rendered)
       - certs-data:/certs                               # Volume for ACME storage
       # For TLS Mode A (local self-signed certificates)
       - ./certs/local:/etc/certs/local:ro
