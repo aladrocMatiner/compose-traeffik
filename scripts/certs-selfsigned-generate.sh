@@ -50,8 +50,13 @@ log_info "Generating leaf certificate for DEV_DOMAIN: ${DEV_DOMAIN}..."
 
 # List of Subject Alternative Names (SANs)
 SAN_DOMAINS="DNS:whoami.${DEV_DOMAIN},DNS:traefik.${DEV_DOMAIN},DNS:step-ca.${DEV_DOMAIN},DNS:localhost,IP:127.0.0.1"
+
+# Create a temporary OpenSSL configuration file for SANs
 SAN_CONFIG=$(mktemp)
-echo "subjectAltName = ${SAN_DOMAINS}" > "$SAN_CONFIG"
+cat <<EOT > "$SAN_CONFIG"
+[v3_ext]
+subjectAltName = ${SAN_DOMAINS}
+EOT
 
 # Generate leaf private key
 openssl genrsa -out "${LEAF_KEY}" 2048
@@ -63,7 +68,7 @@ openssl req -new -key "${LEAF_KEY}" -out "${LEAF_CSR}" \
 # Sign the CSR with the CA
 openssl x509 -req -in "${LEAF_CSR}" -CA "${CA_CRT}" -CAkey "${CA_KEY}" \
     -CAcreateserial -out "${LEAF_CRT}" -days 365 \
-    -sha256 -extfile "$SAN_CONFIG" -extensions SAN_EXT
+    -sha256 -extfile "$SAN_CONFIG" -extensions v3_ext
 
 rm "$SAN_CONFIG" # Clean up temporary file
 
