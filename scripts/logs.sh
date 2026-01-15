@@ -14,13 +14,28 @@ SCRIPT_DIR=$(dirname "$0")
 
 load_env
 
-COMPOSE_PROFILES_ARG="${1:-}" # Accept COMPOSE_PROFILES_ARG as the first argument, default to empty if not provided
-
 log_info "Checking for docker and docker compose..."
-check_command "docker"
-check_command "docker compose"
+check_docker_compose
 
 log_info "Showing logs for Docker Compose stack..."
-DOCKER_COMPOSE_COMMAND="docker compose --env-file .env ${COMPOSE_PROFILES_ARG} logs -f"
-log_info "Executing: ${DOCKER_COMPOSE_COMMAND} $*"
-eval "${DOCKER_COMPOSE_COMMAND} $*"
+compose_args=()
+service_args=()
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --profile)
+            if [ -n "${2:-}" ]; then
+                compose_args+=("$1" "$2")
+                shift 2
+            else
+                log_error "Missing value for --profile."
+            fi
+            ;;
+        *)
+            service_args+=("$1")
+            shift
+            ;;
+    esac
+done
+
+log_info "Executing: docker compose --env-file .env ${compose_args[*]} logs -f ${service_args[*]}"
+docker compose --env-file .env "${compose_args[@]}" logs -f "${service_args[@]}"

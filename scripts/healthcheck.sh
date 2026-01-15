@@ -21,41 +21,42 @@ check_command "curl"
 check_command "openssl" # For TLS handshake test
 
 TEST_RESULTS=0
+TEST_DIR="${SCRIPT_DIR}/../tests/smoke"
 
 # --- Test 1: Traefik Readiness ---
 log_info "Running test_traefik_ready.sh..."
-if "$SCRIPT_DIR/tests/smoke/test_traefik_ready.sh"; then
+if "$TEST_DIR/test_traefik_ready.sh"; then
     log_success "Test: Traefik Readiness"
 else
-    log_error "Test failed: Traefik Readiness"
+    log_warn "Test failed: Traefik Readiness"
     TEST_RESULTS=1
 fi
 
 # --- Test 2: Routing to whoami service ---
 log_info "Running test_routing.sh..."
-if "$SCRIPT_DIR/tests/smoke/test_routing.sh"; then
+if "$TEST_DIR/test_routing.sh"; then
     log_success "Test: Whoami Service Routing"
 else
-    log_error "Test failed: Whoami Service Routing"
+    log_warn "Test failed: Whoami Service Routing"
     TEST_RESULTS=1
 fi
 
 # --- Test 3: TLS Handshake for whoami service ---
 log_info "Running test_tls_handshake.sh..."
-if "$SCRIPT_DIR/tests/smoke/test_tls_handshake.sh"; then
+if "$TEST_DIR/test_tls_handshake.sh"; then
     log_success "Test: TLS Handshake"
 else
-    log_error "Test failed: TLS Handshake"
+    log_warn "Test failed: TLS Handshake"
     TEST_RESULTS=1
 fi
 
 # --- Test 4: HTTP to HTTPS Redirect (conditional) ---
 if [ "${HTTP_TO_HTTPS_REDIRECT}" = "true" ]; then
     log_info "Running test_http_redirect.sh (HTTP_TO_HTTPS_REDIRECT is true)..."
-    if "$SCRIPT_DIR/tests/smoke/test_http_redirect.sh"; then
+    if "$TEST_DIR/test_http_redirect.sh"; then
         log_success "Test: HTTP to HTTPS Redirect"
     else
-        log_error "Test failed: HTTP to HTTPS Redirect"
+        log_warn "Test failed: HTTP to HTTPS Redirect"
         TEST_RESULTS=1
     fi
 else

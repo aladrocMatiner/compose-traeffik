@@ -22,8 +22,7 @@ check_env_var "STEP_CA_ADMIN_PROVISIONER_PASSWORD"
 check_env_var "STEP_CA_PASSWORD"
 
 log_info "Checking for docker and docker compose..."
-check_command "docker"
-check_command "docker compose"
+check_docker_compose
 
 CA_CONTAINER_NAME="step-ca"
 CA_CONFIG_DIR="/home/step/config"

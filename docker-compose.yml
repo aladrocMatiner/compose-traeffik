@@ -52,11 +52,11 @@ services:
     labels:
       - "traefik.enable=true"
       # HTTP router for optional redirect
-      - "traefik.http.routers.whoami-web.rule=Host(`${DEV_DOMAIN}`)"
+      - "traefik.http.routers.whoami-web.rule=Host(`whoami.${DEV_DOMAIN}`)"
       - "traefik.http.routers.whoami-web.entrypoints=web"
       - "traefik.http.routers.whoami-web.middlewares=redirect-to-https@file"
       # HTTPS router
-      - "traefik.http.routers.whoami-websecure.rule=Host(`${DEV_DOMAIN}`)"
+      - "traefik.http.routers.whoami-websecure.rule=Host(`whoami.${DEV_DOMAIN}`)"
       - "traefik.http.routers.whoami-websecure.entrypoints=websecure"
       - "traefik.http.routers.whoami-websecure.service=whoami-service"
       - "traefik.http.routers.whoami-websecure.tls=true"

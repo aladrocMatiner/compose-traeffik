@@ -19,8 +19,7 @@ check_env_var "ACME_EMAIL"
 check_env_var "LETSENCRYPT_STAGING"
 
 log_info "Checking for docker and docker compose..."
-check_command "docker"
-check_command "docker compose"
+check_docker_compose
 
 # Determine Certbot server based on LETSENCRYPT_STAGING
 CERTBOT_SERVER="https://acme-v02.api.letsencrypt.org/directory"

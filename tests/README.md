@@ -29,7 +29,7 @@
 #
 # Test Descriptions:
 #
-# *   **`test_traefik_ready.sh`**: Checks if Traefik's API/health endpoint is reachable and returns a success status.
+# *   **`test_traefik_ready.sh`**: Checks if Traefik's ping endpoint is reachable and returns a success status.
 # *   **`test_routing.sh`**: Verifies that requests to `https://whoami.<DEV_DOMAIN>` are correctly routed to the `whoami` service.
 # *   **`test_tls_handshake.sh`**: Ensures that a TLS handshake can be successfully established with `https://whoami.<DEV_DOMAIN>` and checks the certificate details (e.g., subject, SANs).
 # *   **`test_http_redirect.sh`**: (Conditional) If `HTTP_TO_HTTPS_REDIRECT` is enabled in `.env`, this test verifies that HTTP requests are automatically redirected to HTTPS.

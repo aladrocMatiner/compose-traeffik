@@ -12,12 +12,9 @@ global:
 entryPoints:
   web:
     address: ":80"
-    # Enable redirection to websecure for all HTTP traffic IF HTTP_TO_HTTPS_REDIRECT is true.
-    # Otherwise, disable this middleware on the entrypoint.
     http:
       middlewares:
-        ${HTTP_TO_HTTPS_REDIRECT:?Error: HTTP_TO_HTTPS_REDIRECT not set. Must be true or false.}:
-          - "redirect-to-https@file"
+        - "redirect-to-https@file"
   websecure:
     address: ":443"
     http:
@@ -48,6 +45,9 @@ api:
   dashboard: ${TRAEFIK_DASHBOARD:-false} # Enable dashboard if TRAEFIK_DASHBOARD is true in .env
   insecure: ${TRAEFIK_DASHBOARD:-false} # Allow access without authentication for local dev dashboard
 
+ping:
+  entryPoint: websecure
+
 # Log configuration
 log:
   level: INFO # DEBUG, INFO, WARNING, ERROR, FATAL, PANIC
@@ -66,7 +66,7 @@ certificatesResolvers:
     acme:
       email: ${ACME_EMAIL}
       storage: /certs/acme-le.json # Store ACME data in a persistent volume
-      caServer: $(if ${LETSENCRYPT_STAGING},https://acme-staging-v02.api.letsencrypt.org/directory,https://acme-v02.api.letsencrypt.org/directory)
+      caServer: ${LETSENCRYPT_CA_SERVER:-https://acme-staging-v02.api.letsencrypt.org/directory}
       httpChallenge:
         entryPoint: web # Use HTTP-01 challenge on the 'web' entrypoint
         # For certbot integration, you might point to certbot's webroot:

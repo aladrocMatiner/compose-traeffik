@@ -41,7 +41,8 @@ This repository sets up a Docker Compose-based Traefik edge stack, integrating a
 *   `TRAEFIK_DASHBOARD=false`: Toggle to enable/disable Traefik dashboard.
 *   `HTTP_TO_HTTPS_REDIRECT=true`: Toggle for global HTTP to HTTPS redirection.
 *   `ACME_EMAIL=you@example.com`: Email for ACME registrations (Let's Encrypt, step-ca).
-*   `LETSENCRYPT_STAGING=true`: Toggle for Let's Encrypt staging environment.
+*   `LETSENCRYPT_STAGING=true`: Toggle for Let's Encrypt staging environment (Certbot only).
+*   `LETSENCRYPT_CA_SERVER=https://acme-staging-v02.api.letsencrypt.org/directory`: ACME directory URL for Traefik.
 *   `STEP_CA_NAME="Local Dev CA"`: Name for the Smallstep CA.
 *   `STEP_CA_ADMIN_PROVISIONER_PASSWORD="adminpassword"`: Password for `step-ca` admin provisioner (bootstrap only).
 *   `STEP_CA_PASSWORD="capassword"`: Password for `step-ca` CA key (bootstrap only).

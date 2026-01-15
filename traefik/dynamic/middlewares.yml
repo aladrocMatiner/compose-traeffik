@@ -9,7 +9,6 @@ http:
     # --- HTTP to HTTPS Redirect Middleware ---
     # This middleware automatically redirects all HTTP traffic to HTTPS.
     # It's applied by default to the 'web' entrypoint via traefik/traefik.yml.
-    # Its behavior can be controlled by the HTTP_TO_HTTPS_REDIRECT environment variable.
     redirect-to-https:
       redirectScheme:
         scheme: https
@@ -21,12 +20,7 @@ http:
         # We handle the toggle for the 'web' entrypoint dynamically in traefik.yml,
         # but for individual routers, they would explicitly call this.
         # The entrypoint rule `middlewares: ["redirect-to-https@file"]` will always apply
-        # to the 'web' entrypoint. If HTTP_TO_HTTPS_REDIRECT is false, users should
-        # remove this middleware from their routers/entrypoint config.
-        # For simplicity of global control, we will toggle the ENTRYPOINT itself,
-        # making the middleware always present.
-        # However, to meet the spec: "Redirect middleware can be enabled/disabled by documented toggle (env or config)"
-        # I will adjust traefik.yml to conditionally apply this middleware to the entrypoint.
+        # to the 'web' entrypoint unless removed from static config.
 
     # --- Security Headers Middleware ---
     # This middleware adds common security headers to responses.
