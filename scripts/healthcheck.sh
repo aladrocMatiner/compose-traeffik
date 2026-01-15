@@ -90,6 +90,15 @@ else
     TEST_RESULTS=1
 fi
 
+# --- Test 8: DNS Service Config (no sudo) ---
+log_info "Running test_dns_service_config.sh..."
+if "$TEST_DIR/test_dns_service_config.sh"; then
+    log_success "Test: DNS Service Config"
+else
+    log_warn "Test failed: DNS Service Config"
+    TEST_RESULTS=1
+fi
+
 if [ "$TEST_RESULTS" -eq 0 ]; then
     log_success "All smoke tests passed!"
 else
