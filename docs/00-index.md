@@ -62,5 +62,6 @@ This is an overview of the documentation available and what's coming next.
     *   Mode B: Let's Encrypt via Certbot (planned: 05-tls/mode-b-letsencrypt-certbot.md)
     *   Mode C: Smallstep `step-ca` as Internal ACME Server (planned: 05-tls/mode-c-stepca-acme.md)
 *   How-to: Add a New Service (planned: 06-howto/add-a-service.md)
+*   [How-to: Trust Step-CA on Ubuntu 24.04](06-howto/stepca-trust-ubuntu.md)
 *   Testing & Troubleshooting (planned: 07-testing.md)
 *   Troubleshooting (planned: 08-troubleshooting.md)

@@ -37,7 +37,7 @@ This repository sets up a Docker Compose-based Traefik edge stack, integrating a
 ## Environment Variables (.env.example)
 
 *   `DEV_DOMAIN=local.test`: Base domain for local development.
-*   `TRAEFIK_IMAGE=traefik:v3.0`: Docker image tag for Traefik.
+*   `TRAEFIK_IMAGE=traefik:v3.6.7`: Docker image tag for Traefik.
 *   `TRAEFIK_DASHBOARD=false`: Toggle to enable/disable Traefik dashboard.
 *   `HTTP_TO_HTTPS_REDIRECT=true`: Toggle for global HTTP to HTTPS redirection.
 *   `ACME_EMAIL=you@example.com`: Email for ACME registrations (Let's Encrypt, step-ca).
@@ -60,6 +60,9 @@ This repository sets up a Docker Compose-based Traefik edge stack, integrating a
     *   `stepca-up`: Start `step-ca` service (Mode C).
     *   `stepca-down`: Stop `step-ca` service (Mode C).
     *   `stepca-bootstrap`: Bootstrap `step-ca` server (Mode C).
+    *   `stepca-trust-install`: Install Step-CA root CA into Ubuntu trust store.
+    *   `stepca-trust-uninstall`: Remove Step-CA root CA from Ubuntu trust store.
+    *   `stepca-trust-verify`: Verify Step-CA root CA trust on Ubuntu.
 *   **Testing**: `test`
 *   **Help**: `help`
 
@@ -74,6 +77,9 @@ This repository sets up a Docker Compose-based Traefik edge stack, integrating a
 *   `scripts/certbot-issue.sh`: Issues new Let's Encrypt certificates using Certbot. **Note**: Currently hardcodes domains for issuance.
 *   `scripts/certbot-renew.sh`: Renews existing Let's Encrypt certificates using Certbot. **Note**: Currently hardcodes domains for renewal.
 *   `scripts/stepca-bootstrap.sh`: Initializes and configures the Smallstep `step-ca` server.
+*   `scripts/stepca-trust-install.sh`: Installs Step-CA root certificate into the Ubuntu trust store.
+*   `scripts/stepca-trust-uninstall.sh`: Removes Step-CA root certificate from the Ubuntu trust store.
+*   `scripts/stepca-trust-verify.sh`: Verifies OS trust for the Step-CA root certificate.
 
 ## Tests
 

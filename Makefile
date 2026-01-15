@@ -17,7 +17,8 @@ SHELL := /bin/bash # Ensure bash is used for shell commands
 .DEFAULT_GOAL := help # Default target if none is specified
 .PHONY: help up down restart logs ps test \
         certs-local certs-le-issue certs-le-renew \
-        stepca-up stepca-down stepca-bootstrap stepca-verify-cert
+        stepca-up stepca-down stepca-bootstrap stepca-verify-cert \
+        stepca-trust-install stepca-trust-uninstall stepca-trust-verify
 
 # Include .env for environment variables if it exists.
 # This makes variables in .env available to the Makefile.
@@ -90,6 +91,21 @@ stepca-bootstrap: stepca-up
 	@if [ -z "$(STEP_CA_ADMIN_PROVISIONER_PASSWORD)" ] || [ -z "$(STEP_CA_PASSWORD)" ]; then echo "Error: STEP_CA_ADMIN_PROVISIONER_PASSWORD or STEP_CA_PASSWORD not set in .env. Aborting."; exit 1; fi
 	./scripts/stepca-bootstrap.sh
 
+# Install Step-CA root CA into Ubuntu trust store
+stepca-trust-install:
+	@echo "Installing Step-CA root CA into system trust store..."
+	./scripts/stepca-trust-install.sh
+
+# Remove Step-CA root CA from Ubuntu trust store
+stepca-trust-uninstall:
+	@echo "Removing Step-CA root CA from system trust store..."
+	./scripts/stepca-trust-uninstall.sh
+
+# Verify Step-CA root CA is trusted by Ubuntu
+stepca-trust-verify:
+	@echo "Verifying Step-CA root CA trust..."
+	./scripts/stepca-trust-verify.sh
+
 # --- Testing ---
 
 test:
@@ -128,6 +144,9 @@ help:
 	@echo "  stepca-down           Stop and remove the Step-CA service."
 	@echo "  stepca-bootstrap      Initialize and bootstrap the Step-CA server (requires 'stepca' profile)."
 	@echo "                        Requires STEP_CA_ADMIN_PROVISIONER_PASSWORD and STEP_CA_PASSWORD in .env."
+	@echo "  stepca-trust-install  Install Step-CA root CA into Ubuntu trust store (requires sudo)."
+	@echo "  stepca-trust-uninstall Remove Step-CA root CA from Ubuntu trust store (requires sudo)."
+	@echo "  stepca-trust-verify   Verify Step-CA root CA trust on Ubuntu."
 	@echo ""
 	@echo "Testing:"
 	@echo "  test                  Run all smoke tests for the current configuration."
