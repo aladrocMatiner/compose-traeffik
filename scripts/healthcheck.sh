@@ -63,6 +63,33 @@ else
     log_warn "Skipping HTTP to HTTPS Redirect test (HTTP_TO_HTTPS_REDIRECT is false)."
 fi
 
+# --- Test 5: Hosts Subdomain Mapper (no sudo) ---
+log_info "Running test_hosts_subdomains.sh..."
+if "$TEST_DIR/test_hosts_subdomains.sh"; then
+    log_success "Test: Hosts Subdomain Mapper"
+else
+    log_warn "Test failed: Hosts Subdomain Mapper"
+    TEST_RESULTS=1
+fi
+
+# --- Test 6: DNS Provision (dry-run) ---
+log_info "Running test_dns_provision.sh..."
+if "$TEST_DIR/test_dns_provision.sh"; then
+    log_success "Test: DNS Provision Dry-Run"
+else
+    log_warn "Test failed: DNS Provision Dry-Run"
+    TEST_RESULTS=1
+fi
+
+# --- Test 7: DNS Configure Ubuntu (dry-run) ---
+log_info "Running test_dns_configure_ubuntu.sh..."
+if "$TEST_DIR/test_dns_configure_ubuntu.sh"; then
+    log_success "Test: DNS Configure Ubuntu Dry-Run"
+else
+    log_warn "Test failed: DNS Configure Ubuntu Dry-Run"
+    TEST_RESULTS=1
+fi
+
 if [ "$TEST_RESULTS" -eq 0 ]; then
     log_success "All smoke tests passed!"
 else

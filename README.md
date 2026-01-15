@@ -55,23 +55,37 @@ This quickstart guides you through setting up the stack with locally generated s
     # Open .env and adjust DEV_DOMAIN if desired, then save.
     ```
 
-3.  **Generate local self-signed certificates:**
+3.  **Map local subdomains to loopback (recommended):**
+    ```bash
+    make hosts-generate
+    sudo make hosts-apply
+    make hosts-status
+    sudo make hosts-remove
+    ```
+    This uses `BASE_DOMAIN`, `LOOPBACK_X`, and `ENDPOINTS` from `.env` to generate a managed block in `/etc/hosts`.
+    Keep `BASE_DOMAIN` aligned with `DEV_DOMAIN` unless you intentionally separate them.
+    Verify with:
+    ```bash
+    curl -vk "https://whoami.$BASE_DOMAIN/"
+    ```
+
+4.  **Generate local self-signed certificates:**
     ```bash
     make certs-local
     ```
 
-4.  **Start the Docker Compose stack:**
+5.  **Start the Docker Compose stack:**
     ```bash
     make up
     ```
 
-5.  **Run smoke tests:**
+6.  **Run smoke tests:**
     ```bash
     make test
     ```
     You should see output indicating that Traefik is ready, routing works, and the TLS handshake is successful.
 
-6.  **Access the demo service:**
+7.  **Access the demo service:**
     Open your browser to `https://whoami.<DEV_DOMAIN>`. You should see the `whoami` service's output, served over HTTPS.
 
 For a more detailed Quickstart, including host configuration and CA trust instructions, see [Quickstart: Local Self-Signed TLS](docs/quickstart-mode-a.md).

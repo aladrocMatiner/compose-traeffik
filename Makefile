@@ -18,7 +18,8 @@ SHELL := /bin/bash # Ensure bash is used for shell commands
 .PHONY: help up down restart logs ps test \
         certs-local certs-le-issue certs-le-renew \
         stepca-up stepca-down stepca-bootstrap stepca-verify-cert \
-        stepca-trust-install stepca-trust-uninstall stepca-trust-verify
+        stepca-trust-install stepca-trust-uninstall stepca-trust-verify \
+        hosts-generate hosts-apply hosts-remove hosts-status \
 
 # Include .env for environment variables if it exists.
 # This makes variables in .env available to the Makefile.
@@ -31,6 +32,15 @@ SHELL := /bin/bash # Ensure bash is used for shell commands
 COMPOSE_BASE := docker compose --env-file .env
 COMPOSE_OPTS ?=
 COMPOSE_PROFILES_ARG := $(if $(COMPOSE_PROFILES),--profile $(subst ',', --profile ,$(COMPOSE_PROFILES)),)
+
+# Hosts subdomain mapper options
+HOSTS_ENV_ARGS :=
+ifneq ($(ENV_FILE),)
+HOSTS_ENV_ARGS += --env-file $(ENV_FILE)
+endif
+ifneq ($(HOSTS_FILE),)
+HOSTS_ENV_ARGS += --hosts-file $(HOSTS_FILE)
+endif
 
 # Start the stack
 up:
@@ -112,6 +122,22 @@ test:
 	@echo "Running smoke tests..."
 	./scripts/healthcheck.sh
 
+# --- Hosts Subdomain Mapper ---
+
+hosts-generate:
+	./scripts/hosts-subdomains.sh $(HOSTS_ENV_ARGS) generate
+
+hosts-apply:
+	@echo "Applying hosts block (sudo may be required for /etc/hosts)..."
+	./scripts/hosts-subdomains.sh $(HOSTS_ENV_ARGS) apply
+
+hosts-remove:
+	@echo "Removing hosts block (sudo may be required for /etc/hosts)..."
+	./scripts/hosts-subdomains.sh $(HOSTS_ENV_ARGS) remove
+
+hosts-status:
+	./scripts/hosts-subdomains.sh $(HOSTS_ENV_ARGS) status
+
 # --- Help ---
 
 help:
@@ -150,6 +176,12 @@ help:
 	@echo ""
 	@echo "Testing:"
 	@echo "  test                  Run all smoke tests for the current configuration."
+	@echo ""
+	@echo "Hosts Subdomain Mapper:"
+	@echo "  hosts-generate        Print the managed hosts block."
+	@echo "  hosts-apply           Insert or update the managed hosts block."
+	@echo "  hosts-remove          Remove the managed hosts block."
+	@echo "  hosts-status          Show whether the managed block exists."
 	@echo ""
 	@echo "Profiles:"
 	@echo "  Use COMPOSE_PROFILES=<profile_name> before make commands to activate profiles."
