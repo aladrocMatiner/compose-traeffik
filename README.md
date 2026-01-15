@@ -52,32 +52,28 @@ This quickstart guides you through setting up the stack with locally generated s
 2.  **Copy the example environment file:**
     ```bash
     cp .env.example .env
-    # Open .env and adjust DEV_DOMAIN if desired, then save.
+    # Open .env and set DEV_DOMAIN, BASE_DOMAIN, LOOPBACK_X, ENDPOINTS as needed, then save.
     ```
 
-3.  **Map local subdomains to loopback (recommended):**
+3.  **Generate local self-signed certificates:**
+    ```bash
+    make certs-local
+    ```
+
+4.  **Map local subdomains to loopback (recommended):**
     ```bash
     make hosts-generate
     sudo make hosts-apply
     make hosts-status
-    sudo make hosts-remove
     ```
     This uses `BASE_DOMAIN`, `LOOPBACK_X`, and `ENDPOINTS` from `.env` to generate a managed block in `/etc/hosts`.
     Keep `BASE_DOMAIN` aligned with `DEV_DOMAIN` unless you intentionally separate them.
-    Verify with:
-    ```bash
-    curl -vk "https://whoami.$BASE_DOMAIN/"
-    ```
-
-4.  **Generate local self-signed certificates:**
-    ```bash
-    make certs-local
-    ```
 
 5.  **Start the Docker Compose stack:**
     ```bash
     make up
     ```
+    This automatically renders Traefik dynamic configuration based on `DEV_DOMAIN`.
 
 6.  **Run smoke tests:**
     ```bash
@@ -86,7 +82,7 @@ This quickstart guides you through setting up the stack with locally generated s
     You should see output indicating that Traefik is ready, routing works, and the TLS handshake is successful.
 
 7.  **Access the demo service:**
-    Open your browser to `https://whoami.<DEV_DOMAIN>`. You should see the `whoami` service's output, served over HTTPS.
+    Open your browser to `https://whoami.$DEV_DOMAIN`. You should see the `whoami` service's output, served over HTTPS.
 
 ## DNS Service (Technitium)
 
