@@ -27,8 +27,8 @@ providers:
 # API and Dashboard configuration.
 # The dashboard is disabled by default for security.
 api:
-  dashboard: false # Enable dashboard if TRAEFIK_DASHBOARD is true in .env
-  insecure: false # Allow access without authentication for local dev dashboard
+  dashboard: true
+  insecure: false
 
 ping:
   entryPoint: traefik
