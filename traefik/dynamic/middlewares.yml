@@ -44,3 +44,8 @@ http:
       basicAuth:
         users:
           - "admin:$apr1$N43kWKVQ$faTwT7Q5bTx8/Sl8rGiQy0"
+
+    # --- Basic Auth for DNS UI ---
+    dns-ui-auth:
+      basicAuth:
+        usersFile: /etc/traefik/auth/dns-ui.htpasswd

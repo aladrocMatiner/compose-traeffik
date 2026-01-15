@@ -88,6 +88,58 @@ This quickstart guides you through setting up the stack with locally generated s
 7.  **Access the demo service:**
     Open your browser to `https://whoami.<DEV_DOMAIN>`. You should see the `whoami` service's output, served over HTTPS.
 
+## DNS Service (Technitium)
+
+This stack includes an optional DNS service that becomes the single source of truth for project hostnames. It runs under the `dns` profile and exposes its UI only through Traefik at `https://dns.$BASE_DOMAIN`.
+
+### Setup
+
+1.  **Configure domain defaults in `.env`:**
+    - `PROJECT_NAME` sets the default domain convention.
+    - `BASE_DOMAIN` should be `${PROJECT_NAME}.aladroc.io`.
+    - Keep `DEV_DOMAIN` aligned with `BASE_DOMAIN` unless you intentionally separate them.
+
+2.  **Create BasicAuth credentials for the DNS UI:**
+    ```bash
+    cp traefik/auth/dns-ui.htpasswd.example traefik/auth/dns-ui.htpasswd
+    # Replace with your own credentials:
+    # htpasswd -nbB admin 'change-me' > traefik/auth/dns-ui.htpasswd
+    ```
+
+3.  **Start the DNS service:**
+    ```bash
+    make dns-up
+    ```
+
+4.  **Provision DNS records:**
+    ```bash
+    make dns-provision
+    ```
+
+5.  **Configure Ubuntu 24.04 split-DNS (requires sudo):**
+    ```bash
+    sudo make dns-config-apply
+    ```
+    To remove the configuration later:
+    ```bash
+    sudo make dns-config-remove
+    ```
+
+### Verification
+
+```bash
+resolvectl status
+dig @127.0.0.1 dns.$BASE_DOMAIN
+getent hosts whoami.$BASE_DOMAIN
+curl -vk "https://dns.$BASE_DOMAIN/"
+```
+
+### Security Notes
+
+- The DNS UI is exposed only via Traefik HTTPS and protected by BasicAuth.
+- Port 53 is bound to localhost by default (`DNS_BIND_ADDRESS=127.0.0.1`). If another service uses port 53, change or stop it before enabling the DNS profile.
+- To enable an IP allowlist, add `dns-ui-allowlist@docker` to `DNS_UI_MIDDLEWARES` and set `DNS_UI_ALLOWLIST_SOURCE_RANGES` in `.env`.
+
 For a more detailed Quickstart, including host configuration and CA trust instructions, see [Quickstart: Local Self-Signed TLS](docs/quickstart-mode-a.md).
 
 ## Table of Contents

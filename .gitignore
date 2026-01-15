@@ -20,6 +20,9 @@ step-ca/data/
 acme-le.json
 acme-stepca.json
 
+# Traefik BasicAuth credentials
+traefik/auth/dns-ui.htpasswd
+
 # --- Environment files ---
 .env
 

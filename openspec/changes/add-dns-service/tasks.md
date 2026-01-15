@@ -1,0 +1,12 @@
+## 1. Implementation
+- [x] 1.1 Verify Technitium Docker image, ports, env vars, and volume paths from primary docs.
+- [x] 1.2 Update .env.example with PROJECT_NAME, BASE_DOMAIN default, DNS env vars, and auth/allowlist toggles.
+- [x] 1.3 Extend docker-compose.yml with dns profile, service definition, localhost-only port 53 binding, and Traefik labels.
+- [x] 1.4 Add Traefik middleware for DNS UI auth (and optional allowlist) in traefik/dynamic/middlewares.yml.
+- [x] 1.5 Add dns/ directory with minimal README and config/data volume placeholders.
+- [x] 1.6 Implement scripts/dns-provision.sh with deterministic record creation and dry-run.
+- [x] 1.7 Implement scripts/dns-configure-ubuntu.sh with apply/remove/status/dry-run using resolvectl.
+- [x] 1.8 Update Makefile with dns-* targets and help output.
+- [x] 1.9 Update README.md or docs with usage, security notes, and verification commands.
+- [x] 1.10 Add no-sudo tests for provisioning output and DNS config dry-run.
+- [x] 1.11 Run openspec validation and new tests.

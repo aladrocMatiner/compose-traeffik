@@ -70,6 +70,37 @@ services:
       # Add security headers middleware
       - "traefik.http.routers.whoami-websecure.middlewares=security-headers@file"
 
+  # DNS service (profile 'dns' for Technitium DNS Server)
+  dns:
+    image: technitium/dns-server:latest
+    container_name: dns
+    profiles:
+      - dns
+    restart: unless-stopped
+    networks:
+      - proxy
+    ports:
+      - "${DNS_BIND_ADDRESS:-127.0.0.1}:53:53/udp"
+      - "${DNS_BIND_ADDRESS:-127.0.0.1}:53:53/tcp"
+    environment:
+      - DNS_SERVER_DOMAIN=${BASE_DOMAIN}
+      - DNS_SERVER_ADMIN_PASSWORD=${DNS_ADMIN_PASSWORD}
+      - DNS_SERVER_WEB_SERVICE_HTTP_PORT=5380
+      - DNS_SERVER_WEB_SERVICE_ENABLE_HTTPS=false
+      - DNS_SERVER_WEB_SERVICE_HTTP_TO_TLS_REDIRECT=false
+    volumes:
+      - ./dns/data:/etc/dns
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dns-ui.rule=Host(`dns.${BASE_DOMAIN}`)"
+      - "traefik.http.routers.dns-ui.entrypoints=websecure"
+      - "traefik.http.routers.dns-ui.service=dns-ui-service"
+      - "traefik.http.routers.dns-ui.tls=true"
+      - "traefik.http.routers.dns-ui.tls.certresolver=${TLS_CERT_RESOLVER:-}"
+      - "traefik.http.routers.dns-ui.middlewares=${DNS_UI_MIDDLEWARES:-security-headers@file,dns-ui-auth@file}"
+      - "traefik.http.services.dns-ui-service.loadbalancer.server.port=5380"
+      - "traefik.http.middlewares.dns-ui-allowlist.ipallowlist.sourcerange=${DNS_UI_ALLOWLIST_SOURCE_RANGES}"
+
   # Certbot service (profile 'le' for Let's Encrypt)
   certbot:
     image: certbot/certbot:latest
