@@ -101,6 +101,7 @@ Run the smoke tests with:
 make test
 ```
 See `tests/README.md` for details.
+Operational scripts: see `scripts/README.md`.
 
 <a id="troubleshooting"></a>
 ## Troubleshooting

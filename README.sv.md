@@ -101,6 +101,7 @@ Kor smoke tests med:
 make test
 ```
 Se `tests/README.md` for detaljer.
+Operativa script: se `scripts/README.md`.
 
 <a id="troubleshooting"></a>
 ## Felsokning
