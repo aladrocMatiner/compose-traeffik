@@ -24,8 +24,8 @@ Starta profilcontainern:
 
 Utfarda eller fornya certifikat:
 ```bash
-make certbot-issue
-make certbot-renew
+make certs-le-issue
+make certs-le-renew
 ```
 
 <a id="configuration"></a>

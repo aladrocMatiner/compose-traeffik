@@ -24,8 +24,8 @@ Start the profile container:
 
 Issue or renew certificates:
 ```bash
-make certbot-issue
-make certbot-renew
+make certs-le-issue
+make certs-le-renew
 ```
 
 <a id="configuration"></a>

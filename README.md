@@ -45,7 +45,22 @@ This repository provides a Docker Compose edge stack centered on Traefik. It is 
    ```
 
 7. **Verify the demo service**
-   Open `https://whoami.${DEV_DOMAIN}` in a browser.
+   ```bash
+   curl -vk "https://whoami.${DEV_DOMAIN}"
+   ```
+
+For detailed TLS workflows, see:
+- [Mode A: Self-signed](docs/tls-mode-a-selfsigned.md)
+- [Mode B: Let's Encrypt + Certbot](docs/tls-mode-b-letsencrypt-certbot.md)
+- [Mode C: Step-CA ACME](docs/tls-mode-c-stepca-acme.md)
+
+<a id="endpoints"></a>
+## Endpoints
+
+- **Whoami**: `https://whoami.${DEV_DOMAIN}` (default stack; uses Traefik HTTPS)
+- **Traefik dashboard**: `http://traefik.${DEV_DOMAIN}:8080` (BasicAuth; routed via entrypoint `traefik`)
+- **DNS UI**: `https://dns.${BASE_DOMAIN}` (profile `dns`, BasicAuth required)
+- **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (profile `stepca`)
 
 <a id="services"></a>
 ## Services
@@ -59,7 +74,11 @@ This repository provides a Docker Compose edge stack centered on Traefik. It is 
 <a id="docs-map"></a>
 ## Docs map
 
-- Overview, Quickstart, Operations, Testing, Troubleshooting (this page)
+- Overview, Quickstart, Endpoints, Operations, Testing, Troubleshooting (this page)
+- TLS setup guides (in `docs/`):
+  - [Mode A: Self-signed](docs/tls-mode-a-selfsigned.md)
+  - [Mode B: Let's Encrypt + Certbot](docs/tls-mode-b-letsencrypt-certbot.md)
+  - [Mode C: Step-CA ACME](docs/tls-mode-c-stepca-acme.md)
 - Service pages (links above)
 - Migration notes and how to add a new service doc (this page)
 
@@ -69,7 +88,7 @@ This repository provides a Docker Compose edge stack centered on Traefik. It is 
 Common commands:
 - `make up`, `make down`, `make logs`, `make ps`
 - `make certs-local`
-- `make certbot-issue`, `make certbot-renew` (profile `le`)
+- `make certs-le-issue`, `make certs-le-renew` (profile `le`)
 - `make stepca-up`, `make stepca-bootstrap`, `make stepca-trust-install`
 - `make dns-up`, `make dns-provision`, `make dns-config-apply`
 - `make hosts-generate`, `make hosts-apply`, `make hosts-status`

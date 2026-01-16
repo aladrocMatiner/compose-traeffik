@@ -24,8 +24,8 @@ Inicia el contenedor del perfil:
 
 Emite o renueva certificados:
 ```bash
-make certbot-issue
-make certbot-renew
+make certs-le-issue
+make certs-le-renew
 ```
 
 <a id="configuration"></a>
