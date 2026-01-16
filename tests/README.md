@@ -23,7 +23,7 @@ This directory contains smoke tests that verify Traefik readiness, routing, TLS,
 
 ## Test inventory
 
-- `tests/smoke/test_traefik_ready.sh`: verifies Traefik ping is reachable.
+- `tests/smoke/test_traefik_ready.sh`: verifies Traefik is running and docker provider config is enabled.
 - `tests/smoke/test_routing.sh`: checks `https://whoami.${DEV_DOMAIN}` routes to whoami.
 - `tests/smoke/test_tls_handshake.sh`: validates TLS handshake for `whoami.${DEV_DOMAIN}`.
 - `tests/smoke/test_http_redirect.sh`: validates HTTP to HTTPS redirect when enabled.
@@ -37,6 +37,7 @@ This directory contains smoke tests that verify Traefik readiness, routing, TLS,
 Smoke tests use environment variables loaded from `.env` via `scripts/healthcheck.sh`:
 - `DEV_DOMAIN`
 - `HTTP_TO_HTTPS_REDIRECT`
+- `HTTP_TO_HTTPS_MIDDLEWARE` (preferred when set)
 
 Ensure `.env` exists (copy from `.env.example`) before running tests.
 
@@ -47,10 +48,10 @@ Ensure `.env` exists (copy from `.env.example`) before running tests.
 
 ## Common failures and fixes
 
-- **Traefik not ready**
+- **Traefik not ready / provider disabled**
   - Symptom: `test_traefik_ready.sh` fails.
-  - Diagnose: `make ps`, `make logs traefik`.
-  - Fix: `make up`, ensure ports 80/443 are free.
+  - Diagnose: `make ps`, `make logs traefik`, verify docker provider config in `services/traefik/traefik.yml`.
+  - Fix: `make up`, ensure ports 80/443 are free and docker provider is enabled.
 
 - **Routing fails**
   - Symptom: `test_routing.sh` fails to reach `whoami.${DEV_DOMAIN}`.
@@ -64,8 +65,8 @@ Ensure `.env` exists (copy from `.env.example`) before running tests.
 
 - **HTTP redirect fails**
   - Symptom: `test_http_redirect.sh` fails.
-  - Diagnose: check `HTTP_TO_HTTPS_REDIRECT` in `.env`.
-  - Fix: set `HTTP_TO_HTTPS_REDIRECT=true` and restart (`make up`).
+  - Diagnose: check `HTTP_TO_HTTPS_MIDDLEWARE` (or `HTTP_TO_HTTPS_REDIRECT` if unset) in `.env`.
+  - Fix: set `HTTP_TO_HTTPS_MIDDLEWARE=redirect-to-https@file` and restart (`make up`).
 
 - **DNS tests fail**
   - Symptom: DNS dry-run tests fail.

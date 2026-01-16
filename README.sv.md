@@ -58,7 +58,7 @@ Detaljerade TLS-floden:
 ## Endpoints
 
 - **Whoami**: `https://whoami.${DEV_DOMAIN}` (standardstack)
-- **Traefik dashboard**: `http://traefik.${DEV_DOMAIN}:8080` (BasicAuth, entrypoint `traefik`)
+- **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth, HTTPS)
 - **DNS UI**: `https://dns.${BASE_DOMAIN}` (profil `dns`, BasicAuth)
 - **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (profil `stepca`)
 

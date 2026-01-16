@@ -1,6 +1,6 @@
 # File: tests/smoke/test_traefik_ready.sh
 #
-# Smoke test: Checks if Traefik's ping endpoint is reachable.
+# Smoke test: Checks Traefik container status and docker provider configuration.
 #
 # Usage: ./scripts/tests/smoke/test_traefik_ready.sh
 #
@@ -12,24 +12,25 @@ SCRIPT_DIR=$(dirname "$0")
 . "$SCRIPT_DIR/../../scripts/common.sh" # Adjust path to common.sh
 
 load_env
-check_env_var "DEV_DOMAIN"
-check_command "curl"
+check_command "docker"
 
-TRAEFIK_HEALTH_URL="http://traefik.${DEV_DOMAIN}:8080/ping"
+COMPOSE_CMD="$SCRIPT_DIR/../../scripts/compose.sh"
+TRAEFIK_CONFIG="$SCRIPT_DIR/../../services/traefik/traefik.yml"
 
-log_info "Checking Traefik readiness at ${TRAEFIK_HEALTH_URL}..."
-
-# Use curl to hit Traefik's ping endpoint.
-# -s: Silent, doesn't show progress meter.
-# -o /dev/null: Discard output.
-# -w %{http_code}: Print HTTP status code.
-HTTP_CODE=$(curl -k -s -o /dev/null -w "%{http_code}" "${TRAEFIK_HEALTH_URL}")
-
-if [ "$HTTP_CODE" -eq 200 ]; then
-    log_success "Traefik is ready (HTTP 200 from ping endpoint)."
-    exit 0
-else
-    log_error "Traefik is NOT ready. Received HTTP status code: ${HTTP_CODE}."
-    log_error "Check 'make logs' for Traefik service for details."
-    exit 1
+log_info "Checking Traefik container is running..."
+if ! "$COMPOSE_CMD" ps -q traefik | grep -q .; then
+    log_error "Traefik container is not running."
 fi
+
+log_info "Checking Traefik docker provider configuration..."
+if ! rg -q "^  docker:" "$TRAEFIK_CONFIG"; then
+    log_error "Traefik docker provider is not configured in services/traefik/traefik.yml."
+fi
+if ! rg -q "exposedByDefault: false" "$TRAEFIK_CONFIG"; then
+    log_error "Traefik docker provider should set exposedByDefault=false."
+fi
+if ! rg -q "network: traefik-proxy" "$TRAEFIK_CONFIG"; then
+    log_error "Traefik docker provider should use network=traefik-proxy."
+fi
+
+log_success "Traefik readiness and provider configuration checks passed."

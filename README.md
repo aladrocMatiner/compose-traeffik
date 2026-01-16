@@ -58,7 +58,7 @@ For detailed TLS workflows, see:
 ## Endpoints
 
 - **Whoami**: `https://whoami.${DEV_DOMAIN}` (default stack; uses Traefik HTTPS)
-- **Traefik dashboard**: `http://traefik.${DEV_DOMAIN}:8080` (BasicAuth; routed via entrypoint `traefik`)
+- **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth; routed via HTTPS)
 - **DNS UI**: `https://dns.${BASE_DOMAIN}` (profile `dns`, BasicAuth required)
 - **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (profile `stepca`)
 
