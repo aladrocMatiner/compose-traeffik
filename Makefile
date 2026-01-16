@@ -15,13 +15,13 @@
 # --- Configuration Variables ---
 SHELL := /bin/bash # Ensure bash is used for shell commands
 .DEFAULT_GOAL := help # Default target if none is specified
-.PHONY: help up down restart logs ps test \
+.PHONY: help up down restart logs ps test docs-check \
         certs-local certs-le-issue certs-le-renew \
         stepca-up stepca-down stepca-bootstrap stepca-verify-cert \
         stepca-trust-install stepca-trust-uninstall stepca-trust-verify \
         hosts-generate hosts-apply hosts-remove hosts-status \
         dns-up dns-down dns-logs dns-status dns-provision dns-provision-dry \
-        dns-config-apply dns-config-remove dns-config-status
+dns-config-apply dns-config-remove dns-config-status
 
 # Include .env for environment variables if it exists.
 # This makes variables in .env available to the Makefile.
@@ -136,6 +136,12 @@ test:
 	@echo "Running smoke tests..."
 	./scripts/healthcheck.sh
 
+# --- Documentation ---
+
+docs-check:
+	@echo "Validating multilingual README structure..."
+	./scripts/docs-check.sh
+
 # --- Hosts Subdomain Mapper ---
 
 hosts-generate:
@@ -223,6 +229,9 @@ help:
 	@echo ""
 	@echo "Testing:"
 	@echo "  test                  Run all smoke tests for the current configuration."
+	@echo ""
+	@echo "Docs:"
+	@echo "  docs-check            Validate multilingual README structure and links."
 	@echo ""
 	@echo "Hosts Subdomain Mapper:"
 	@echo "  hosts-generate        Print the managed hosts block."

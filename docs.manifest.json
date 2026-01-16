@@ -1,0 +1,75 @@
+{
+  "languages": ["en", "sv", "es"],
+  "root": {
+    "files": {
+      "en": "README.md",
+      "sv": "README.sv.md",
+      "es": "README.es.md"
+    },
+    "anchors": [
+      "overview",
+      "quickstart",
+      "services",
+      "docs-map",
+      "operations",
+      "testing",
+      "troubleshooting",
+      "add-service-doc",
+      "migration"
+    ]
+  },
+  "servicePage": {
+    "anchors": [
+      "overview",
+      "location",
+      "run",
+      "configuration",
+      "ports",
+      "security",
+      "troubleshooting",
+      "related"
+    ]
+  },
+  "services": [
+    {
+      "slug": "traefik",
+      "title": {
+        "en": "Traefik",
+        "sv": "Traefik",
+        "es": "Traefik"
+      }
+    },
+    {
+      "slug": "whoami",
+      "title": {
+        "en": "Whoami",
+        "sv": "Whoami",
+        "es": "Whoami"
+      }
+    },
+    {
+      "slug": "certbot",
+      "title": {
+        "en": "Certbot",
+        "sv": "Certbot",
+        "es": "Certbot"
+      }
+    },
+    {
+      "slug": "step-ca",
+      "title": {
+        "en": "Step-CA",
+        "sv": "Step-CA",
+        "es": "Step-CA"
+      }
+    },
+    {
+      "slug": "dns",
+      "title": {
+        "en": "DNS (Technitium)",
+        "sv": "DNS (Technitium)",
+        "es": "DNS (Technitium)"
+      }
+    }
+  ]
+}

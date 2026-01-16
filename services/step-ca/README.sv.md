@@ -3,33 +3,33 @@
 # Step-CA service
 
 <a id="overview"></a>
-## Overview
+## Oversikt
 
-Step-CA provides an internal ACME server (Mode C) for local certificate issuance.
+Step-CA tillhandahaller en intern ACME-server (Mode C) for lokal certifikatutgivning.
 
 <a id="location"></a>
-## Where it lives
+## Var den finns
 
 - `services/step-ca/compose.yml`
 - `services/step-ca/config/`
 - `services/step-ca/secrets/`
 
 <a id="run"></a>
-## How it runs
+## Hur den kor
 
 ```bash
 ./scripts/compose.sh --profile stepca up -d step-ca
 ```
 
-Bootstrap the CA:
+Bootstrap CA:
 ```bash
 make stepca-bootstrap
 ```
 
 <a id="configuration"></a>
-## Configuration
+## Konfiguration
 
-Relevant env vars in `.env.example`:
+Relevanta env vars i `.env.example`:
 - `DEV_DOMAIN`
 - `STEP_CA_NAME`
 - `STEP_CA_ADMIN_PROVISIONER_PASSWORD`
@@ -37,29 +37,29 @@ Relevant env vars in `.env.example`:
 - `TLS_CERT_RESOLVER`
 
 <a id="ports"></a>
-## Ports, networks, volumes
+## Portar, natverk, volymer
 
-- Ports: container port `9000` (not published to host)
-- Networks: `stepca-internal`, `proxy`
-- Volumes:
+- Portar: container port `9000` (inte exponerad pa host)
+- Natverk: `stepca-internal`, `proxy`
+- Volymer:
   - `services/step-ca/config` -> `/home/step/config`
   - `services/step-ca/secrets` -> `/home/step/secrets`
   - `stepca-data` -> `/home/step/data`
 
 <a id="security"></a>
-## Security notes
+## Sakerhetsnoter
 
-- Bootstrap passwords are used only during `make stepca-bootstrap`.
-- Secrets are stored under `services/step-ca/secrets`.
+- Bootstrap-losenord anvands endast vid `make stepca-bootstrap`.
+- Hemligheter lagras under `services/step-ca/secrets`.
 
 <a id="troubleshooting"></a>
-## Troubleshooting
+## Felsokning
 
-- Confirm the `stepca` profile is active and the container is running.
-- Use `make logs` to inspect `step-ca` output.
+- Kontrollera att `stepca`-profilen ar aktiv och containern kor.
+- Anvand `make logs` for att se `step-ca`-loggar.
 
 <a id="related"></a>
-## Related pages
+## Relaterade sidor
 
-- [Root README](../../README.md)
-- [Traefik](../traefik/README.md)
+- [Root README](../../README.sv.md)
+- [Traefik](../traefik/README.sv.md)
