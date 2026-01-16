@@ -7,5 +7,5 @@
 - [x] 1.6 Update `README.md` and TLS guides to match the new routing/tls toggles and deterministic Mode B/C behavior.
 
 ## 2. Validation
-- [ ] 2.1 Run `make test` after the provider/tls fixes to confirm smoke tests pass.
-- [ ] 2.2 Verify docs no longer claim certbot affects routing without the required mounts/config.
+- [x] 2.1 Run `make test` after the provider/tls fixes to confirm smoke tests pass.
+- [x] 2.2 Verify docs no longer claim certbot affects routing without the required mounts/config.

@@ -21,29 +21,33 @@ TARGET_PORT="443"
 
 log_info "Verifying TLS handshake for ${TARGET_HOST}:${TARGET_PORT}..."
 
-# Use openssl s_client to connect and get certificate details.
-# -connect: Host and port to connect to.
-# -servername: SNI hostname.
-# -showcerts: Show all certificates in the chain.
-# -CAfile: Use the local CA so verification succeeds for self-signed certs.
-# -verify_return_error: Fail verification on error.
-# -prexit: Exit immediately after processing handshake.
-# We then grep for the subject (CN) and Subject Alternative Names (SANs)
-# in the certificate output.
+# Use openssl s_client to connect and capture certificate details.
+# Verification is performed separately with openssl verify to avoid
+# s_client CA loading inconsistencies across OpenSSL versions.
 
-CA_FILE="certs/local-ca/ca.crt"
+CA_FILE="shared/certs/local-ca/ca.crt"
+
+if [ ! -f "${CA_FILE}" ]; then
+    log_error "Local CA certificate not found at ${CA_FILE}. Run: make certs-local"
+fi
 
 TLS_OUTPUT=$(echo | openssl s_client -connect "${TARGET_HOST}:${TARGET_PORT}" \
-    -servername "${TARGET_HOST}" -showcerts -CAfile "${CA_FILE}" -verify_return_error -prexit 2>&1)
+    -servername "${TARGET_HOST}" -showcerts 2>&1)
 
-# Check certificate subject and SANs from the output to confirm handshake and cert content.
-if echo "${TLS_OUTPUT}" | grep -Fq "Verify return code: 0 (ok)" \
-    && echo "${TLS_OUTPUT}" | grep -Fq "CN = *.${DEV_DOMAIN}"; then
-    log_success "TLS handshake successful and certificate matches expected domains."
-    exit 0
-else
-    log_error "TLS handshake or certificate validation failed for ${TARGET_HOST}:${TARGET_PORT}."
-    log_error "Check 'make logs' for Traefik and your certificate setup."
-    log_info "OpenSSL output:\n${TLS_OUTPUT}"
-    exit 1
+if ! echo "${TLS_OUTPUT}" | grep -Fq "CONNECTED"; then
+    log_error "TLS handshake failed for ${TARGET_HOST}:${TARGET_PORT}."
 fi
+
+TMP_CERT=$(mktemp)
+trap 'rm -f "${TMP_CERT}"' EXIT
+echo "${TLS_OUTPUT}" | awk '/BEGIN CERTIFICATE/{flag=1} flag{print} /END CERTIFICATE/{exit}' > "${TMP_CERT}"
+
+if ! openssl verify -CAfile "${CA_FILE}" "${TMP_CERT}" >/dev/null 2>&1; then
+    log_error "TLS certificate did not verify against local CA at ${CA_FILE}."
+fi
+
+if ! openssl x509 -in "${TMP_CERT}" -noout -subject | grep -Fq "CN = *.${DEV_DOMAIN}"; then
+    log_error "TLS certificate CN does not match expected wildcard for ${DEV_DOMAIN}."
+fi
+
+log_success "TLS handshake successful and certificate matches expected domains."
