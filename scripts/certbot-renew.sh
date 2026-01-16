@@ -18,13 +18,18 @@ check_env_var "LETSENCRYPT_STAGING"
 log_info "Checking for docker and docker compose..."
 check_docker_compose
 
-# Determine Certbot server based on LETSENCRYPT_STAGING
-CERTBOT_SERVER="https://acme-v02.api.letsencrypt.org/directory"
-if [ "${LETSENCRYPT_STAGING}" = "true" ]; then
-    CERTBOT_SERVER="https://acme-staging-v02.api.letsencrypt.org/directory"
-    log_warn "Using Let's Encrypt STAGING environment for renewal."
+# Determine Certbot server (prefer LETSENCRYPT_CA_SERVER if set)
+CERTBOT_SERVER="${LETSENCRYPT_CA_SERVER:-}"
+if [ -z "$CERTBOT_SERVER" ]; then
+    CERTBOT_SERVER="https://acme-v02.api.letsencrypt.org/directory"
+    if [ "${LETSENCRYPT_STAGING}" = "true" ]; then
+        CERTBOT_SERVER="https://acme-staging-v02.api.letsencrypt.org/directory"
+        log_warn "Using Let's Encrypt STAGING environment for renewal."
+    else
+        log_info "Using Let's Encrypt PRODUCTION environment for renewal."
+    fi
 else
-    log_info "Using Let's Encrypt PRODUCTION environment for renewal."
+    log_info "Using ACME server from LETSENCRYPT_CA_SERVER."
 fi
 
 log_info "Attempting to renew certificates..."

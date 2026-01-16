@@ -22,6 +22,7 @@ Use Mode C when you want an internal CA for issuing certificates via ACME. Traef
    - `STEP_CA_NAME`
    - `STEP_CA_ADMIN_PROVISIONER_PASSWORD`
    - `STEP_CA_PASSWORD`
+   - `STEP_CA_DNS`
    - `TLS_CERT_RESOLVER=stepca-resolver`
 
 3. **Start and bootstrap step-ca:**
@@ -59,8 +60,8 @@ curl -vk "https://whoami.$DEV_DOMAIN/"
 ## Common Pitfalls
 
 - **ACME directory URL mismatch:**
-  - Cause: step-ca URL does not match your `DEV_DOMAIN` in Traefik config.
-  - Fix: Ensure `TLS_CERT_RESOLVER=stepca-resolver` and hostnames resolve to the stack.
+  - Cause: `DEV_DOMAIN` is incorrect.
+  - Fix: Ensure `DEV_DOMAIN` matches your step-ca hostname so Traefik uses `https://step-ca.${DEV_DOMAIN}:9000/acme/acme/directory`.
 
 - **step-ca bootstrap fails:**
   - Cause: Missing or incorrect `STEP_CA_*` passwords.

@@ -23,7 +23,7 @@ Mode B uses Certbot to issue publicly trusted certificates from Let's Encrypt. T
    - `DEV_DOMAIN`
    - `ACME_EMAIL`
    - `LETSENCRYPT_STAGING` (set `true` for staging)
-   - `TLS_CERT_RESOLVER=le-resolver`
+   - `LETSENCRYPT_CA_SERVER`
 
 3. **Start the stack with the `le` profile**
    ```bash
@@ -44,7 +44,7 @@ Mode B uses Certbot to issue publicly trusted certificates from Let's Encrypt. T
 
 - Certbot issues certificates for `${DEV_DOMAIN}` and subdomains defined in `scripts/certbot-issue.sh`.
 - Certificates are stored under `services/certbot/conf/live/`.
-- Traefik serves HTTPS with Let's Encrypt when `TLS_CERT_RESOLVER=le-resolver` is set.
+- Traefik serves HTTPS using the certbot-issued files mounted under `/etc/letsencrypt`.
 
 ## Verification
 

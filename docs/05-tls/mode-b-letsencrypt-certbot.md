@@ -23,7 +23,6 @@ Use Mode B when you want publicly trusted certificates from Let's Encrypt for de
    - `ACME_EMAIL`
    - `LETSENCRYPT_STAGING` (use `true` for testing)
    - `LETSENCRYPT_CA_SERVER`
-   - `TLS_CERT_RESOLVER=le-resolver`
 
 3. **Start the stack with the `le` profile:**
    ```bash

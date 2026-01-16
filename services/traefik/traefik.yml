@@ -55,9 +55,9 @@ log:
 certificatesResolvers:
   le-resolver:
     acme:
-      email: you@example.com
+      email: ${ACME_EMAIL}
       storage: /certs/acme-le.json # Store ACME data in a persistent volume
-      caServer: https://acme-staging-v02.api.letsencrypt.org/directory
+      caServer: ${LETSENCRYPT_CA_SERVER}
       httpChallenge:
         entryPoint: web # Use HTTP-01 challenge on the 'web' entrypoint
         # For certbot integration, you might point to certbot's webroot:
@@ -77,8 +77,8 @@ certificatesResolvers:
   # Points to the internal step-ca service for ACME challenges.
   stepca-resolver:
     acme:
-      email: you@example.com # Email is still required by ACME protocol
+      email: ${ACME_EMAIL} # Email is still required by ACME protocol
       storage: /certs/acme-stepca.json # Separate storage for step-ca ACME data
-      caServer: https://step-ca.local.test:9000/acme/acme/directory # ACME directory URL of the step-ca service
+      caServer: https://step-ca.${DEV_DOMAIN}:9000/acme/acme/directory # ACME directory URL of the step-ca service
       httpChallenge:
         entryPoint: web # Use HTTP-01 challenge on the 'web' entrypoint

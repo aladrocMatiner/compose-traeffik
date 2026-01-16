@@ -21,6 +21,15 @@ check_env_var "STEP_CA_NAME"
 check_env_var "STEP_CA_ADMIN_PROVISIONER_PASSWORD"
 check_env_var "STEP_CA_PASSWORD"
 
+if [ -z "${STEP_CA_DNS:-}" ]; then
+    STEP_CA_DNS="step-ca,localhost,127.0.0.1,step-ca.${DEV_DOMAIN}"
+    log_warn "STEP_CA_DNS is not set. Defaulting to '${STEP_CA_DNS}'."
+fi
+
+if [ -z "${STEP_CA_DNS}" ]; then
+    log_error "STEP_CA_DNS is empty. Set it in .env before bootstrapping."
+fi
+
 log_info "Checking for docker and docker compose..."
 check_docker_compose
 

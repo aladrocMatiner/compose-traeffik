@@ -15,9 +15,13 @@ services:
     environment:
       - TZ=UTC
       - DOCKER_API_VERSION=1.44
+      - DEV_DOMAIN=${DEV_DOMAIN}
+      - ACME_EMAIL=${ACME_EMAIL}
+      - LETSENCRYPT_CA_SERVER=${LETSENCRYPT_CA_SERVER}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./services/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
       - ./services/traefik/dynamic-rendered:/etc/traefik/dynamic:ro
+      - ./services/certbot/conf:/etc/letsencrypt:ro
       - certs-data:/certs
       - ./shared/certs/local:/etc/certs/local:ro
