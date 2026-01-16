@@ -79,6 +79,6 @@ certificatesResolvers:
     acme:
       email: ${ACME_EMAIL} # Email is still required by ACME protocol
       storage: /certs/acme-stepca.json # Separate storage for step-ca ACME data
-      caServer: https://step-ca.${DEV_DOMAIN}:9000/acme/acme/directory # ACME directory URL of the step-ca service
+      caServer: ${STEP_CA_CA_SERVER} # ACME directory URL of the step-ca service
       httpChallenge:
         entryPoint: web # Use HTTP-01 challenge on the 'web' entrypoint

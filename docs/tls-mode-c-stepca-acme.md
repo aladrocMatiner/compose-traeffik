@@ -23,6 +23,7 @@ Mode C uses Smallstep step-ca as an internal ACME server. Traefik requests certi
    - `STEP_CA_ADMIN_PROVISIONER_PASSWORD`
    - `STEP_CA_PASSWORD`
    - `STEP_CA_DNS`
+   - `STEP_CA_CA_SERVER`
    - `TLS_CERT_RESOLVER=stepca-resolver`
 
 3. **Start step-ca and bootstrap**
@@ -76,7 +77,7 @@ curl -vk "https://whoami.${DEV_DOMAIN}/"
 
 ## Common pitfalls
 
-- **ACME directory URL mismatch**: ensure `DEV_DOMAIN` is correct so Traefik points to `https://step-ca.${DEV_DOMAIN}:9000/acme/acme/directory`.
+- **ACME directory URL mismatch**: ensure `STEP_CA_CA_SERVER` matches your step-ca URL (default uses `https://step-ca.${DEV_DOMAIN}:9000/acme/acme/directory`).
 - **Bootstrap fails**: ensure `STEP_CA_ADMIN_PROVISIONER_PASSWORD` and `STEP_CA_PASSWORD` are set in `.env`.
 - **Untrusted certificates**: install the step-ca root with `make stepca-trust-install`.
 

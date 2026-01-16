@@ -9,5 +9,5 @@
 - [x] 1.8 Update docs under `docs/` that reference hard-coded CA URLs or certbot pickup behavior.
 
 ## 2. Validation
-- [ ] 2.1 Validate that changing `DEV_DOMAIN` updates step-ca ACME URL and certbot paths without manual edits.
-- [ ] 2.2 Confirm Traefik serves certbot-issued certs when Mode B is selected.
+- [x] 2.1 Validate that changing `DEV_DOMAIN` updates step-ca ACME URL and certbot paths without manual edits.
+- [x] 2.2 Confirm Traefik serves certbot-issued certs when Mode B is selected.
