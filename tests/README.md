@@ -1,51 +1,73 @@
-# File: tests/README.md
-#
 # Smoke Tests for Traefik Edge Stack
-#
-# This directory contains basic smoke tests to quickly verify the functionality
-# of the Traefik Docker Compose edge stack. These tests are designed to be fast
-# and provide immediate feedback on the health and routing of the services.
-#
-# How to Run Tests:
-#
-# 1.  **Ensure the stack is running:**
-#     The tests expect the Traefik and `whoami` services to be up and accessible.
-#     For Mode A (local self-signed), run:
-#     ```bash
-#     make up
-#     ```
-#
-# 2.  **Run all smoke tests via Makefile:**
-#     ```bash
-#     make test
-#     ```
-#     This will execute `scripts/healthcheck.sh`, which in turn runs all individual
-#     test scripts in this `tests/smoke/` directory.
-#
-# 3.  **Run individual tests:**
-#     You can also execute individual test scripts directly from the `scripts/healthcheck.sh`
-#     script, or by calling them if they don't require specific `Makefile` context.
-#     However, `make test` is the recommended way as it handles environment setup.
-#
-# Test Descriptions:
-#
-# *   **`test_traefik_ready.sh`**: Checks if Traefik's ping endpoint is reachable and returns a success status.
-# *   **`test_routing.sh`**: Verifies that requests to `https://whoami.<DEV_DOMAIN>` are correctly routed to the `whoami` service.
-# *   **`test_tls_handshake.sh`**: Ensures that a TLS handshake can be successfully established with `https://whoami.<DEV_DOMAIN>` and checks the certificate details (e.g., subject, SANs).
-# *   **`test_http_redirect.sh`**: (Conditional) If `HTTP_TO_HTTPS_REDIRECT` is enabled in `.env`, this test verifies that HTTP requests are automatically redirected to HTTPS.
-# *   **`test_hosts_subdomains.sh`**: Verifies the hosts subdomain mapper can apply and remove a managed block using a temporary hosts file (no sudo).
-# *   **`test_dns_provision.sh`**: Verifies DNS provisioning dry-run output includes expected hostnames and IPs.
-# *   **`test_dns_configure_ubuntu.sh`**: Verifies Ubuntu DNS config script dry-run prints resolvectl commands.
-# *   **`test_dns_service_config.sh`**: Verifies DNS service configuration and Traefik exposure in `services/dns/compose.yml`.
-#
-# Environment Variables:
-#
-# The tests rely on environment variables defined in `.env` (like `DEV_DOMAIN`,
-# `HTTP_TO_HTTPS_REDIRECT`). Ensure your `.env` file is configured correctly
-# before running tests.
-#
-# Test Output:
-#
-# Each test script will print whether it passed or failed. The `make test` command
-# will provide an overall summary.
-#
+
+This directory contains smoke tests that verify Traefik readiness, routing, TLS, and auxiliary tooling (hosts/DNS scripts). The tests are designed to be fast and provide immediate feedback on the stack state.
+
+## How to run
+
+1. **Ensure the stack is running**
+   ```bash
+   make up
+   ```
+
+2. **Run all smoke tests**
+   ```bash
+   make test
+   ```
+   This runs `scripts/healthcheck.sh`, which executes all scripts in `tests/smoke/`.
+
+3. **Run a single test**
+   ```bash
+   ./tests/smoke/test_routing.sh
+   ```
+   Note: `make test` is recommended because it loads `.env` and checks prerequisites.
+
+## Test inventory
+
+- `tests/smoke/test_traefik_ready.sh`: verifies Traefik ping is reachable.
+- `tests/smoke/test_routing.sh`: checks `https://whoami.${DEV_DOMAIN}` routes to whoami.
+- `tests/smoke/test_tls_handshake.sh`: validates TLS handshake for `whoami.${DEV_DOMAIN}`.
+- `tests/smoke/test_http_redirect.sh`: validates HTTP to HTTPS redirect when enabled.
+- `tests/smoke/test_hosts_subdomains.sh`: validates hosts block apply/remove using a temp file (no sudo).
+- `tests/smoke/test_dns_provision.sh`: checks DNS provisioning dry-run output.
+- `tests/smoke/test_dns_configure_ubuntu.sh`: checks DNS configure dry-run output.
+- `tests/smoke/test_dns_service_config.sh`: checks DNS service compose configuration.
+
+## Configuration
+
+Smoke tests use environment variables loaded from `.env` via `scripts/healthcheck.sh`:
+- `DEV_DOMAIN`
+- `HTTP_TO_HTTPS_REDIRECT`
+
+Ensure `.env` exists (copy from `.env.example`) before running tests.
+
+## Expected output
+
+- `make test` prints per-test results and exits with non-zero status on failure.
+- A successful run ends with `All smoke tests passed!`.
+
+## Common failures and fixes
+
+- **Traefik not ready**
+  - Symptom: `test_traefik_ready.sh` fails.
+  - Diagnose: `make ps`, `make logs traefik`.
+  - Fix: `make up`, ensure ports 80/443 are free.
+
+- **Routing fails**
+  - Symptom: `test_routing.sh` fails to reach `whoami.${DEV_DOMAIN}`.
+  - Diagnose: check `/etc/hosts` or DNS, `make logs traefik`.
+  - Fix: `sudo make hosts-apply` or update DNS.
+
+- **TLS handshake fails**
+  - Symptom: `test_tls_handshake.sh` fails.
+  - Diagnose: `make logs traefik`, confirm cert files exist.
+  - Fix: `make certs-local`, then `make up`.
+
+- **HTTP redirect fails**
+  - Symptom: `test_http_redirect.sh` fails.
+  - Diagnose: check `HTTP_TO_HTTPS_REDIRECT` in `.env`.
+  - Fix: set `HTTP_TO_HTTPS_REDIRECT=true` and restart (`make up`).
+
+- **DNS tests fail**
+  - Symptom: DNS dry-run tests fail.
+  - Diagnose: verify `BASE_DOMAIN`, `LOOPBACK_X`, `ENDPOINTS` in `.env`.
+  - Fix: update `.env` and re-run `make test`.

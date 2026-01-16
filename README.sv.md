@@ -100,6 +100,7 @@ Kor smoke tests med:
 ```bash
 make test
 ```
+Se `tests/README.md` for detaljer.
 
 <a id="troubleshooting"></a>
 ## Felsokning
