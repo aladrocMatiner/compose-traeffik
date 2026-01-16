@@ -7,7 +7,7 @@ This document outlines the documentation delivery plan for the existing Traefik 
 Based on the repository scan, the following key facts have been identified:
 
 *   **File Structure**:
-    *   **Root**: `.env.example`, `Makefile`, `README.md`, `docker-compose.yml`
+*   **Root**: `.env.example`, `Makefile`, `README.md`, `compose/base.yml`, `services/<service>/compose.yml`
     *   **Configuration**: `traefik/traefik.yml`, `traefik/dynamic/middlewares.yml`, `traefik/dynamic/tls.yml`
     *   **Scripts**: `scripts/common.sh`, `scripts/up.sh`, `scripts/down.sh`, `scripts/logs.sh`, `scripts/healthcheck.sh`, `scripts/certs-selfsigned-generate.sh`, `scripts/certbot-issue.sh`, `scripts/certbot-renew.sh`, `scripts/stepca-bootstrap.sh`
     *   **Tests**: `tests/README.md`, `tests/smoke/test_http_redirect.sh`, `tests/smoke/test_routing.sh`, `tests/smoke/test_tls_handshake.sh`, `tests/smoke/test_traefik_ready.sh`
@@ -226,7 +226,7 @@ Goal: per-service docs (Traefik, whoami, certbot, step-ca) using a standard temp
     *   **Dependencies**: T1.1, T2.1, T6.1
     *   **Acceptance criteria**:
         *   Explains `whoami` as a simple test service.
-        *   Details the Traefik labels used in `docker-compose.yml` for `whoami`.
+        *   Details the Traefik labels used in `services/whoami/compose.yml` for `whoami`.
         *   Shows how `redirect-to-https` and `security-headers` middlewares are applied.
     *   **Review checklist**:
         *   Label examples are accurate copy/paste snippets.
@@ -313,7 +313,7 @@ Goal: service integration contract, label templates (Host/Path), middlewares exa
     *   **Files/paths affected**: `docs/06-howto/add-a-service.md`
     *   **Dependencies**: T1.1, T2.1, T6.1, T6.2
     *   **Acceptance criteria**:
-        *   Provides a reusable label template for services in `docker-compose.yml`.
+        *   Provides a reusable label template for services in `services/<service>/compose.yml`.
         *   Explains `traefik.enable`, `traefik.http.routers.<name>.rule` (Host, Path), `entrypoints`, `service`, `tls`, `tls.certresolver`, `middlewares`.
         *   Includes a checklist for integrating a new service (Compose entry, labels, network, `.env` / `/etc/hosts` entries, verification).
     *   **Review checklist**:
@@ -369,8 +369,8 @@ Goal: consistency sweep: links, commands, env vars, paths, security notes.
         *   Ensure anchors (`#heading`) are correct.
 *   **T10.2**: Verify command and environment variable accuracy
     *   **Owner**: DevOps UX Engineer, QA / Test Engineer
-    *   **Description**: Systematically check every command snippet and environment variable reference across all documentation files against the actual `Makefile`, `scripts/`, `docker-compose.yml`, and `.env.example`.
-    *   **Files/paths affected**: All `.md` files in `docs/` and `README.md`, `Makefile`, `scripts/*.sh`, `docker-compose.yml`, `.env.example`
+    *   **Description**: Systematically check every command snippet and environment variable reference across all documentation files against the actual `Makefile`, `scripts/`, `compose/base.yml`, `services/<service>/compose.yml`, and `.env.example`.
+    *   **Files/paths affected**: All `.md` files in `docs/` and `README.md`, `Makefile`, `scripts/*.sh`, `compose/base.yml`, `services/<service>/compose.yml`, `.env.example`
     *   **Dependencies**: All prior documentation tasks (T1.1 - T9.2)
     *   **Acceptance criteria**:
         *   Every `make` target mentioned exists in `Makefile`.

@@ -37,5 +37,13 @@ while [ "$#" -gt 0 ]; do
     esac
 done
 
-log_info "Executing: docker compose --env-file .env ${compose_args[*]} logs -f ${service_args[*]}"
-docker compose --env-file .env "${compose_args[@]}" logs -f "${service_args[@]}"
+log_info "Executing layered compose logs..."
+cmd=(./scripts/compose.sh)
+if [ "${#compose_args[@]}" -gt 0 ]; then
+    cmd+=("${compose_args[@]}")
+fi
+cmd+=(logs -f)
+if [ "${#service_args[@]}" -gt 0 ]; then
+    cmd+=("${service_args[@]}")
+fi
+"${cmd[@]}"

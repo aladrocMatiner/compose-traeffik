@@ -134,24 +134,26 @@ parse_endpoints_from_env() {
 }
 
 parse_endpoints_from_compose() {
-    local compose_file="${REPO_ROOT}/docker-compose.yml"
-    if [ ! -f "$compose_file" ]; then
-        fail "docker-compose.yml not found at ${compose_file}. Set ENDPOINTS instead."
-    fi
-
     local -a hosts=()
     local line
+    local compose_file
 
-    while IFS= read -r line; do
-        line="${line#Host(\`}"
-        line="${line%\`)}"
-        if [ -n "$line" ]; then
-            hosts+=("$line")
+    for compose_file in "${REPO_ROOT}/services"/*/compose.yml; do
+        if [ ! -f "$compose_file" ]; then
+            continue
         fi
-    done < <(grep -Eo 'Host\(`[^`]+`\)' "$compose_file" || true)
+
+        while IFS= read -r line; do
+            line="${line#Host(\`}"
+            line="${line%\`)}"
+            if [ -n "$line" ]; then
+                hosts+=("$line")
+            fi
+        done < <(grep -Eo 'Host\(`[^`]+`\)' "$compose_file" || true)
+    done
 
     if [ "${#hosts[@]}" -eq 0 ]; then
-        fail "No Host() labels found in docker-compose.yml. Set ENDPOINTS in the env file."
+        fail "No Host() labels found in service compose files. Set ENDPOINTS in the env file."
     fi
 
     local -a endpoints=()
@@ -172,7 +174,7 @@ parse_endpoints_from_compose() {
     done
 
     if [ "${#endpoints[@]}" -eq 0 ]; then
-        fail "No endpoints derived from docker-compose.yml. Set ENDPOINTS in the env file."
+        fail "No endpoints derived from service compose files. Set ENDPOINTS in the env file."
     fi
 
     printf '%s\n' "${endpoints[@]}"

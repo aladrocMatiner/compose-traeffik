@@ -12,8 +12,8 @@ set -euo pipefail
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 REPO_ROOT=$(cd "${SCRIPT_DIR}/.." && pwd)
 
-TEMPLATE_DIR="${REPO_ROOT}/traefik/dynamic"
-OUTPUT_DIR="${REPO_ROOT}/traefik/dynamic-rendered"
+TEMPLATE_DIR="${REPO_ROOT}/services/traefik/dynamic"
+OUTPUT_DIR="${REPO_ROOT}/services/traefik/dynamic-rendered"
 
 if [ -f "${REPO_ROOT}/.env" ]; then
     # shellcheck disable=SC1091

@@ -1,0 +1,17 @@
+version: '3.8'
+
+# Shared networks used by the edge stack services.
+networks:
+  proxy:
+    # Use an explicit network name so we keep a stable Docker network across rebuilds.
+    name: traefik-proxy
+  stepca-internal:
+    name: stepca-internal
+    internal: true
+
+# Shared volumes referenced by service compose files.
+volumes:
+  certs-data:
+    name: traefik-certs-data
+  stepca-data:
+    name: stepca-data

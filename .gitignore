@@ -2,17 +2,17 @@
 
 # --- Generated sensitive files and directories ---
 # Certificates and keys
-certs/local-ca/
-certs/local/
+shared/certs/local-ca/
+shared/certs/local/
 
 # Certbot data
-certbot/conf/
-certbot/www/
+services/certbot/conf/
+services/certbot/www/
 
 # Step-CA data and config
-step-ca/config/
-step-ca/secrets/
-step-ca/data/
+services/step-ca/config/
+services/step-ca/secrets/
+stepca-data/
 
 # Traefik ACME storage (from certs-data volume)
 # Although a Docker volume, local paths *could* be inadvertently created or referenced.
@@ -21,10 +21,16 @@ acme-le.json
 acme-stepca.json
 
 # Traefik BasicAuth credentials
-traefik/auth/dns-ui.htpasswd
+services/traefik/auth/dns-ui.htpasswd
 
 # Rendered Traefik dynamic config
-traefik/dynamic-rendered/
+services/traefik/dynamic-rendered/
+
+# Traefik dynamic config (source)
+services/traefik/dynamic/
+
+# DNS service data (Technitium)
+services/dns/data/
 
 # --- Environment files ---
 .env

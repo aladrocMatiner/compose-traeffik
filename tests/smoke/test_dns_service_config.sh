@@ -1,7 +1,7 @@
 #!/bin/bash
 # File: tests/smoke/test_dns_service_config.sh
 #
-# Smoke test: Validate DNS service configuration in docker-compose.yml.
+# Smoke test: Validate DNS service configuration in services/dns/compose.yml.
 #
 # Usage: ./tests/smoke/test_dns_service_config.sh
 #
@@ -14,11 +14,11 @@ SCRIPT_DIR=$(dirname "$0")
 # shellcheck source=scripts/common.sh
 . "$SCRIPT_DIR/../../scripts/common.sh"
 
-COMPOSE_FILE="$SCRIPT_DIR/../../docker-compose.yml"
-MIDDLEWARE_FILE="$SCRIPT_DIR/../../traefik/dynamic/middlewares.yml"
+COMPOSE_FILE="$SCRIPT_DIR/../../services/dns/compose.yml"
+MIDDLEWARE_FILE="$SCRIPT_DIR/../../services/traefik/dynamic/middlewares.yml"
 
 if [ ! -f "$COMPOSE_FILE" ]; then
-    log_error "docker-compose.yml not found."
+    log_error "DNS compose fragment not found."
 fi
 
 if [ ! -f "$MIDDLEWARE_FILE" ]; then
@@ -27,7 +27,7 @@ fi
 
 # Validate dns service and profile inside dns block
 if ! rg -q "^  dns:" "$COMPOSE_FILE"; then
-    log_error "dns service not found in docker-compose.yml"
+    log_error "dns service not found in services/dns/compose.yml"
 fi
 
 dns_block=$(awk '

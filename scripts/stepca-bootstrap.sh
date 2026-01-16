@@ -31,27 +31,27 @@ CA_SECRETS_DIR="/home/step/secrets"
 # --- Start Step-CA service if not already running ---
 log_info "Ensuring step-ca service is running..."
 # Use eval to allow COMPOSE_PROFILES_ARG to be empty if not set
-if ! docker compose --env-file .env --profile stepca ps -q "$CA_CONTAINER_NAME" | grep -q .; then
+if ! ./scripts/compose.sh --profile stepca ps -q "$CA_CONTAINER_NAME" | grep -q .; then
     log_info "Starting $CA_CONTAINER_NAME with 'stepca' profile..."
     make stepca-up # Use make target to handle profiles
     sleep 5 # Give it a moment to start
 fi
 
 # --- Check if CA is already initialized ---
-if docker compose --env-file .env --profile stepca exec -T "$CA_CONTAINER_NAME" test -f "${CA_CONFIG_DIR}/ca.json"; then
+if ./scripts/compose.sh --profile stepca exec -T "$CA_CONTAINER_NAME" test -f "${CA_CONFIG_DIR}/ca.json"; then
     log_warn "Step-CA appears to be already initialized. Skipping bootstrap."
-    log_info "To re-bootstrap, stop step-ca and remove the 'stepca-data' volume and 'step-ca/config' directory."
+    log_info "To re-bootstrap, stop step-ca and remove the 'stepca-data' volume and 'services/step-ca/config' directory."
     ACME_URL="https://step-ca.${DEV_DOMAIN}:9000/acme/acme/directory"
     log_info "Step-CA ACME Directory URL: ${ACME_URL}"
     log_info "To trust the CA, import ${CA_CONFIG_DIR}/ca.crt from the container."
-    log_info "You can retrieve it with: docker compose --profile stepca cp step-ca:/home/step/config/ca.crt ./step-ca/config/ca.crt"
+    log_info "You can retrieve it with: ./scripts/compose.sh --profile stepca cp step-ca:/home/step/config/ca.crt services/step-ca/config/ca.crt"
     exit 0
 fi
 
 log_info "Bootstrapping Step-CA server for the first time..."
 
 # Use temporary files inside the container to pass passwords securely
-docker compose --env-file .env --profile stepca exec -T "$CA_CONTAINER_NAME" bash -c "
+./scripts/compose.sh --profile stepca exec -T "$CA_CONTAINER_NAME" bash -c "
     echo \"${STEP_CA_PASSWORD}\" > /tmp/ca_password.txt
     echo \"${STEP_CA_ADMIN_PROVISIONER_PASSWORD}\" > /tmp/admin_password.txt
     step ca init \
@@ -71,7 +71,7 @@ docker compose --env-file .env --profile stepca exec -T "$CA_CONTAINER_NAME" bas
 
 log_info "Enabling ACME provisioner..."
 # Add ACME provisioner (if not already added by init with default provisioner)
-docker compose --env-file .env --profile stepca exec -T "$CA_CONTAINER_NAME" \
+./scripts/compose.sh --profile stepca exec -T "$CA_CONTAINER_NAME" \
     step ca provisioner add acme --type ACME --ca-url https://step-ca.${DEV_DOMAIN}:9000
 
 log_success "Step-CA server bootstrapped successfully!"
@@ -79,7 +79,7 @@ log_success "Step-CA server bootstrapped successfully!"
 ACME_URL="https://step-ca.${DEV_DOMAIN}:9000/acme/acme/directory"
 log_info "Step-CA ACME Directory URL: ${ACME_URL}"
 log_warn "To use Step-CA, you must configure Traefik to use 'stepca-resolver' and trust the Step-CA root certificate."
-log_info "The Step-CA root certificate is located at: ./step-ca/config/ca.crt (after retrieving from container)."
-log_info "You can copy it out using: docker compose --profile stepca cp step-ca:/home/step/config/ca.crt ./step-ca/config/ca.crt"
+log_info "The Step-CA root certificate is located at: services/step-ca/config/ca.crt (after retrieving from container)."
+log_info "You can copy it out using: ./scripts/compose.sh --profile stepca cp step-ca:/home/step/config/ca.crt services/step-ca/config/ca.crt"
 log_info "Then trust './step-ca/config/ca.crt' on your local system."
 log_info "Finally, restart the full stack with COMPOSE_PROFILES=stepca make up."

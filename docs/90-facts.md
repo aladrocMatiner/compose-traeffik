@@ -14,20 +14,20 @@ This repository sets up a Docker Compose-based Traefik edge stack, integrating a
 *   `./docs/`: Main documentation directory.
 *   `./scripts/`: Contains helper bash scripts for various operations.
 *   `./tests/smoke/`: Houses executable smoke test scripts.
-*   `./certs/local-ca/`: Stores local self-signed CA certificate and key.
-*   `./certs/local/`: Stores local self-signed leaf certificate and key.
-*   `./certbot/conf/`: Used by Certbot for storing certificates and configurations.
-*   `./certbot/www/`: Webroot for Certbot's HTTP-01 challenges.
-*   `./step-ca/config/`: Configuration files for the Smallstep `step-ca` service.
-*   `./step-ca/secrets/`: Sensitive keys and secrets for `step-ca`.
-*   `./step-ca/data/`: Persistent data for `step-ca` (e.g., issued certificates database).
-*   `./traefik/`: Traefik's main static configuration files.
-*   `./traefik/dynamic/`: Traefik's dynamic configuration files (middlewares, TLS).
-*   `./dns/data/`: Persistent data for the Technitium DNS service.
+*   `./shared/certs/local-ca/`: Stores local self-signed CA certificate and key.
+*   `./shared/certs/local/`: Stores local self-signed leaf certificate and key.
+*   `./services/certbot/conf/`: Used by Certbot for storing certificates and configurations.
+*   `./services/certbot/www/`: Webroot for Certbot's HTTP-01 challenges.
+*   `./services/step-ca/config/`: Configuration files for the Smallstep `step-ca` service.
+*   `./services/step-ca/secrets/`: Sensitive keys and secrets for `step-ca`.
+*   `stepca-data/`: Persistent data for `step-ca` (e.g., issued certificates database, stored in a named volume).
+*   `./services/traefik/`: Traefik's main static configuration files.
+*   `./services/traefik/dynamic/`: Traefik's dynamic configuration files (middlewares, TLS).
+*   `./services/dns/data/`: Persistent data for the Technitium DNS service.
 
 ## Docker Compose
 
-*   **Compose file(s) found**: `docker-compose.yml`
+*   **Compose file(s) found**: `compose/base.yml` plus `services/<service>/compose.yml` fragments (layered via `scripts/compose.sh` or `docker compose -f compose/base.yml -f services/...`).
 *   **Profiles found**:
     *   `le`: Enables the `certbot` service.
     *   `stepca`: Enables the `step-ca` service.
@@ -55,7 +55,7 @@ This repository sets up a Docker Compose-based Traefik edge stack, integrating a
 *   `DNS_BIND_ADDRESS=127.0.0.1`: Bind address for DNS port 53.
 *   `DNS_UI_HOSTNAME=dns`: Hostname prefix for the DNS UI.
 *   `DNS_ADMIN_PASSWORD=change-me`: Admin password for Technitium DNS web console.
-*   `DNS_UI_BASIC_AUTH_HTPASSWD_PATH=./traefik/auth/dns-ui.htpasswd`: BasicAuth htpasswd path for DNS UI.
+*   `DNS_UI_BASIC_AUTH_HTPASSWD_PATH=./services/traefik/auth/dns-ui.htpasswd`: BasicAuth htpasswd path for DNS UI.
 *   `DNS_UI_MIDDLEWARES=security-headers@file,dns-ui-auth@file`: Middlewares applied to DNS UI router.
 *   `DNS_UI_ALLOWLIST_SOURCE_RANGES=127.0.0.1/32,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16`: Allowlist ranges (optional).
 *   `TLS_CERT_RESOLVER=`: Specifies the Traefik ACME certificate resolver to use (`le-resolver` or `stepca-resolver`).
@@ -118,12 +118,12 @@ This repository sets up a Docker Compose-based Traefik edge stack, integrating a
 ## TLS Artifacts (Paths)
 
 *   **Mode A (Self-Signed)**:
-    *   CA: `certs/local-ca/ca.key`, `certs/local-ca/ca.crt`
-    *   Leaf: `certs/local/privkey.pem`, `certs/local/fullchain.pem`
+    *   CA: `shared/certs/local-ca/ca.key`, `shared/certs/local-ca/ca.crt`
+    *   Leaf: `shared/certs/local/privkey.pem`, `shared/certs/local/fullchain.pem`
 *   **Mode B (Certbot)**:
-    *   Certbot working directory: `certbot/conf/`
-    *   Certbot webroot: `certbot/www/`
+    *   Certbot working directory: `services/certbot/conf/`
+    *   Certbot webroot: `services/certbot/www/`
 *   **Mode C (Step-CA)**:
-    *   Config: `step-ca/config/`
-    *   Secrets: `step-ca/secrets/`
-    *   Data: `step-ca/data/`
+    *   Config: `services/step-ca/config/`
+    *   Secrets: `services/step-ca/secrets/`
+    *   Data: `stepca-data/`

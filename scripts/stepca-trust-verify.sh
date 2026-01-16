@@ -24,7 +24,7 @@ check_ubuntu_24_04() {
     fi
 }
 
-CA_CERT_PATH="${STEPCA_CA_CERT_PATH:-./step-ca/config/ca.crt}"
+CA_CERT_PATH="${STEPCA_CA_CERT_PATH:-./services/step-ca/config/ca.crt}"
 INSTALL_CERT_NAME="step-ca-root.crt"
 INSTALL_CERT_PATH="/usr/local/share/ca-certificates/${INSTALL_CERT_NAME}"
 SYSTEM_CA_BUNDLE="/etc/ssl/certs/ca-certificates.crt"

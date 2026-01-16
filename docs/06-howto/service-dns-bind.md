@@ -27,9 +27,9 @@ Use this guide to enable the DNS service profile, expose its UI securely via Tra
 
 3. **Create DNS UI BasicAuth credentials:**
    ```bash
-   cp traefik/auth/dns-ui.htpasswd.example traefik/auth/dns-ui.htpasswd
+   cp services/services/traefik/auth/dns-ui.htpasswd.example services/services/traefik/auth/dns-ui.htpasswd
    # Replace with your own credentials:
-   # htpasswd -nbB admin 'change-me' > traefik/auth/dns-ui.htpasswd
+   # htpasswd -nbB admin 'change-me' > services/services/traefik/auth/dns-ui.htpasswd
    ```
 
 4. **Start the DNS service (dns profile):**
@@ -79,7 +79,7 @@ curl -vk "https://dns.$BASE_DOMAIN/"
 
 - **Authentication failures:**
   - Symptom: Browser prompts repeatedly or returns 401.
-  - Fix: Regenerate `traefik/auth/dns-ui.htpasswd` with valid credentials.
+  - Fix: Regenerate `services/traefik/auth/dns-ui.htpasswd` with valid credentials.
 
 - **Split-DNS not applied:**
   - Symptom: `getent hosts` returns no results for `*.${BASE_DOMAIN}`.

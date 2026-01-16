@@ -30,8 +30,15 @@ SHELL := /bin/bash # Ensure bash is used for shell commands
 
 # --- Docker Compose Commands ---
 
-# Helper to construct compose command with profiles
-COMPOSE_BASE := docker compose --env-file .env
+# Files that define the layered compose graph (base + individual services).
+COMPOSE_FILES := \
+  -f compose/base.yml \
+  -f services/traefik/compose.yml \
+  -f services/whoami/compose.yml \
+  -f services/dns/compose.yml \
+  -f services/certbot/compose.yml \
+  -f services/step-ca/compose.yml
+COMPOSE_CMD := docker compose --env-file .env $(COMPOSE_FILES)
 COMPOSE_OPTS ?=
 COMPOSE_PROFILES_ARG := $(if $(COMPOSE_PROFILES),--profile $(subst ',', --profile ,$(COMPOSE_PROFILES)),)
 
@@ -68,9 +75,9 @@ logs:
 	./scripts/logs.sh $(COMPOSE_PROFILES_ARG)
 
 # List running services
-ps:
+	ps:
 	@echo "Listing services for Docker Compose stack with profiles: ${COMPOSE_PROFILES}"
-	$(COMPOSE_BASE) $(COMPOSE_PROFILES_ARG) $(COMPOSE_OPTS) ps
+	$(COMPOSE_CMD) $(COMPOSE_PROFILES_ARG) $(COMPOSE_OPTS) ps
 
 # --- Certificate Management (Mode A: Local Self-Signed) ---
 
@@ -95,12 +102,12 @@ certs-le-renew:
 # Start step-ca service
 stepca-up:
 	@echo "Starting Step-CA service..."
-	COMPOSE_PROFILES=stepca $(COMPOSE_BASE) $(COMPOSE_OPTS) up -d step-ca
+	COMPOSE_PROFILES=stepca $(COMPOSE_CMD) $(COMPOSE_OPTS) up -d step-ca
 
 # Stop step-ca service
 stepca-down:
 	@echo "Stopping Step-CA service..."
-	COMPOSE_PROFILES=stepca $(COMPOSE_BASE) $(COMPOSE_OPTS) down step-ca
+	COMPOSE_PROFILES=stepca $(COMPOSE_CMD) $(COMPOSE_OPTS) down step-ca
 
 # Bootstrap step-ca server
 stepca-bootstrap: stepca-up
@@ -149,19 +156,19 @@ hosts-status:
 
 dns-up:
 	@echo "Starting DNS service (profile: dns)..."
-	COMPOSE_PROFILES=dns $(COMPOSE_BASE) $(COMPOSE_OPTS) up -d dns
+	COMPOSE_PROFILES=dns $(COMPOSE_CMD) $(COMPOSE_OPTS) up -d dns
 
 dns-down:
 	@echo "Stopping DNS service..."
-	COMPOSE_PROFILES=dns $(COMPOSE_BASE) $(COMPOSE_OPTS) down dns
+	COMPOSE_PROFILES=dns $(COMPOSE_CMD) $(COMPOSE_OPTS) down dns
 
 dns-logs:
 	@echo "Showing DNS service logs..."
-	COMPOSE_PROFILES=dns $(COMPOSE_BASE) $(COMPOSE_OPTS) logs -f dns
+	COMPOSE_PROFILES=dns $(COMPOSE_CMD) $(COMPOSE_OPTS) logs -f dns
 
 dns-status:
 	@echo "DNS service status:"
-	COMPOSE_PROFILES=dns $(COMPOSE_BASE) $(COMPOSE_OPTS) ps dns
+	COMPOSE_PROFILES=dns $(COMPOSE_CMD) $(COMPOSE_OPTS) ps dns
 
 dns-provision:
 	./scripts/dns-provision.sh $(DNS_ENV_ARGS)

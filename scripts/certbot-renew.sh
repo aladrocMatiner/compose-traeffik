@@ -30,7 +30,7 @@ fi
 log_info "Attempting to renew certificates..."
 
 # Run certbot in the certbot container
-CERTBOT_COMMAND="docker compose --env-file .env --profile le run --rm \
+CERTBOT_COMMAND="./scripts/compose.sh --profile le run --rm \
     -p 80:80 \
     -p 443:443 \
     certbot renew \

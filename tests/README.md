@@ -36,7 +36,7 @@
 # *   **`test_hosts_subdomains.sh`**: Verifies the hosts subdomain mapper can apply and remove a managed block using a temporary hosts file (no sudo).
 # *   **`test_dns_provision.sh`**: Verifies DNS provisioning dry-run output includes expected hostnames and IPs.
 # *   **`test_dns_configure_ubuntu.sh`**: Verifies Ubuntu DNS config script dry-run prints resolvectl commands.
-# *   **`test_dns_service_config.sh`**: Verifies DNS service configuration and Traefik exposure in docker-compose.yml.
+# *   **`test_dns_service_config.sh`**: Verifies DNS service configuration and Traefik exposure in `services/dns/compose.yml`.
 #
 # Environment Variables:
 #

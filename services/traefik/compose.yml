@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  traefik:
+    image: ${TRAEFIK_IMAGE:-traefik:v3.6.7}
+    container_name: traefik
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    networks:
+      - proxy
+    environment:
+      - TZ=UTC
+      - DOCKER_API_VERSION=1.44
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./services/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./services/traefik/dynamic-rendered:/etc/traefik/dynamic:ro
+      - certs-data:/certs
+      - ./shared/certs/local:/etc/certs/local:ro

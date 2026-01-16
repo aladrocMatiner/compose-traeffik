@@ -12,8 +12,8 @@ Briefly explain what this service is, its primary function within the stack, and
 
 ### Where it Lives
 
-*   **Docker Compose File**: `docker-compose.yml` (e.g., `<service_name>` service entry)
-*   **Configuration Files**: List specific configuration files (e.g., `traefik/traefik.yml`, `traefik/dynamic/middlewares.yml`)
+*   **Docker Compose File**: `services/<service>/compose.yml` (layered on top of `compose/base.yml`)
+*   **Configuration Files**: List specific configuration files (e.g., `services/traefik/traefik.yml`, `services/traefik/dynamic/middlewares.yml`)
 *   **Related Scripts**: List any `scripts/` that directly interact with or manage this service.
 *   **Docker Image**: `<image_name>:<tag>` (e.g., `traefik/whoami:latest`)
 
@@ -21,7 +21,7 @@ Briefly explain what this service is, its primary function within the stack, and
 
 #### Environment Variables
 
-List any environment variables (`.env` or `docker-compose.yml` `environment` section) that affect this service's behavior.
+List any environment variables (`.env` or `services/<service>/compose.yml` `environment` section) that affect this service's behavior.
 *   `VARIABLE_NAME`: Brief description, default value (e.g., `TRAEFIK_IMAGE`, `DEV_DOMAIN`).
 
 #### Ports, Networks, and Volumes
@@ -34,7 +34,7 @@ List any environment variables (`.env` or `docker-compose.yml` `environment` sec
 
 #### Traefik Labels (if applicable)
 
-If this service is exposed via Traefik, list and explain the key Traefik labels used in `docker-compose.yml`.
+If this service is exposed via Traefik, list and explain the key Traefik labels used in `services/<service>/compose.yml`.
 
 ```yaml
 labels:

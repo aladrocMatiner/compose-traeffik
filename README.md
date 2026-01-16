@@ -97,9 +97,9 @@ This stack includes an optional DNS service that becomes the single source of tr
 
 2.  **Create BasicAuth credentials for the DNS UI:**
     ```bash
-    cp traefik/auth/dns-ui.htpasswd.example traefik/auth/dns-ui.htpasswd
+    cp services/traefik/auth/dns-ui.htpasswd.example services/traefik/auth/dns-ui.htpasswd
     # Replace with your own credentials:
-    # htpasswd -nbB admin 'change-me' > traefik/auth/dns-ui.htpasswd
+    # htpasswd -nbB admin 'change-me' > services/traefik/auth/dns-ui.htpasswd
     ```
 
 3.  **Start the DNS service:**

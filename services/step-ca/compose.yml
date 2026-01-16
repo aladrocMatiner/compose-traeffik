@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  step-ca:
+    image: smallstep/step-ca:latest
+    container_name: step-ca
+    profiles:
+      - stepca
+    networks:
+      - stepca-internal
+      - proxy
+    environment:
+      - STEP_CA_NAME=${STEP_CA_NAME:-Local Dev CA}
+      - STEP_CA_DNS=step-ca,localhost,127.0.0.1,step-ca.${DEV_DOMAIN}
+      - STEP_CA_ADDR=:9000
+      - STEP_CA_DB_DSN=bolt.db
+    volumes:
+      - ./services/step-ca/config:/home/step/config
+      - ./services/step-ca/secrets:/home/step/secrets
+      - stepca-data:/home/step/data
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.stepca-websecure.rule=Host(`step-ca.${DEV_DOMAIN}`)"
+      - "traefik.http.routers.stepca-websecure.entrypoints=websecure"
+      - "traefik.http.routers.stepca-websecure.service=stepca-service"
+      - "traefik.http.routers.stepca-websecure.tls=true"
+      - "traefik.http.routers.stepca-websecure.tls.certresolver=stepca-resolver"
+      - "traefik.http.services.stepca-service.loadbalancer.server.port=9000"
+      - "traefik.http.routers.stepca-websecure.middlewares=security-headers@file"

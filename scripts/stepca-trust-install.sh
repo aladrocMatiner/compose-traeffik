@@ -30,7 +30,7 @@ check_root() {
     fi
 }
 
-CA_CERT_PATH="${STEPCA_CA_CERT_PATH:-./step-ca/config/ca.crt}"
+CA_CERT_PATH="${STEPCA_CA_CERT_PATH:-./services/step-ca/config/ca.crt}"
 INSTALL_CERT_NAME="step-ca-root.crt"
 INSTALL_CERT_PATH="/usr/local/share/ca-certificates/${INSTALL_CERT_NAME}"
 
@@ -38,11 +38,11 @@ check_ubuntu_24_04
 check_root
 
 if [ ! -f "$CA_CERT_PATH" ]; then
-    log_error "Step-CA root certificate not found at '$CA_CERT_PATH'.\nRun: docker compose --profile stepca cp step-ca:/home/step/config/ca.crt ./step-ca/config/ca.crt"
+    log_error "Step-CA root certificate not found at '$CA_CERT_PATH'.\nRun: ./scripts/compose.sh --profile stepca cp step-ca:/home/step/config/ca.crt services/step-ca/config/ca.crt"
 fi
 
 case "$CA_CERT_PATH" in
-    */secrets/*|*step-ca/secrets*)
+    */secrets/*|*services/step-ca/secrets*)
         log_error "Refusing to read from secrets directory. Use the public CA cert only."
         ;;
 esac

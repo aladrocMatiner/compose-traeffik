@@ -21,8 +21,8 @@ log_info "Rendering Traefik dynamic config..."
 "$SCRIPT_DIR/traefik-render-dynamic.sh"
 
 log_info "Starting Docker Compose stack..."
-log_info "Executing: docker compose --env-file .env $* up -d"
-docker compose --env-file .env "$@" up -d
+log_info "Executing layered compose stack..."
+./scripts/compose.sh up -d "$@"
 
 log_success "Docker Compose stack started."
 log_info "Run 'make logs' to view service logs."

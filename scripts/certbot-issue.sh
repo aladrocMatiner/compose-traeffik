@@ -38,8 +38,7 @@ log_info "Attempting to issue certificates for *.${DEV_DOMAIN} and specific subd
 # For HTTP-01 (used here), you need explicit subdomains.
 DOMAINS_TO_ISSUE="-d ${DEV_DOMAIN} -d whoami.${DEV_DOMAIN} -d traefik.${DEV_DOMAIN} -d step-ca.${DEV_DOMAIN}"
 
-# Run certbot in the certbot container
-CERTBOT_COMMAND="docker compose --env-file .env --profile le run --rm \
+CERTBOT_COMMAND="./scripts/compose.sh --profile le run --rm \
     -p 80:80 \
     -p 443:443 \
     certbot certonly \

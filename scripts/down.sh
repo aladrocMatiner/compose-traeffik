@@ -18,7 +18,7 @@ log_info "Checking for docker and docker compose..."
 check_docker_compose
 
 log_info "Stopping and removing Docker Compose stack..."
-log_info "Executing: docker compose --env-file .env $* down"
-docker compose --env-file .env "$@" down
+log_info "Executing layered compose teardown..."
+./scripts/compose.sh down "$@"
 
 log_success "Docker Compose stack stopped and removed."
