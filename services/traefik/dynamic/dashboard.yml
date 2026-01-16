@@ -1,0 +1,16 @@
+# File: traefik/dynamic/dashboard.yml
+#
+# Traefik dashboard routing (basic auth protected).
+#
+
+http:
+  routers:
+    traefik-dashboard:
+      rule: "Host(`traefik.__DEV_DOMAIN__`)"
+      entryPoints:
+        - websecure
+      middlewares:
+        - security-headers
+        - traefik-dashboard-auth
+      service: api@internal
+      tls: {}

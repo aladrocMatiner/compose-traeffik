@@ -1,0 +1,57 @@
+# File: traefik/dynamic/middlewares.yml
+#
+# Traefik Dynamic Configuration: Middlewares
+# This file defines reusable middlewares that can be applied to routers.
+#
+
+http:
+  middlewares:
+    # --- HTTP to HTTPS Redirect Middleware ---
+    # This middleware automatically redirects all HTTP traffic to HTTPS.
+    # It's applied by default to the 'web' entrypoint via traefik/traefik.yml.
+    redirect-to-https:
+      redirectScheme:
+        scheme: https
+        permanent: true # Use 301 Permanent Redirect
+        # Only activate if HTTP_TO_HTTPS_REDIRECT is 'true'
+        # Traefik doesn't have direct if conditions in middlewares,
+        # so this middleware is always defined but its application is conditional
+        # via Traefik's dynamic router rules (or entrypoint config in static).
+        # We handle the toggle for the 'web' entrypoint dynamically in traefik.yml,
+        # but for individual routers, they would explicitly call this.
+        # The entrypoint rule `middlewares: ["redirect-to-https@file"]` will always apply
+        # to the 'web' entrypoint unless removed from static config.
+
+    # --- No-op Middleware (used when HTTP redirect is disabled) ---
+    noop:
+      headers:
+        customResponseHeaders:
+          X-Redirect-Disabled: "true"
+
+    # --- Security Headers Middleware ---
+    # This middleware adds common security headers to responses.
+    security-headers:
+      headers:
+        sslRedirect: true # Force HTTP to HTTPS redirection (though also handled by redirect-to-https)
+        browserXssFilter: true
+        contentTypeNosniff: true
+        # The following headers are added if not already present
+        customResponseHeaders:
+          X-Frame-Options: "DENY"
+          X-XSS-Protection: "1; mode=block"
+          X-Content-Type-Options: "nosniff"
+          Referrer-Policy: "strict-origin-when-cross-origin"
+          Strict-Transport-Security: "max-age=31536000; includeSubDomains; preload"
+        # Content-Security-Policy: "default-src 'self' https:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';"
+        # You may need to customize Content-Security-Policy based on your application needs.
+
+    # --- Basic Auth for Traefik Dashboard ---
+    traefik-dashboard-auth:
+      basicAuth:
+        users:
+          - "admin:$apr1$A6pSc.Gl$3F/jNAda4r1Dh5f5fGjno0"
+
+    # --- Basic Auth for DNS UI ---
+    dns-ui-auth:
+      basicAuth:
+        usersFile: /etc/traefik/auth/dns-ui.htpasswd

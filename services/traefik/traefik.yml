@@ -23,6 +23,12 @@ providers:
   file:
     directory: /etc/traefik/dynamic # Directory containing dynamic config files
     watch: true # Watch for changes in the dynamic config files
+  # Docker provider: loads dynamic configuration from container labels.
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    network: traefik-proxy
+    watch: true
 
 # API and Dashboard configuration.
 # The dashboard is disabled by default for security.
