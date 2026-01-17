@@ -53,6 +53,6 @@ rg -Fq 'Host(`dns.${BASE_DOMAIN}`)' "$COMPOSE_FILE"
 
 # Validate BasicAuth middleware exists
 rg -q "dns-ui-auth:" "$MIDDLEWARE_FILE"
-rg -q "usersFile: /etc/traefik/auth/dns-ui.htpasswd" "$MIDDLEWARE_FILE"
+rg -q "usersFile: __DNS_UI_BASIC_AUTH_HTPASSWD_PATH__" "$MIDDLEWARE_FILE"
 
 log_success "DNS service configuration test passed."

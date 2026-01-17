@@ -22,6 +22,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./services/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
       - ./services/traefik/dynamic-rendered:/etc/traefik/dynamic:ro
+      - ./services/traefik/auth:/etc/traefik/auth:ro
       - ./services/certbot/conf:/etc/letsencrypt:ro
       - certs-data:/certs
       - ./shared/certs/local:/etc/certs/local:ro

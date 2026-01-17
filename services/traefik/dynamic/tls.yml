@@ -21,9 +21,3 @@ tls:
       #   sans:
       #     - "traefik.__DEV_DOMAIN__"
       #     - "step-ca.__DEV_DOMAIN__"
-
-    # --- TLS Mode B: Certbot Certificates ---
-    # Certbot issues certificates under /etc/letsencrypt/live/<cert-name>/.
-    # The cert name is expected to match DEV_DOMAIN.
-    - certFile: /etc/letsencrypt/live/__DEV_DOMAIN__/fullchain.pem
-      keyFile: /etc/letsencrypt/live/__DEV_DOMAIN__/privkey.pem
