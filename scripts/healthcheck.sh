@@ -1,3 +1,4 @@
+#!/bin/bash
 # File: scripts/healthcheck.sh
 #
 # Runs smoke tests to check Traefik readiness, routing, and TLS handshake.
@@ -13,7 +14,23 @@ SCRIPT_DIR=$(dirname "$0")
 
 load_env
 check_env_var "DEV_DOMAIN"
-check_env_var "HTTP_TO_HTTPS_REDIRECT"
+
+if [ -n "${HTTP_TO_HTTPS_MIDDLEWARE:-}" ]; then
+    if [ "${HTTP_TO_HTTPS_MIDDLEWARE}" = "redirect-to-https@file" ]; then
+        REDIRECT_ENABLED=true
+    elif [ "${HTTP_TO_HTTPS_MIDDLEWARE}" = "noop@file" ]; then
+        REDIRECT_ENABLED=false
+    else
+        log_error "Unknown HTTP_TO_HTTPS_MIDDLEWARE value: ${HTTP_TO_HTTPS_MIDDLEWARE}"
+    fi
+else
+    check_env_var "HTTP_TO_HTTPS_REDIRECT"
+    if [ "${HTTP_TO_HTTPS_REDIRECT}" = "true" ]; then
+        REDIRECT_ENABLED=true
+    else
+        REDIRECT_ENABLED=false
+    fi
+fi
 
 log_info "Running smoke tests for Traefik and demo service..."
 
@@ -51,8 +68,8 @@ else
 fi
 
 # --- Test 4: HTTP to HTTPS Redirect (conditional) ---
-if [ "${HTTP_TO_HTTPS_REDIRECT}" = "true" ]; then
-    log_info "Running test_http_redirect.sh (HTTP_TO_HTTPS_REDIRECT is true)..."
+if [ "${REDIRECT_ENABLED}" = "true" ]; then
+    log_info "Running test_http_redirect.sh (HTTP redirect enabled)..."
     if "$TEST_DIR/test_http_redirect.sh"; then
         log_success "Test: HTTP to HTTPS Redirect"
     else
@@ -60,7 +77,7 @@ if [ "${HTTP_TO_HTTPS_REDIRECT}" = "true" ]; then
         TEST_RESULTS=1
     fi
 else
-    log_warn "Skipping HTTP to HTTPS Redirect test (HTTP_TO_HTTPS_REDIRECT is false)."
+    log_warn "Skipping HTTP to HTTPS Redirect test (HTTP redirect disabled)."
 fi
 
 # --- Test 5: Hosts Subdomain Mapper (no sudo) ---
