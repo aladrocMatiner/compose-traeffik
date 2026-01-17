@@ -11,7 +11,7 @@ services:
       - proxy
     environment:
       - STEP_CA_NAME=${STEP_CA_NAME:-Local Dev CA}
-      - STEP_CA_DNS=step-ca,localhost,127.0.0.1,step-ca.${DEV_DOMAIN}
+      - STEP_CA_DNS=${STEP_CA_DNS:-step-ca,localhost,127.0.0.1,step-ca.${DEV_DOMAIN}}
       - STEP_CA_ADDR=:9000
       - STEP_CA_DB_DSN=bolt.db
     volumes:

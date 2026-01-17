@@ -1,3 +1,4 @@
+#!/bin/bash
 # File: scripts/stepca-bootstrap.sh
 #
 # Bootstraps the Smallstep 'step-ca' server.
@@ -10,6 +11,8 @@
 #            are read from the .env file and only used during this bootstrap process.
 #            The running step-ca service does NOT use these environment variables.
 #
+
+set -euo pipefail
 
 SCRIPT_DIR=$(dirname "$0")
 # shellcheck source=scripts/common.sh
@@ -28,6 +31,11 @@ fi
 
 if [ -z "${STEP_CA_DNS}" ]; then
     log_error "STEP_CA_DNS is empty. Set it in .env before bootstrapping."
+fi
+
+STEP_CA_ENABLE_SSH="${STEP_CA_ENABLE_SSH:-false}"
+if [ "${STEP_CA_ENABLE_SSH}" != "true" ] && [ "${STEP_CA_ENABLE_SSH}" != "false" ]; then
+    log_error "STEP_CA_ENABLE_SSH must be 'true' or 'false'."
 fi
 
 log_info "Checking for docker and docker compose..."
@@ -59,27 +67,36 @@ fi
 
 log_info "Bootstrapping Step-CA server for the first time..."
 
-# Use temporary files inside the container to pass passwords securely
-./scripts/compose.sh --profile stepca exec -T "$CA_CONTAINER_NAME" bash -c "
-    echo \"${STEP_CA_PASSWORD}\" > /tmp/ca_password.txt
-    echo \"${STEP_CA_ADMIN_PROVISIONER_PASSWORD}\" > /tmp/admin_password.txt
-    step ca init \
-        --name \"${STEP_CA_NAME}\" \
-        --dns \"${STEP_CA_DNS}\" \
-        --address \":9000\" \
-        --provisioner \"admin\" \
-        --password-file /tmp/admin_password.txt \
-        --ssh \
-        < /tmp/ca_password.txt
-    rm /tmp/ca_password.txt /tmp/admin_password.txt
-"
+ssh_flag=""
+if [ "${STEP_CA_ENABLE_SSH}" = "true" ]; then
+    ssh_flag="--ssh"
+fi
 
-# Note: The above is a bit tricky with nested heredocs.
-# Alternative: Write passwords to temp files in container if exec -T allows, then pass file paths.
-# For simplicity in this dev environment, direct piping is usually okay.
+bootstrap_cmd=$(cat <<EOF
+set -euo pipefail
+tmp_ca="/tmp/ca_password.txt"
+tmp_admin="/tmp/admin_password.txt"
+printf '%s' "${STEP_CA_PASSWORD}" > "\${tmp_ca}"
+printf '%s' "${STEP_CA_ADMIN_PROVISIONER_PASSWORD}" > "\${tmp_admin}"
+step ca init \
+  --name "${STEP_CA_NAME}" \
+  --dns "${STEP_CA_DNS}" \
+  --address ":9000" \
+  --provisioner "admin" \
+  --password-file "\${tmp_ca}" \
+  --provisioner-password-file "\${tmp_admin}" \
+  ${ssh_flag}
+rm -f "\${tmp_ca}" "\${tmp_admin}"
+EOF
+)
+
+./scripts/compose.sh --profile stepca exec -T "$CA_CONTAINER_NAME" bash -c "${bootstrap_cmd}"
+
+if ! ./scripts/compose.sh --profile stepca exec -T "$CA_CONTAINER_NAME" test -f "${CA_CONFIG_DIR}/ca.json"; then
+    log_error "Step-CA initialization failed; ${CA_CONFIG_DIR}/ca.json was not created."
+fi
 
 log_info "Enabling ACME provisioner..."
-# Add ACME provisioner (if not already added by init with default provisioner)
 ./scripts/compose.sh --profile stepca exec -T "$CA_CONTAINER_NAME" \
     step ca provisioner add acme --type ACME --ca-url https://step-ca.${DEV_DOMAIN}:9000
 
