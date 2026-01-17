@@ -6,5 +6,5 @@
 - [x] 1.5 Update docs to describe trust installation, verification, and security boundaries.
 
 ## 2. Validation
-- [ ] 2.1 Run `shellcheck` on the new scripts (if available).
-- [ ] 2.2 Manual verify: install, verify, uninstall, verify (Ubuntu 24.04).
+- [x] 2.1 Run `shellcheck` on the new scripts (if available). (shellcheck not available)
+- [x] 2.2 Manual verify: install, verify, uninstall, verify (Ubuntu 24.04).

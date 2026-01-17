@@ -8,5 +8,5 @@
 - [x] 1.7 Update `.env.example` with any new selector variables and document their expected values.
 
 ## 2. Validation
-- [ ] 2.1 Update redirect and dashboard readiness tests if the endpoints change (optional but recommended).
-- [ ] 2.2 Verify routing for dns/step-ca endpoints when profiles are enabled.
+- [x] 2.1 Update redirect and dashboard readiness tests if the endpoints change (optional but recommended).
+- [x] 2.2 Verify routing for dns/step-ca endpoints when profiles are enabled.
