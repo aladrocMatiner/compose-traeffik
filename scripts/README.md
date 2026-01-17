@@ -12,6 +12,16 @@ Prerequisites:
 - Docker + Docker Compose v2
 - `.env` file (copy from `.env.example`)
 
+Preflight validation:
+- `scripts/validate-env.sh` runs before `make up` and any `scripts/compose.sh` call.
+- It enforces safe defaults for admin UIs (DNS and dashboard) and validates profile syntax.
+- Create htpasswd files under `services/traefik/auth/`, for example:
+  - `htpasswd -nbB admin 'change-me' > services/traefik/auth/dns-ui.htpasswd`
+  - `htpasswd -nbB admin 'change-me' > services/traefik/auth/traefik-dashboard.htpasswd`
+- Set the container paths in `.env`:
+  - `DNS_UI_BASIC_AUTH_HTPASSWD_PATH=/etc/traefik/auth/dns-ui.htpasswd`
+  - `TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH=/etc/traefik/auth/traefik-dashboard.htpasswd`
+
 ## Script inventory
 
 | Script | Purpose | Typical usage | Required env vars | Side effects |
@@ -20,6 +30,7 @@ Prerequisites:
 | `scripts/up.sh` | Start the stack and render Traefik dynamic config | `make up` | none (loads `.env` if present) | Starts containers |
 | `scripts/down.sh` | Stop the stack | `make down` | none | Stops containers |
 | `scripts/logs.sh` | Follow service logs | `make logs` | none | Streams logs |
+| `scripts/validate-env.sh` | Preflight validation for profiles and admin auth | `./scripts/validate-env.sh` | `COMPOSE_PROFILES`, `DNS_ADMIN_PASSWORD`, `DNS_UI_BASIC_AUTH_HTPASSWD_PATH`, `TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH`, `TRAEFIK_DASHBOARD` | Fails fast on unsafe config |
 | `scripts/traefik-render-dynamic.sh` | Render Traefik dynamic config templates | `./scripts/traefik-render-dynamic.sh` | `DEV_DOMAIN` | Writes `services/traefik/dynamic-rendered` |
 | `scripts/healthcheck.sh` | Run smoke tests | `make test` | `DEV_DOMAIN`, `HTTP_TO_HTTPS_REDIRECT` | Runs tests, exits non-zero on failure |
 | `scripts/certs-selfsigned-generate.sh` | Generate local CA + leaf certs | `make certs-local` | `DEV_DOMAIN` | Writes `shared/certs/local-ca` and `shared/certs/local` |

@@ -58,7 +58,7 @@ For detailed TLS workflows, see:
 ## Endpoints
 
 - **Whoami**: `https://whoami.${DEV_DOMAIN}` (default stack; uses Traefik HTTPS)
-- **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth; routed via HTTPS)
+- **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth; set `TRAEFIK_DASHBOARD=true` to enable)
 - **DNS UI**: `https://dns.${BASE_DOMAIN}` (profile `dns`, BasicAuth required)
 - **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (profile `stepca`)
 
@@ -92,6 +92,15 @@ Common commands:
 - `make stepca-up`, `make stepca-bootstrap`, `make stepca-trust-install`
 - `make dns-up`, `make dns-provision`, `make dns-config-apply`
 - `make hosts-generate`, `make hosts-apply`, `make hosts-status`
+
+Auth files:
+- `services/traefik/auth/dns-ui.htpasswd.example` (DNS UI BasicAuth)
+- `services/traefik/auth/traefik-dashboard.htpasswd.example` (Traefik dashboard BasicAuth)
+- Generate with `htpasswd -nbB admin 'change-me'` and replace the example file contents.
+- Update `.env` with the container paths: `DNS_UI_BASIC_AUTH_HTPASSWD_PATH=/etc/traefik/auth/dns-ui.htpasswd` and `TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH=/etc/traefik/auth/traefik-dashboard.htpasswd`.
+
+Compose project pinning:
+- The compose wrapper pins `--project-directory` and `--project-name` to avoid cross‑CWD conflicts. Override with `COMPOSE_PROJECT_NAME` in `.env` if needed.
 
 <a id="testing"></a>
 ## Testing

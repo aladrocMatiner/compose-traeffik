@@ -1,3 +1,4 @@
+#!/bin/bash
 # File: scripts/logs.sh
 #
 # Shows real-time logs for the Docker Compose stack.
@@ -7,6 +8,8 @@
 # Arguments are passed directly to `docker compose logs`.
 # Example: ./scripts/logs.sh traefik
 #
+
+set -euo pipefail
 
 SCRIPT_DIR=$(dirname "$0")
 # shellcheck source=scripts/common.sh

@@ -38,9 +38,19 @@ COMPOSE_FILES := \
   -f services/dns/compose.yml \
   -f services/certbot/compose.yml \
   -f services/step-ca/compose.yml
-COMPOSE_CMD := docker compose --env-file .env $(COMPOSE_FILES)
+
+# Pin compose project directory/name to avoid cross-CWD conflicts.
+COMPOSE_PROJECT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+COMPOSE_PROJECT_NAME ?= $(PROJECT_NAME)
+ifeq ($(COMPOSE_PROJECT_NAME),)
+COMPOSE_PROJECT_NAME := $(notdir $(abspath $(COMPOSE_PROJECT_DIR)))
+endif
+
+COMPOSE_CMD := docker compose --env-file .env --project-directory $(COMPOSE_PROJECT_DIR) --project-name $(COMPOSE_PROJECT_NAME) $(COMPOSE_FILES)
 COMPOSE_OPTS ?=
-COMPOSE_PROFILES_ARG := $(if $(COMPOSE_PROFILES),--profile $(subst ',', --profile ,$(COMPOSE_PROFILES)),)
+comma := ,
+COMPOSE_PROFILES_LIST = $(strip $(subst $(comma), ,$(COMPOSE_PROFILES)))
+COMPOSE_PROFILES_ARG = $(foreach profile,$(COMPOSE_PROFILES_LIST),--profile $(profile))
 
 # Hosts subdomain mapper options
 HOSTS_ENV_ARGS :=
@@ -75,7 +85,7 @@ logs:
 	./scripts/logs.sh $(COMPOSE_PROFILES_ARG)
 
 # List running services
-	ps:
+ps:
 	@echo "Listing services for Docker Compose stack with profiles: ${COMPOSE_PROFILES}"
 	$(COMPOSE_CMD) $(COMPOSE_PROFILES_ARG) $(COMPOSE_OPTS) ps
 
@@ -162,19 +172,19 @@ hosts-status:
 
 dns-up:
 	@echo "Starting DNS service (profile: dns)..."
-	COMPOSE_PROFILES=dns $(COMPOSE_CMD) $(COMPOSE_OPTS) up -d dns
+	COMPOSE_PROFILES=dns ./scripts/compose.sh --profile dns $(COMPOSE_OPTS) up -d dns
 
 dns-down:
 	@echo "Stopping DNS service..."
-	COMPOSE_PROFILES=dns $(COMPOSE_CMD) $(COMPOSE_OPTS) down dns
+	COMPOSE_PROFILES=dns ./scripts/compose.sh --profile dns $(COMPOSE_OPTS) down dns
 
 dns-logs:
 	@echo "Showing DNS service logs..."
-	COMPOSE_PROFILES=dns $(COMPOSE_CMD) $(COMPOSE_OPTS) logs -f dns
+	COMPOSE_PROFILES=dns ./scripts/compose.sh --profile dns $(COMPOSE_OPTS) logs -f dns
 
 dns-status:
 	@echo "DNS service status:"
-	COMPOSE_PROFILES=dns $(COMPOSE_CMD) $(COMPOSE_OPTS) ps dns
+	COMPOSE_PROFILES=dns ./scripts/compose.sh --profile dns $(COMPOSE_OPTS) ps dns
 
 dns-provision:
 	./scripts/dns-provision.sh $(DNS_ENV_ARGS)

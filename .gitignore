@@ -21,7 +21,8 @@ acme-le.json
 acme-stepca.json
 
 # Traefik BasicAuth credentials
-services/traefik/auth/dns-ui.htpasswd
+services/traefik/auth/*.htpasswd
+!services/traefik/auth/*.htpasswd.example
 
 # Rendered Traefik dynamic config
 services/traefik/dynamic-rendered/
