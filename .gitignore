@@ -27,9 +27,6 @@ services/traefik/auth/*.htpasswd
 # Rendered Traefik dynamic config
 services/traefik/dynamic-rendered/
 
-# Traefik dynamic config (source)
-services/traefik/dynamic/
-
 # DNS service data (Technitium)
 services/dns/data/
 

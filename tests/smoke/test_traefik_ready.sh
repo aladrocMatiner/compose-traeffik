@@ -23,13 +23,13 @@ if ! "$COMPOSE_CMD" ps -q traefik | grep -q .; then
 fi
 
 log_info "Checking Traefik docker provider configuration..."
-if ! rg -q "^  docker:" "$TRAEFIK_CONFIG"; then
+if ! grep -q "^  docker:" "$TRAEFIK_CONFIG"; then
     log_error "Traefik docker provider is not configured in services/traefik/traefik.yml."
 fi
-if ! rg -q "exposedByDefault: false" "$TRAEFIK_CONFIG"; then
+if ! grep -q "exposedByDefault: false" "$TRAEFIK_CONFIG"; then
     log_error "Traefik docker provider should set exposedByDefault=false."
 fi
-if ! rg -q "network: traefik-proxy" "$TRAEFIK_CONFIG"; then
+if ! grep -q "network: traefik-proxy" "$TRAEFIK_CONFIG"; then
     log_error "Traefik docker provider should use network=traefik-proxy."
 fi
 
