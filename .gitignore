@@ -2,6 +2,7 @@
 
 # --- Generated sensitive files and directories ---
 # Certificates and keys
+certs/
 shared/certs/local-ca/
 shared/certs/local/
 

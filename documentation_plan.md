@@ -4,6 +4,8 @@ This document outlines the documentation delivery plan for the existing Traefik 
 
 ## A) Discovery Summary
 
+**Canonical certs path:** `CERTS_DIR = shared/certs/`
+
 Based on the repository scan, the following key facts have been identified:
 
 *   **File Structure**:
@@ -11,7 +13,7 @@ Based on the repository scan, the following key facts have been identified:
     *   **Configuration**: `traefik/traefik.yml`, `traefik/dynamic/middlewares.yml`, `traefik/dynamic/tls.yml`
     *   **Scripts**: `scripts/common.sh`, `scripts/up.sh`, `scripts/down.sh`, `scripts/logs.sh`, `scripts/healthcheck.sh`, `scripts/certs-selfsigned-generate.sh`, `scripts/certbot-issue.sh`, `scripts/certbot-renew.sh`, `scripts/stepca-bootstrap.sh`
     *   **Tests**: `tests/README.md`, `tests/smoke/test_http_redirect.sh`, `tests/smoke/test_routing.sh`, `tests/smoke/test_tls_handshake.sh`, `tests/smoke/test_traefik_ready.sh`
-    *   **TLS Assets (dirs)**: `certs/local-ca`, `certs/local`, `certbot/conf`, `certbot/www`, `step-ca/config`, `step-ca/secrets`, `step-ca/data`
+*   **TLS Assets (dirs)**: `shared/certs/local-ca`, `shared/certs/local`, `certbot/conf`, `certbot/www`, `step-ca/config`, `step-ca/secrets`, `step-ca/data`
 
 *   **Docker Compose Details**:
     *   **Profiles**: `le`, `stepca`
@@ -51,8 +53,8 @@ Based on the repository scan, the following key facts have been identified:
 
 *   **Certificate Storage Locations**:
     *   **Mode A (Self-Signed)**:
-        *   CA: `certs/local-ca/ca.crt`, `certs/local-ca/ca.key`
-        *   Leaf: `certs/local/fullchain.pem`, `certs/local/privkey.pem` (mounted to `/etc/certs/local` in Traefik)
+        *   CA: `shared/certs/local-ca/ca.crt`, `shared/certs/local-ca/ca.key`
+        *   Leaf: `shared/certs/local/fullchain.pem`, `shared/certs/local/privkey.pem` (mounted to `/etc/certs/local` in Traefik)
     *   **Mode B (Let's Encrypt via Certbot)**:
         *   Certbot working dir: `certbot/conf/` (mounted to `/etc/letsencrypt` in Certbot)
         *   Traefik ACME storage: `traefik-certs-data` volume (stores `acme-le.json` at `/certs/acme-le.json`)
