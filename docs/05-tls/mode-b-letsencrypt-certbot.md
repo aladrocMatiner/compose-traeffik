@@ -23,6 +23,7 @@ Use Mode B when you want publicly trusted certificates from Let's Encrypt for de
    - `ACME_EMAIL`
    - `LETSENCRYPT_STAGING` (use `true` for testing)
    - `LETSENCRYPT_CA_SERVER`
+   - `CERTBOT_DOMAINS` (optional; comma-separated FQDNs, defaults to `DEV_DOMAIN` + standard subdomains)
 
 3. **Start the stack with the `le` profile:**
    ```bash
@@ -42,6 +43,7 @@ Use Mode B when you want publicly trusted certificates from Let's Encrypt for de
 ## Expected Result
 
 - Certbot issues a certificate for the configured domain.
+  - Override with `CERTBOT_DOMAINS` to control the `-d` list without editing scripts.
 - Traefik serves the certificate for HTTPS requests.
 - `whoami.$DEV_DOMAIN` returns a successful HTTPS response.
 - HTTP-01 challenges are served by Traefik routing `/.well-known/acme-challenge/` to `certbot-web`.

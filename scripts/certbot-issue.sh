@@ -23,6 +23,7 @@ check_docker_compose
 
 CERTBOT_CERT_NAME=${CERTBOT_CERT_NAME:-${DEV_DOMAIN}}
 CERTBOT_WEBROOT=${CERTBOT_WEBROOT:-/var/www/certbot}
+CERTBOT_DOMAINS=${CERTBOT_DOMAINS:-}
 
 # Determine Certbot server (prefer LETSENCRYPT_CA_SERVER if set)
 CERTBOT_SERVER="${LETSENCRYPT_CA_SERVER:-}"
@@ -38,13 +39,31 @@ else
     log_info "Using ACME server from LETSENCRYPT_CA_SERVER."
 fi
 
-log_info "Attempting to issue certificates for *.${DEV_DOMAIN} and specific subdomains..."
+log_info "Attempting to issue certificates for configured domains..."
+
+trim() {
+    local value="$1"
+    value="${value#"${value%%[![:space:]]*}"}"
+    value="${value%"${value##*[![:space:]]}"}"
+    printf '%s' "$value"
+}
 
 # Define the domains Certbot should attempt to issue for.
 # These match what Traefik is expecting via labels or configuration.
 # Note: For wildcard certs, DNS-01 challenge is typically required.
 # For HTTP-01 (used here), you need explicit subdomains.
-DOMAINS_TO_ISSUE="-d ${DEV_DOMAIN} -d whoami.${DEV_DOMAIN} -d traefik.${DEV_DOMAIN} -d step-ca.${DEV_DOMAIN}"
+DOMAINS_TO_ISSUE=""
+if [ -n "${CERTBOT_DOMAINS}" ]; then
+    IFS=',' read -r -a domain_parts <<< "${CERTBOT_DOMAINS}"
+    for domain in "${domain_parts[@]}"; do
+        domain=$(trim "$domain")
+        if [ -n "$domain" ]; then
+            DOMAINS_TO_ISSUE="${DOMAINS_TO_ISSUE} -d ${domain}"
+        fi
+    done
+else
+    DOMAINS_TO_ISSUE="-d ${DEV_DOMAIN} -d whoami.${DEV_DOMAIN} -d traefik.${DEV_DOMAIN} -d step-ca.${DEV_DOMAIN}"
+fi
 
 CERTBOT_COMMAND="./scripts/compose.sh --profile le run --rm \
     certbot certonly \
