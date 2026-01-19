@@ -22,6 +22,7 @@ log_info "Checking for docker and docker compose..."
 check_docker_compose
 
 CERTBOT_CERT_NAME=${CERTBOT_CERT_NAME:-${DEV_DOMAIN}}
+CERTBOT_WEBROOT=${CERTBOT_WEBROOT:-/var/www/certbot}
 
 # Determine Certbot server (prefer LETSENCRYPT_CA_SERVER if set)
 CERTBOT_SERVER="${LETSENCRYPT_CA_SERVER:-}"
@@ -46,10 +47,8 @@ log_info "Attempting to issue certificates for *.${DEV_DOMAIN} and specific subd
 DOMAINS_TO_ISSUE="-d ${DEV_DOMAIN} -d whoami.${DEV_DOMAIN} -d traefik.${DEV_DOMAIN} -d step-ca.${DEV_DOMAIN}"
 
 CERTBOT_COMMAND="./scripts/compose.sh --profile le run --rm \
-    -p 80:80 \
-    -p 443:443 \
     certbot certonly \
-    --webroot -w /var/www/certbot \
+    --webroot -w ${CERTBOT_WEBROOT} \
     ${DOMAINS_TO_ISSUE} \
     --email ${ACME_EMAIL} \
     --rsa-key-size 2048 \

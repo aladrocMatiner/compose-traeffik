@@ -10,3 +10,20 @@ services:
       - ./services/certbot/conf:/etc/letsencrypt
       - ./services/certbot/www:/var/www/certbot
     command: ["tail", "-f", "/dev/null"]
+  certbot-web:
+    image: nginx:alpine
+    container_name: certbot-web
+    profiles:
+      - le
+    restart: unless-stopped
+    networks:
+      - proxy
+    volumes:
+      - ./services/certbot/www:/usr/share/nginx/html:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.certbot-web.rule=PathPrefix(`/.well-known/acme-challenge/`)"
+      - "traefik.http.routers.certbot-web.entrypoints=web"
+      - "traefik.http.routers.certbot-web.priority=1000"
+      - "traefik.http.routers.certbot-web.middlewares=noop@file"
+      - "traefik.http.services.certbot-web.loadbalancer.server.port=80"
