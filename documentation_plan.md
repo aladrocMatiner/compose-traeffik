@@ -130,7 +130,7 @@ Goal: “from zero to working” with Mode A, with verification and minimal trou
     *   **Acceptance criteria**:
         *   Document includes clear steps for: `cp .env.example .env`, `make certs-local`, `make up`, `make test`.
         *   Includes specific instructions for editing `/etc/hosts` for `DEV_DOMAIN`.
-        *   Mentions trusting the local CA (`certs/local-ca/ca.crt`) as a post-setup step.
+        *   Mentions trusting the local CA (`shared/certs/local-ca/ca.crt`) as a post-setup step.
         *   Provides verification commands and expected outputs.
     *   **Review checklist**:
         *   Commands are copy/paste friendly.
@@ -270,7 +270,7 @@ Goal: deep guides for each mode with steps + verify + rotate + rollback.
     *   **Dependencies**: T1.1, T2.1, T5.1, T6.1 (for Traefik context)
     *   **Acceptance criteria**:
         *   Detailed steps for `make certs-local`.
-        *   Clear instructions for manually trusting `certs/local-ca/ca.crt` on different OS.
+        *   Clear instructions for manually trusting `shared/certs/local-ca/ca.crt` on different OS.
         *   Verification steps (e.g., `openssl s_client` output, browser check).
         *   Common pitfalls (e.g., browser warnings, `/etc/hosts` issues).
     *   **Review checklist**:
