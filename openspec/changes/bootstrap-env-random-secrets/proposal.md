@@ -35,3 +35,9 @@ New users must manually copy and edit `.env`, generate secrets, and create direc
 ## Verification
 - Running `make bootstrap` creates `.env` and does not overwrite existing values by default.
 - Generated secrets are non-empty, length ≥ 32, and `.env` stays untracked.
+
+## Verification Checklist
+- [ ] `make bootstrap` creates `.env` from `.env.example` when missing.
+- [ ] Existing `.env` values are preserved unless `./scripts/env-generate.sh --force` is used.
+- [ ] `DNS_ADMIN_PASSWORD`, `STEP_CA_ADMIN_PROVISIONER_PASSWORD`, and `STEP_CA_PASSWORD` are non-empty and length ≥ 32.
+- [ ] `git status` does not show `.env` as tracked.

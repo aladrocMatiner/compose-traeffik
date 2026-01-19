@@ -29,17 +29,24 @@ Use Mode A for local development when you want HTTPS without external certificat
    make certs-local
    ```
 
-4. **Map local subdomains to loopback:**
+4. **Trust the local CA on your host (Ubuntu 24.04):**
+   ```bash
+   sudo make local-ca-trust-install
+   make local-ca-trust-verify
+   ```
+   This installs `shared/certs/local-ca/ca.crt` into the system trust store.
+
+5. **Map local subdomains to loopback:**
    ```bash
    sudo make hosts-apply
    ```
 
-5. **Start the stack:**
+6. **Start the stack:**
    ```bash
    make up
    ```
 
-6. **Run smoke tests:**
+7. **Run smoke tests:**
    ```bash
    make test
    ```
@@ -61,7 +68,7 @@ openssl s_client -connect "whoami.$DEV_DOMAIN:443" -servername "whoami.$DEV_DOMA
 
 - **Browser shows certificate warning:**
   - Cause: The local CA is not trusted by your OS/browser.
-  - Fix: Trust `shared/certs/local-ca/ca.crt` in your OS trust store.
+  - Fix: Run `sudo make local-ca-trust-install` to trust `shared/certs/local-ca/ca.crt`.
 
 - **Hostnames do not resolve:**
   - Cause: `/etc/hosts` missing entries for `$DEV_DOMAIN` subdomains.

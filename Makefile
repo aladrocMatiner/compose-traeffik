@@ -15,8 +15,9 @@
 # --- Configuration Variables ---
 SHELL := /bin/bash # Ensure bash is used for shell commands
 .DEFAULT_GOAL := help # Default target if none is specified
-.PHONY: help up down restart logs ps test docs-check \
-        certs-local certs-le-issue certs-le-renew \
+.PHONY: help up down restart logs ps test docs-check bootstrap \
+        certs-local local-ca-trust-install local-ca-trust-uninstall local-ca-trust-verify \
+        certs-le-issue certs-le-renew \
         stepca-up stepca-down stepca-bootstrap stepca-verify-cert \
         stepca-trust-install stepca-trust-uninstall stepca-trust-verify \
         hosts-generate hosts-apply hosts-remove hosts-status \
@@ -93,9 +94,29 @@ ps:
 
 # --- Certificate Management (Mode A: Local Self-Signed) ---
 
+bootstrap:
+	@echo "Bootstrapping local environment (.env and directories)..."
+	./scripts/env-generate.sh
+	mkdir -p shared/certs shared/certs/local-ca shared/certs/local
+
 certs-local:
 	@echo "Generating local self-signed certificates..."
 	./scripts/certs-selfsigned-generate.sh
+
+# Install Mode A local CA into Ubuntu trust store
+local-ca-trust-install:
+	@echo "Installing local CA into system trust store..."
+	./scripts/local-ca-trust-install.sh
+
+# Remove Mode A local CA from Ubuntu trust store
+local-ca-trust-uninstall:
+	@echo "Removing local CA from system trust store..."
+	./scripts/local-ca-trust-uninstall.sh
+
+# Verify Mode A local CA is trusted by Ubuntu
+local-ca-trust-verify:
+	@echo "Verifying local CA trust..."
+	./scripts/local-ca-trust-verify.sh
 
 # --- Certificate Management (Mode B: Let's Encrypt with Certbot) ---
 
@@ -217,6 +238,7 @@ help:
 	@echo ""
 	@echo "General Commands:"
 	@echo "  help                  Display this help message."
+	@echo "  bootstrap             Create .env with random secrets and required directories."
 	@echo "  up                    Start the default stack (Traefik + whoami)."
 	@echo "  down                  Stop and remove the default stack."
 	@echo "  restart               Restart the default stack."
@@ -225,6 +247,9 @@ help:
 	@echo ""
 	@echo "Certificate Management (Mode A: Local Self-Signed):"
 	@echo "  certs-local           Generate local self-signed certificates in $(CERTS_DIR)/local/."
+	@echo "  local-ca-trust-install  Install local CA into Ubuntu trust store (requires sudo)."
+	@echo "  local-ca-trust-uninstall Remove local CA from Ubuntu trust store (requires sudo)."
+	@echo "  local-ca-trust-verify   Verify local CA trust on Ubuntu."
 	@echo ""
 	@echo "Certificate Management (Mode B: Let's Encrypt with Certbot):"
 	@echo "  certs-le-issue        Issue a new Let's Encrypt certificate using certbot (requires 'le' profile)."

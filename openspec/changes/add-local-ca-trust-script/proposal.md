@@ -8,6 +8,7 @@ Mode A relies on a local CA at `shared/certs/local-ca/ca.crt`, but there is no a
 
 ## Goals
 - Add an explicit script to trust the Mode A CA on the host OS (initially Ubuntu 24.04, matching existing Step‑CA trust scripts).
+- Use the Mode A CA at `shared/certs/local-ca/ca.crt`.
 - Provide Make targets to install/uninstall/verify the local CA trust.
 - Document the new workflow in Mode A docs.
 
@@ -27,6 +28,7 @@ Mode A relies on a local CA at `shared/certs/local-ca/ca.crt`, but there is no a
 - `Makefile`
 - `docs/05-tls/mode-a-selfsigned.md`
 
-## Verification
-- Running the install script adds the CA to the system trust store.
-- `openssl verify` against `shared/certs/local-ca/ca.crt` succeeds after install.
+## Verification Checklist
+- [ ] `sudo ./scripts/local-ca-trust-install.sh` installs the CA into `/usr/local/share/ca-certificates/local-ca-root.crt` and refreshes the trust store.
+- [ ] `openssl verify -CAfile /etc/ssl/certs/ca-certificates.crt /usr/local/share/ca-certificates/local-ca-root.crt` succeeds.
+- [ ] `sudo ./scripts/local-ca-trust-uninstall.sh` removes the installed CA entry.

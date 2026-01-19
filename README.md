@@ -16,9 +16,9 @@ This repository provides a Docker Compose edge stack centered on Traefik. It is 
    cd <repository-name>
    ```
 
-2. **Create your env file**
+2. **Bootstrap your env and secrets**
    ```bash
-   cp .env.example .env
+   make bootstrap
    # Update DEV_DOMAIN, BASE_DOMAIN, LOOPBACK_X, ENDPOINTS as needed.
    ```
 
