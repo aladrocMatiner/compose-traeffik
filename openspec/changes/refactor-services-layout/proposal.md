@@ -10,7 +10,7 @@ The repo is growing and service assets are spread across top-level folders. Cons
   - `traefik/` (static + dynamic config)
   - `step-ca/` (config, secrets)
   - `dns/` (data)
-  - `certs/` (local CA and leaf certs)
+  - `shared/certs/` (local CA and leaf certs)
   - `certbot/` referenced in compose (conf/, www/) but directory not currently present.
 - **Scripts/tests layout**: `scripts/` at root for lifecycle, certs, step-ca, DNS, and hosts; `tests/smoke/` for smoke tests.
 - **Paths in compose**: mounts from `./traefik`, `./dns`, `./step-ca`, `./certbot`, `./certs` plus a named volume for Traefik ACME and step-ca data.
