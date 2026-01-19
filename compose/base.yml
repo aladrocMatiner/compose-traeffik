@@ -1,5 +1,3 @@
-version: '3.8'
-
 # Shared networks used by the edge stack services.
 networks:
   proxy:

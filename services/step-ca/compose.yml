@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   step-ca:
     image: smallstep/step-ca:latest
