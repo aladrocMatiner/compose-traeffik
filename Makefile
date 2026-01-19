@@ -46,6 +46,8 @@ ifeq ($(COMPOSE_PROJECT_NAME),)
 COMPOSE_PROJECT_NAME := $(notdir $(abspath $(COMPOSE_PROJECT_DIR)))
 endif
 
+CERTS_DIR := shared/certs
+
 COMPOSE_CMD := docker compose --env-file .env --project-directory $(COMPOSE_PROJECT_DIR) --project-name $(COMPOSE_PROJECT_NAME) $(COMPOSE_FILES)
 COMPOSE_OPTS ?=
 comma := ,
@@ -222,7 +224,7 @@ help:
 	@echo "  ps                    List services in the stack."
 	@echo ""
 	@echo "Certificate Management (Mode A: Local Self-Signed):"
-	@echo "  certs-local           Generate local self-signed certificates in certs/local/."
+	@echo "  certs-local           Generate local self-signed certificates in $(CERTS_DIR)/local/."
 	@echo ""
 	@echo "Certificate Management (Mode B: Let's Encrypt with Certbot):"
 	@echo "  certs-le-issue        Issue a new Let's Encrypt certificate using certbot (requires 'le' profile)."

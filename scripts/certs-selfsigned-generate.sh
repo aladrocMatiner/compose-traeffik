@@ -3,7 +3,7 @@
 # Generates a local self-signed CA and issues a leaf certificate for the DEV_DOMAIN.
 # Designed for Mode A (local development).
 #
-# The generated certificates are stored in shared/certs/local-ca/ and shared/certs/local.
+# The generated certificates are stored in ${CERTS_DIR}/local-ca and ${CERTS_DIR}/local.
 #
 # Usage: ./scripts/certs-selfsigned-generate.sh
 #
@@ -18,8 +18,9 @@ check_env_var "DEV_DOMAIN"
 log_info "Checking for openssl..."
 check_command "openssl"
 
-CA_DIR="shared/certs/local-ca"
-CERT_DIR="shared/certs/local"
+CERTS_DIR=${CERTS_DIR:-shared/certs}
+CA_DIR="${CERTS_DIR}/local-ca"
+CERT_DIR="${CERTS_DIR}/local"
 CA_KEY="${CA_DIR}/ca.key"
 CA_CRT="${CA_DIR}/ca.crt"
 LEAF_KEY="${CERT_DIR}/privkey.pem"

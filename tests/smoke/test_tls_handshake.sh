@@ -25,7 +25,8 @@ log_info "Verifying TLS handshake for ${TARGET_HOST}:${TARGET_PORT}..."
 # Verification is performed separately with openssl verify to avoid
 # s_client CA loading inconsistencies across OpenSSL versions.
 
-CA_FILE="shared/certs/local-ca/ca.crt"
+CERTS_DIR="${CERTS_DIR:-shared/certs}"
+CA_FILE="${CERTS_DIR}/local-ca/ca.crt"
 
 if [ ! -f "${CA_FILE}" ]; then
     log_error "Local CA certificate not found at ${CA_FILE}. Run: make certs-local"

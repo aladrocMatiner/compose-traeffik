@@ -54,14 +54,14 @@ Use Mode A for local development when you want HTTPS without external certificat
 
 ```bash
 curl -vk "https://whoami.$DEV_DOMAIN/"
-openssl s_client -connect "whoami.$DEV_DOMAIN:443" -servername "whoami.$DEV_DOMAIN" -CAfile certs/local-ca/ca.crt -verify_return_error -prexit
+openssl s_client -connect "whoami.$DEV_DOMAIN:443" -servername "whoami.$DEV_DOMAIN" -CAfile shared/certs/local-ca/ca.crt -verify_return_error -prexit
 ```
 
 ## Common Pitfalls
 
 - **Browser shows certificate warning:**
   - Cause: The local CA is not trusted by your OS/browser.
-  - Fix: Trust `certs/local-ca/ca.crt` in your OS trust store.
+  - Fix: Trust `shared/certs/local-ca/ca.crt` in your OS trust store.
 
 - **Hostnames do not resolve:**
   - Cause: `/etc/hosts` missing entries for `$DEV_DOMAIN` subdomains.
