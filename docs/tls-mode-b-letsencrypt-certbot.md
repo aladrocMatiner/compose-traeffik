@@ -45,6 +45,7 @@ Mode B uses Certbot to issue publicly trusted certificates from Let's Encrypt. T
 - Certbot issues certificates for `${DEV_DOMAIN}` and subdomains defined in `scripts/certbot-issue.sh`.
 - Certificates are stored under `services/certbot/conf/live/`.
 - Traefik serves HTTPS using the certbot-issued files mounted under `/etc/letsencrypt`.
+- HTTP-01 challenges are served by Traefik routing `/.well-known/acme-challenge/` to `certbot-web`.
 
 ## Verification
 
@@ -64,7 +65,7 @@ curl -vk "https://whoami.${DEV_DOMAIN}/"
 
 ## Common pitfalls
 
-- **Ports 80/443 are already in use**: stop the stack before running `make certs-le-issue`, then start it again.
+- **Ports 80/443 are already in use**: keep Traefik running, but stop any other service occupying 80/443. Ensure the `le` profile is up so `certbot-web` can serve the challenge.
 - **Domain does not resolve publicly**: Let's Encrypt validation will fail.
 - **Staging certificates are not trusted**: set `LETSENCRYPT_STAGING=false` for production issuance.
 

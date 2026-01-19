@@ -17,9 +17,9 @@ Certbot is an optional profile used to issue and renew Let's Encrypt certificate
 <a id="run"></a>
 ## How it runs
 
-Start the profile container:
+Start the profile containers (certbot + certbot-web):
 ```bash
-./scripts/compose.sh --profile le up -d certbot
+./scripts/compose.sh --profile le up -d certbot certbot-web
 ```
 
 Issue or renew certificates:
@@ -39,7 +39,7 @@ Relevant env vars in `.env.example`:
 <a id="ports"></a>
 ## Ports, networks, volumes
 
-- Ports: the certbot scripts bind `80:80` and `443:443` during issuance/renewal
+- Ports: no direct host binds; Traefik routes `/.well-known/acme-challenge/` to `certbot-web` and Certbot uses `--webroot`
 - Networks: default compose network
 - Volumes:
   - `services/certbot/conf` -> `/etc/letsencrypt`

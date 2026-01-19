@@ -17,9 +17,9 @@ Certbot ar en valfri profil for att utfarda och fornya Let's Encrypt-certifikat.
 <a id="run"></a>
 ## Hur den kor
 
-Starta profilcontainern:
+Starta profilcontainrarna (certbot + certbot-web):
 ```bash
-./scripts/compose.sh --profile le up -d certbot
+./scripts/compose.sh --profile le up -d certbot certbot-web
 ```
 
 Utfarda eller fornya certifikat:
@@ -39,7 +39,7 @@ Relevanta env vars i `.env.example`:
 <a id="ports"></a>
 ## Portar, natverk, volymer
 
-- Portar: certbot-skripten binder `80:80` och `443:443` vid issuance/renewal
+- Portar: inga direkta bindningar; Traefik routar `/.well-known/acme-challenge/` till `certbot-web` och Certbot anvander `--webroot`
 - Natverk: default compose-natverk
 - Volymer:
   - `services/certbot/conf` -> `/etc/letsencrypt`

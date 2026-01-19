@@ -17,9 +17,9 @@ Certbot es un perfil opcional para emitir y renovar certificados Let's Encrypt.
 <a id="run"></a>
 ## Como corre
 
-Inicia el contenedor del perfil:
+Inicia los contenedores del perfil (certbot + certbot-web):
 ```bash
-./scripts/compose.sh --profile le up -d certbot
+./scripts/compose.sh --profile le up -d certbot certbot-web
 ```
 
 Emite o renueva certificados:
@@ -39,7 +39,7 @@ Variables relevantes en `.env.example`:
 <a id="ports"></a>
 ## Puertos, redes, volumenes
 
-- Puertos: los scripts de certbot enlazan `80:80` y `443:443` durante issuance/renewal
+- Puertos: no hay bind directo; Traefik enruta `/.well-known/acme-challenge/` a `certbot-web` y Certbot usa `--webroot`
 - Red: red por defecto de compose
 - Volumenes:
   - `services/certbot/conf` -> `/etc/letsencrypt`

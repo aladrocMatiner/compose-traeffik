@@ -44,6 +44,7 @@ Use Mode B when you want publicly trusted certificates from Let's Encrypt for de
 - Certbot issues a certificate for the configured domain.
 - Traefik serves the certificate for HTTPS requests.
 - `whoami.$DEV_DOMAIN` returns a successful HTTPS response.
+- HTTP-01 challenges are served by Traefik routing `/.well-known/acme-challenge/` to `certbot-web`.
 
 ## Verification Commands
 
@@ -55,7 +56,7 @@ curl -vk "https://whoami.$DEV_DOMAIN/"
 
 - **Certbot issuance fails:**
   - Cause: The domain does not resolve publicly to your host or port 80 is blocked.
-  - Fix: Ensure DNS and inbound ports 80/443 are reachable.
+  - Fix: Ensure DNS and inbound ports 80/443 are reachable and the `le` profile is up so `certbot-web` can serve challenges.
 
 - **Certbot scripts use hardcoded domains:**
   - Cause: Current `scripts/certbot-issue.sh` and `scripts/certbot-renew.sh` hardcode domains.
