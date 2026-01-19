@@ -117,7 +117,8 @@ stepca-up:
 # Stop step-ca service
 stepca-down:
 	@echo "Stopping Step-CA service..."
-	COMPOSE_PROFILES=stepca $(COMPOSE_CMD) $(COMPOSE_OPTS) down step-ca
+	COMPOSE_PROFILES=stepca $(COMPOSE_CMD) $(COMPOSE_OPTS) stop step-ca || true
+	COMPOSE_PROFILES=stepca $(COMPOSE_CMD) $(COMPOSE_OPTS) rm -f step-ca || true
 
 # Bootstrap step-ca server
 stepca-bootstrap: stepca-up
@@ -176,7 +177,8 @@ dns-up:
 
 dns-down:
 	@echo "Stopping DNS service..."
-	COMPOSE_PROFILES=dns ./scripts/compose.sh --profile dns $(COMPOSE_OPTS) down dns
+	COMPOSE_PROFILES=dns ./scripts/compose.sh --profile dns $(COMPOSE_OPTS) stop dns || true
+	COMPOSE_PROFILES=dns ./scripts/compose.sh --profile dns $(COMPOSE_OPTS) rm -f dns || true
 
 dns-logs:
 	@echo "Showing DNS service logs..."
@@ -230,7 +232,7 @@ help:
 	@echo ""
 	@echo "Certificate Management (Mode C: Step-CA):"
 	@echo "  stepca-up             Start the Step-CA service (activates 'stepca' profile)."
-	@echo "  stepca-down           Stop and remove the Step-CA service."
+	@echo "  stepca-down           Stop and remove the Step-CA container."
 	@echo "  stepca-bootstrap      Initialize and bootstrap the Step-CA server (requires 'stepca' profile)."
 	@echo "                        Requires STEP_CA_ADMIN_PROVISIONER_PASSWORD and STEP_CA_PASSWORD in .env."
 	@echo "  stepca-trust-install  Install Step-CA root CA into Ubuntu trust store (requires sudo)."
@@ -251,7 +253,7 @@ help:
 	@echo ""
 	@echo "DNS Service:"
 	@echo "  dns-up                Start the DNS service (profile: dns)."
-	@echo "  dns-down              Stop and remove the DNS service."
+	@echo "  dns-down              Stop and remove the DNS container."
 	@echo "  dns-logs              Follow DNS service logs."
 	@echo "  dns-status            Show DNS service status."
 	@echo "  dns-provision         Provision DNS records via API."
