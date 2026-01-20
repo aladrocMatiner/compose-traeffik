@@ -124,10 +124,13 @@ get_env_value() {
 
 SECRET_VARS=(
     "DNS_ADMIN_PASSWORD"
+    "DNS_UI_BASIC_AUTH_PASSWORD"
+    "TRAEFIK_DASHBOARD_BASIC_AUTH_PASSWORD"
     "STEP_CA_ADMIN_PROVISIONER_PASSWORD"
     "STEP_CA_PASSWORD"
 )
 
+DEFAULT_BASIC_AUTH_USER="admin"
 DEFAULT_ENDPOINTS_FULL="whoami,traefik,stepca,dns"
 DEFAULT_COMPOSE_PROFILES_FULL="dns,le,stepca"
 DEFAULT_TRAEFIK_DASHBOARD_FULL="true"
@@ -169,6 +172,9 @@ set_default_if_example() {
         log_info "Set ${key} default."
     fi
 }
+
+set_default_if_empty "DNS_UI_BASIC_AUTH_USER" "$DEFAULT_BASIC_AUTH_USER"
+set_default_if_empty "TRAEFIK_DASHBOARD_BASIC_AUTH_USER" "$DEFAULT_BASIC_AUTH_USER"
 
 ensure_endpoint_in_list() {
     local list="$1"
@@ -227,9 +233,36 @@ else
     set_env_value "TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH" ""
 fi
 
+generate_htpasswd_entry() {
+    local user="$1"
+    local pass="$2"
+
+    if command -v htpasswd >/dev/null 2>&1; then
+        htpasswd -nbB "$user" "$pass" | head -n 1
+        return
+    fi
+
+    if command -v openssl >/dev/null 2>&1; then
+        local hash
+        hash=$(openssl passwd -apr1 "$pass")
+        printf "%s:%s\n" "$user" "$hash"
+        return
+    fi
+
+    log_error "Missing htpasswd or openssl to generate BasicAuth credentials."
+}
+
 ensure_htpasswd_file() {
     local container_path="$1"
     local label="$2"
+    local user="$3"
+    local pass="$4"
+    local entry
+
+    if [ -z "$container_path" ]; then
+        return
+    fi
+
     if [[ "$container_path" != /etc/traefik/auth/* ]]; then
         log_warn "${label} auth path is not under /etc/traefik/auth/: ${container_path}"
         return
@@ -238,27 +271,27 @@ ensure_htpasswd_file() {
     local host_path="${REPO_ROOT}/services/traefik/auth/${relative}"
     local example_path="${host_path}.example"
 
-    if [ -f "$host_path" ]; then
-        return
-    fi
-
     mkdir -p "$(dirname "$host_path")"
 
-    if [ -f "$example_path" ]; then
-        cp "$example_path" "$host_path"
-        log_info "Created ${label} htpasswd from example."
-        return
+    if [ -z "$user" ] || [ -z "$pass" ]; then
+        log_error "Missing ${label} BasicAuth credentials in .env."
     fi
 
-    log_error "Missing example htpasswd for ${label}: ${example_path}"
+    entry=$(generate_htpasswd_entry "$user" "$pass")
+    printf "%s\n" "$entry" > "$host_path"
+    log_info "Generated ${label} htpasswd from .env."
 }
 
 if [ "$MODE" = "full" ]; then
     dns_auth_path=$(trim_quotes "$(get_env_value "DNS_UI_BASIC_AUTH_HTPASSWD_PATH")")
     dashboard_auth_path=$(trim_quotes "$(get_env_value "TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH")")
+    dns_auth_user=$(trim_quotes "$(get_env_value "DNS_UI_BASIC_AUTH_USER")")
+    dns_auth_pass=$(trim_quotes "$(get_env_value "DNS_UI_BASIC_AUTH_PASSWORD")")
+    dashboard_auth_user=$(trim_quotes "$(get_env_value "TRAEFIK_DASHBOARD_BASIC_AUTH_USER")")
+    dashboard_auth_pass=$(trim_quotes "$(get_env_value "TRAEFIK_DASHBOARD_BASIC_AUTH_PASSWORD")")
 
-    ensure_htpasswd_file "$dns_auth_path" "DNS UI"
-    ensure_htpasswd_file "$dashboard_auth_path" "Traefik dashboard"
+    ensure_htpasswd_file "$dns_auth_path" "DNS UI" "$dns_auth_user" "$dns_auth_pass"
+    ensure_htpasswd_file "$dashboard_auth_path" "Traefik dashboard" "$dashboard_auth_user" "$dashboard_auth_pass"
 fi
 
 log_success "Environment bootstrap complete."

@@ -27,6 +27,7 @@ Este repositorio ofrece una edge stack de Docker Compose centrada en Traefik. Es
    ```bash
    make bootstrap-full
    # Esto refleja los defaults completos del template.
+   # Los htpasswd BasicAuth se generan desde credenciales en .env.
    ```
    Alternativa: genera `.env` directamente desde la plantilla:
    ```bash
@@ -109,8 +110,10 @@ Comandos comunes:
 Archivos auth:
 - `services/traefik/auth/dns-ui.htpasswd.example`
 - `services/traefik/auth/traefik-dashboard.htpasswd.example`
-- `make bootstrap` copia los example a `services/traefik/auth/*.htpasswd` (credenciales por defecto: `admin` / `change-me`).
-- Reemplaza con `htpasswd -nbB admin 'new-pass' > services/traefik/auth/<file>.htpasswd`.
+- `make bootstrap-full` genera `services/traefik/auth/*.htpasswd` desde los valores del `.env`:
+  - `DNS_UI_BASIC_AUTH_USER` / `DNS_UI_BASIC_AUTH_PASSWORD`
+  - `TRAEFIK_DASHBOARD_BASIC_AUTH_USER` / `TRAEFIK_DASHBOARD_BASIC_AUTH_PASSWORD`
+- Para rotar credenciales, actualiza el `.env` y ejecuta `./scripts/env-generate.sh --mode=full`.
 
 <a id="testing"></a>
 ## Testing

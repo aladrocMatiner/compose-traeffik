@@ -27,6 +27,7 @@ Detta repo ger en Docker Compose edge stack centrerad runt Traefik. Den ar gjord
    ```bash
    make bootstrap-full
    # Detta matchar de fulla defaultsen i templaten.
+   # BasicAuth htpasswd genereras fran credentials i .env.
    ```
    Alternativ: generera `.env` direkt fran mallen:
    ```bash
@@ -109,8 +110,10 @@ Vanliga kommandon:
 Auth-filer:
 - `services/traefik/auth/dns-ui.htpasswd.example`
 - `services/traefik/auth/traefik-dashboard.htpasswd.example`
-- `make bootstrap` kopierar example till `services/traefik/auth/*.htpasswd` (standard: `admin` / `change-me`).
-- Byt med `htpasswd -nbB admin 'new-pass' > services/traefik/auth/<file>.htpasswd`.
+- `make bootstrap-full` genererar `services/traefik/auth/*.htpasswd` fran `.env`-varden:
+  - `DNS_UI_BASIC_AUTH_USER` / `DNS_UI_BASIC_AUTH_PASSWORD`
+  - `TRAEFIK_DASHBOARD_BASIC_AUTH_USER` / `TRAEFIK_DASHBOARD_BASIC_AUTH_PASSWORD`
+- For att rotera credentials, uppdatera `.env` och kor `./scripts/env-generate.sh --mode=full`.
 
 <a id="testing"></a>
 ## Tester
