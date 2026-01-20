@@ -65,14 +65,14 @@ Based on the repository scan, the following key facts have been identified:
 ## B) Epic Map
 
 *   **E1 — Documentation Foundation**: Establish the base documentation structure, including a new `docs/` directory, an index file, and define a consistent style guide and glossary to ensure high-quality and consistent content.
-*   **E2 — README & Quickstart (Mode A)**: Enhance the main `README.md` to be a comprehensive entry point, and create a dedicated quickstart guide (`docs/quickstart-mode-a.md`) that enables a new user to quickly get the stack running with Mode A (local self-signed TLS) and verify its functionality.
-*   **E3 — Architecture Deep Dive**: Document the core architectural components including Docker networks, Compose profiles, Traefik providers, and the overall routing model. Emphasize secure-by-default choices and their implications in `docs/architecture.md`.
-*   **E4 — Compose Usage & Profiles**: Detail the usage of `docker compose` commands and the activation of `COMPOSE_PROFILES`. Explain how to manage the stack with different profiles for TLS modes and general service orchestration in `docs/compose-usage.md`.
-*   **E5 — Makefile & Scripts Operations**: Provide clear documentation for all `Makefile` targets and helper scripts, covering common operational workflows such as starting/stopping the stack, viewing logs, and running tests in `docs/make-and-scripts.md`.
-*   **E6 — Service Docs**: Create dedicated documentation files for each key service (`traefik`, `whoami`, `certbot`, `step-ca`) within `docs/04-services/`, detailing their purpose, configuration, and integration.
+*   **E2 — README & Quickstart (Mode A)**: Enhance the main `README.md` to be a comprehensive entry point, and keep the Mode A quickstart guide in `docs/05-tls/mode-a-selfsigned.md` so new users can get the stack running and verify functionality.
+*   **E3 — Architecture Deep Dive**: Document the core architectural components including Docker networks, Compose profiles, Traefik providers, and the overall routing model. Emphasize secure-by-default choices and their implications in `docs/01-architecture.md`.
+*   **E4 — Compose Usage & Profiles**: Detail the usage of `docker compose` commands and the activation of `COMPOSE_PROFILES`. Explain how to manage the stack with different profiles for TLS modes and general service orchestration in `docs/02-compose-usage.md`.
+*   **E5 — Makefile & Scripts Operations**: Provide clear documentation for all `Makefile` targets and helper scripts, covering common operational workflows such as starting/stopping the stack, viewing logs, and running tests in `docs/03-make-and-scripts.md`.
+*   **E6 — Service Docs**: Create dedicated documentation files for each key service (`traefik`, `whoami`, `certbot`, `step-ca`) under `services/<service>/README.md`, detailing their purpose, configuration, and integration.
 *   **E7 — TLS Mode Guides (A/B/C)**: Develop in-depth guides for each TLS mode (`docs/05-tls/mode-a-selfsigned.md`, `mode-b-letsencrypt-certbot.md`, `mode-c-stepca-acme.md`), including step-by-step instructions for setup, verification, renewal/rotation, and potential rollback procedures.
 *   **E8 — How-to: Add a Service**: Create a practical guide (`docs/06-howto/add-a-service.md`) that outlines the process for integrating new services into the stack, including required Traefik labels, middleware examples, and a checklist for successful deployment.
-*   **E9 — Testing + Troubleshooting**: Document the smoke testing framework (`docs/07-testing.md`), explaining how tests work and how to interpret results. Create a comprehensive troubleshooting guide (`docs/08-troubleshooting.md`) organized by symptoms, providing diagnostic steps and solutions.
+*   **E9 — Testing + Troubleshooting**: Document the smoke testing framework (`tests/README.md`), explaining how tests work and how to interpret results. Maintain troubleshooting guidance in `README.md`.
 *   **E10 — Documentation QA Pass**: Conduct a final review and consistency sweep across all documentation, ensuring valid cross-links, accurate commands, correct environment variable usage, consistent terminology, and clear security callouts.
 
 ## C) Epic Details
@@ -92,14 +92,14 @@ Goal: structure, style guide, glossary, index, doc templates.
     *   **Review checklist**:
         *   Index links are placeholders but logically ordered.
         *   File created in correct location.
-*   **T1.2**: Create `docs/glossary-style-guide.md`
+*   **T1.2**: Create `docs/99-style-guide.md` and `docs/99-glossary.md`
     *   **Owner**: Documentation Lead
     *   **Description**: Define a consistent style guide and populate a glossary with key terms used across the repository (e.g., Traefik, Whoami, ACME, Let's Encrypt, Step-CA, DEV_DOMAIN, profiles).
-    *   **Files/paths affected**: `docs/glossary-style-guide.md`
+    *   **Files/paths affected**: `docs/99-style-guide.md`, `docs/99-glossary.md`
     *   **Dependencies**: T1.1
     *   **Acceptance criteria**:
-        *   File exists.
-        *   Contains sections for Style Guide and Glossary.
+        *   Files exist.
+        *   Style guide rules are defined in `docs/99-style-guide.md`.
         *   Glossary includes definitions for at least: Traefik, ACME, Certbot, Step-CA, Docker Compose Profile, DEV_DOMAIN.
     *   **Review checklist**:
         *   Style guide rules are clear and concise.
@@ -122,10 +122,10 @@ Goal: “from zero to working” with Mode A, with verification and minimal trou
         *   All new `docs/` files are linked (even if content is pending).
         *   Overview is concise and inviting.
         *   No broken links in the README itself.
-*   **T2.2**: Create `docs/quickstart-mode-a.md`
+*   **T2.2**: Update `docs/05-tls/mode-a-selfsigned.md`
     *   **Owner**: DevOps UX Engineer
     *   **Description**: Develop a detailed quickstart guide for Mode A, covering prerequisites, host configuration (`/etc/hosts`), generating self-signed certificates, starting the stack, and verifying initial functionality.
-    *   **Files/paths affected**: `docs/quickstart-mode-a.md`
+    *   **Files/paths affected**: `docs/05-tls/mode-a-selfsigned.md`
     *   **Dependencies**: T2.1
     *   **Acceptance criteria**:
         *   Document includes clear steps for: `cp .env.example .env`, `make certs-local`, `make up`, `make test`.
@@ -208,10 +208,10 @@ Goal: document make targets and scripts; operational workflows (up/down/logs/tes
 Goal: per-service docs (Traefik, whoami, certbot, step-ca) using a standard template.
 
 #### CH6: Core Service Documentation
-*   **T6.1**: Create `docs/04-services/traefik.md`
+*   **T6.1**: Create `services/traefik/README.md`
     *   **Owner**: Traefik & Routing Specialist
     *   **Description**: Document the Traefik service, covering its configuration (`traefik.yml`, dynamic configs), providers, entrypoints, and how its labels are used for routing.
-    *   **Files/paths affected**: `docs/04-services/traefik.md`
+    *   **Files/paths affected**: `services/traefik/README.md`
     *   **Dependencies**: T1.1, T2.1, E3 (T3.1, T3.2)
     *   **Acceptance criteria**:
         *   Explains static vs. dynamic configuration.
@@ -221,10 +221,10 @@ Goal: per-service docs (Traefik, whoami, certbot, step-ca) using a standard temp
     *   **Review checklist**:
         *   Configuration snippets are accurate.
         *   Links to relevant TLS mode docs for certificate resolvers.
-*   **T6.2**: Create `docs/04-services/whoami.md`
+*   **T6.2**: Create `services/whoami/README.md`
     *   **Owner**: Traefik & Routing Specialist
     *   **Description**: Document the `whoami` demo service, explaining its role, Traefik label configuration for routing and middlewares, and how to verify its functionality.
-    *   **Files/paths affected**: `docs/04-services/whoami.md`
+    *   **Files/paths affected**: `services/whoami/README.md`
     *   **Dependencies**: T1.1, T2.1, T6.1
     *   **Acceptance criteria**:
         *   Explains `whoami` as a simple test service.
@@ -233,10 +233,10 @@ Goal: per-service docs (Traefik, whoami, certbot, step-ca) using a standard temp
     *   **Review checklist**:
         *   Label examples are accurate copy/paste snippets.
         *   Verification steps are concise.
-*   **T6.3**: Create `docs/04-services/certbot.md`
+*   **T6.3**: Create `services/certbot/README.md`
     *   **Owner**: TLS / PKI Specialist
     *   **Description**: Document the `certbot` service (Mode B), its Docker Compose profile (`le`), mounted volumes, and its role in obtaining and renewing Let's Encrypt certificates.
-    *   **Files/paths affected**: `docs/04-services/certbot.md`
+    *   **Files/paths affected**: `services/certbot/README.md`
     *   **Dependencies**: T1.1, T2.1, E4 (T4.1), E5 (T5.1)
     *   **Acceptance criteria**:
         *   Explains the `le` profile activation.
@@ -245,10 +245,10 @@ Goal: per-service docs (Traefik, whoami, certbot, step-ca) using a standard temp
     *   **Review checklist**:
         *   Distinguishes Certbot's role from Traefik's ACME resolver.
         *   Highlights `LETSENCRYPT_STAGING` and `ACME_EMAIL` variables.
-*   **T6.4**: Create `docs/04-services/step-ca.md`
+*   **T6.4**: Create `services/step-ca/README.md`
     *   **Owner**: TLS / PKI Specialist
     *   **Description**: Document the `step-ca` service (Mode C), its Docker Compose profile (`stepca`), mounted volumes, and its function as an internal ACME server.
-    *   **Files/paths affected**: `docs/04-services/step-ca.md`
+    *   **Files/paths affected**: `services/step-ca/README.md`
     *   **Dependencies**: T1.1, T2.1, E4 (T4.1), E5 (T5.1)
     *   **Acceptance criteria**:
         *   Explains the `stepca` profile activation.
@@ -327,10 +327,10 @@ Goal: service integration contract, label templates (Host/Path), middlewares exa
 Goal: smoke tests explained and troubleshooting by symptom with commands.
 
 #### CH9: Testing & Troubleshooting Guides
-*   **T9.1**: Create `docs/07-testing.md`
+*   **T9.1**: Update `tests/README.md`
     *   **Owner**: QA / Test Engineer
     *   **Description**: Document the smoke testing framework, explaining `make test`, how individual scripts work (`test_traefik_ready.sh`, `test_routing.sh`, `test_tls_handshake.sh`, `test_http_redirect.sh`), and how to interpret their output.
-    *   **Files/paths affected**: `docs/07-testing.md`
+    *   **Files/paths affected**: `tests/README.md`
     *   **Dependencies**: T1.1, T2.1, E5 (T5.1)
     *   **Acceptance criteria**:
         *   Explains `make test` as the entry point.
@@ -339,10 +339,10 @@ Goal: smoke tests explained and troubleshooting by symptom with commands.
     *   **Review checklist**:
         *   Test execution commands are accurate.
         *   Links to relevant service and TLS docs for deeper debugging.
-*   **T9.2**: Create `docs/08-troubleshooting.md`
+*   **T9.2**: Update `README.md` troubleshooting section
     *   **Owner**: DevOps UX Engineer
     *   **Description**: Compile a comprehensive troubleshooting guide, structured by common symptoms or error messages, providing diagnostic steps and solutions.
-    *   **Files/paths affected**: `docs/08-troubleshooting.md`
+    *   **Files/paths affected**: `README.md`
     *   **Dependencies**: T1.1, T2.1, E3 (T3.1), E7 (T7.1, T7.2, T7.3)
     *   **Acceptance criteria**:
         *   Covers issues like "Domain does not resolve", "Certificate errors", "Service not reachable", "ACME challenge failures".
@@ -396,7 +396,7 @@ Goal: consistency sweep: links, commands, env vars, paths, security notes.
         *   No accidental exposure of sensitive info in docs examples.
 *   **T10.4**: Glossary and Terminology Consistency Check
     *   **Owner**: Documentation Lead
-    *   **Description**: Perform a final review of all documentation against the `docs/glossary-style-guide.md` to ensure consistent terminology, formatting, and adherence to the defined style.
+*   **Description**: Perform a final review of all documentation against the `docs/99-style-guide.md` and `docs/99-glossary.md` to ensure consistent terminology, formatting, and adherence to the defined style.
     *   **Files/paths affected**: All `.md` files in `docs/` and `README.md`
     *   **Dependencies**: T1.2, All prior documentation tasks (T2.1 - T10.3)
     *   **Acceptance criteria**:

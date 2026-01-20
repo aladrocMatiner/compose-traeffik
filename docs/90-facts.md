@@ -39,8 +39,8 @@ This repository sets up a Docker Compose-based Traefik edge stack, integrating a
 ## Environment Variables (.env.example)
 
 *   `PROJECT_NAME=compose-traeffik`: Project name used for default domain convention.
-*   `DEV_DOMAIN=compose-traeffik.aladroc.io`: Base domain for local development.
-*   `BASE_DOMAIN=compose-traeffik.aladroc.io`: Base domain for loopback subdomain mappings.
+*   `DEV_DOMAIN=local.test`: Base domain for local development.
+*   `BASE_DOMAIN=local.test`: Base domain for loopback subdomain mappings.
 *   `LOOPBACK_X=10`: Loopback X octet for 127.0.X.Y assignments.
 *   `ENDPOINTS=whoami,traefik,stepca`: Optional list of endpoints for mapping.
 *   `TRAEFIK_IMAGE=traefik:v3.6.7`: Docker image tag for Traefik.

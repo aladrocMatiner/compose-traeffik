@@ -12,14 +12,15 @@ This repository provides a Docker Compose edge stack centered on Traefik. It is 
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
-   cd <repository-name>
+   git clone https://github.com/aladrocMatiner/compose-traeffik.git
+   cd compose-traeffik
    ```
 
 2. **Bootstrap your env and secrets**
    ```bash
    make bootstrap
    # Update DEV_DOMAIN, BASE_DOMAIN, LOOPBACK_X, ENDPOINTS as needed.
+   # Defaults use the local-only domain local.test.
    ```
 
 3. **Generate local certificates**
@@ -98,6 +99,7 @@ Auth files:
 - `services/traefik/auth/traefik-dashboard.htpasswd.example` (Traefik dashboard BasicAuth)
 - Generate with `htpasswd -nbB admin 'change-me'` and replace the example file contents.
 - Update `.env` with the container paths: `DNS_UI_BASIC_AUTH_HTPASSWD_PATH=/etc/traefik/auth/dns-ui.htpasswd` and `TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH=/etc/traefik/auth/traefik-dashboard.htpasswd`.
+- Preflight checks reject `.example` paths when enabling the dns profile or Traefik dashboard.
 
 Compose project pinning:
 - The compose wrapper pins `--project-directory` and `--project-name` to avoid cross‑CWD conflicts. Override with `COMPOSE_PROJECT_NAME` in `.env` if needed.

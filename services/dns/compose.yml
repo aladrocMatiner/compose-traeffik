@@ -1,6 +1,6 @@
 services:
   dns:
-    image: technitium/dns-server:latest
+    image: technitium/dns-server:14.3.0
     container_name: dns
     profiles:
       - dns

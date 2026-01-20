@@ -12,14 +12,15 @@ Este repositorio ofrece una edge stack de Docker Compose centrada en Traefik. Es
 
 1. **Clona el repositorio**
    ```bash
-   git clone <repository-url>
-   cd <repository-name>
+   git clone https://github.com/aladrocMatiner/compose-traeffik.git
+   cd compose-traeffik
    ```
 
 2. **Crea el archivo env**
    ```bash
    cp .env.example .env
    # Actualiza DEV_DOMAIN, BASE_DOMAIN, LOOPBACK_X, ENDPOINTS segun sea necesario.
+   # El valor por defecto usa el dominio local local.test.
    ```
 
 3. **Genera certificados locales**

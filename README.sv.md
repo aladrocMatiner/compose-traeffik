@@ -12,14 +12,15 @@ Detta repo ger en Docker Compose edge stack centrerad runt Traefik. Den ar gjord
 
 1. **Klona repo**
    ```bash
-   git clone <repository-url>
-   cd <repository-name>
+   git clone https://github.com/aladrocMatiner/compose-traeffik.git
+   cd compose-traeffik
    ```
 
 2. **Skapa din env-fil**
    ```bash
    cp .env.example .env
    # Uppdatera DEV_DOMAIN, BASE_DOMAIN, LOOPBACK_X, ENDPOINTS vid behov.
+   # Standard ar lokal-dominen local.test.
    ```
 
 3. **Skapa lokala certifikat**
