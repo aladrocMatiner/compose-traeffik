@@ -16,11 +16,12 @@ Este repositorio ofrece una edge stack de Docker Compose centrada en Traefik. Es
    cd compose-traeffik
    ```
 
-2. **Crea el archivo env**
+2. **Bootstrap de env y secretos**
    ```bash
-   cp .env.example .env
+   make bootstrap
    # Actualiza DEV_DOMAIN, BASE_DOMAIN, LOOPBACK_X, ENDPOINTS segun sea necesario.
    # El valor por defecto usa el dominio local local.test.
+   # Bootstrap copia los archivos BasicAuth a services/traefik/auth/.
    ```
 
 3. **Genera certificados locales**
@@ -59,9 +60,9 @@ Guias de TLS:
 ## Endpoints
 
 - **Whoami**: `https://whoami.${DEV_DOMAIN}` (stack por defecto)
-- **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth, HTTPS)
-- **DNS UI**: `https://dns.${BASE_DOMAIN}` (perfil `dns`, BasicAuth)
-- **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (perfil `stepca`)
+- **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth; habilitado por defecto)
+- **DNS UI**: `https://dns.${BASE_DOMAIN}` (perfil `dns`, BasicAuth; habilitado por defecto)
+- **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (perfil `stepca`; habilitado por defecto)
 
 <a id="services"></a>
 ## Servicios
@@ -93,6 +94,12 @@ Comandos comunes:
 - `make stepca-up`, `make stepca-bootstrap`, `make stepca-trust-install`
 - `make dns-up`, `make dns-provision`, `make dns-config-apply`
 - `make hosts-generate`, `make hosts-apply`, `make hosts-status`
+
+Archivos auth:
+- `services/traefik/auth/dns-ui.htpasswd.example`
+- `services/traefik/auth/traefik-dashboard.htpasswd.example`
+- `make bootstrap` copia los example a `services/traefik/auth/*.htpasswd` (credenciales por defecto: `admin` / `change-me`).
+- Reemplaza con `htpasswd -nbB admin 'new-pass' > services/traefik/auth/<file>.htpasswd`.
 
 <a id="testing"></a>
 ## Testing

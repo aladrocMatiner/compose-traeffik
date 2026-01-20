@@ -16,11 +16,12 @@ Detta repo ger en Docker Compose edge stack centrerad runt Traefik. Den ar gjord
    cd compose-traeffik
    ```
 
-2. **Skapa din env-fil**
+2. **Bootstrap av env och secrets**
    ```bash
-   cp .env.example .env
+   make bootstrap
    # Uppdatera DEV_DOMAIN, BASE_DOMAIN, LOOPBACK_X, ENDPOINTS vid behov.
    # Standard ar lokal-dominen local.test.
+   # Bootstrap kopierar BasicAuth-filer till services/traefik/auth/.
    ```
 
 3. **Skapa lokala certifikat**
@@ -59,9 +60,9 @@ Detaljerade TLS-floden:
 ## Endpoints
 
 - **Whoami**: `https://whoami.${DEV_DOMAIN}` (standardstack)
-- **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth, HTTPS)
-- **DNS UI**: `https://dns.${BASE_DOMAIN}` (profil `dns`, BasicAuth)
-- **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (profil `stepca`)
+- **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth; aktiverad som standard)
+- **DNS UI**: `https://dns.${BASE_DOMAIN}` (profil `dns`, BasicAuth; aktiverad som standard)
+- **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (profil `stepca`; aktiverad som standard)
 
 <a id="services"></a>
 ## Tjanster
@@ -93,6 +94,12 @@ Vanliga kommandon:
 - `make stepca-up`, `make stepca-bootstrap`, `make stepca-trust-install`
 - `make dns-up`, `make dns-provision`, `make dns-config-apply`
 - `make hosts-generate`, `make hosts-apply`, `make hosts-status`
+
+Auth-filer:
+- `services/traefik/auth/dns-ui.htpasswd.example`
+- `services/traefik/auth/traefik-dashboard.htpasswd.example`
+- `make bootstrap` kopierar example till `services/traefik/auth/*.htpasswd` (standard: `admin` / `change-me`).
+- Byt med `htpasswd -nbB admin 'new-pass' > services/traefik/auth/<file>.htpasswd`.
 
 <a id="testing"></a>
 ## Tester

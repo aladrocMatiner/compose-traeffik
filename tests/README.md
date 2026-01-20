@@ -8,6 +8,7 @@ This directory contains smoke tests that verify Traefik readiness, routing, TLS,
    ```bash
    make up
    ```
+   If you are starting from scratch, run `make bootstrap` first to generate `.env`.
 
 2. **Run all smoke tests**
    ```bash
@@ -39,7 +40,8 @@ Smoke tests use environment variables loaded from `.env` via `scripts/healthchec
 - `HTTP_TO_HTTPS_REDIRECT`
 - `HTTP_TO_HTTPS_MIDDLEWARE` (preferred when set)
 
-Ensure `.env` exists (copy from `.env.example`) before running tests.
+Ensure `.env` exists (prefer `make bootstrap`) before running tests. Optional profiles
+are enabled by default via `COMPOSE_PROFILES` in `.env`; edit it if you want a smaller stack.
 
 ## Expected output
 

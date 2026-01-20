@@ -21,6 +21,7 @@ This repository provides a Docker Compose edge stack centered on Traefik. It is 
    make bootstrap
    # Update DEV_DOMAIN, BASE_DOMAIN, LOOPBACK_X, ENDPOINTS as needed.
    # Defaults use the local-only domain local.test.
+   # Bootstrap also copies BasicAuth files into services/traefik/auth/.
    ```
 
 3. **Generate local certificates**
@@ -59,9 +60,9 @@ For detailed TLS workflows, see:
 ## Endpoints
 
 - **Whoami**: `https://whoami.${DEV_DOMAIN}` (default stack; uses Traefik HTTPS)
-- **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth; set `TRAEFIK_DASHBOARD=true` to enable)
-- **DNS UI**: `https://dns.${BASE_DOMAIN}` (profile `dns`, BasicAuth required)
-- **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (profile `stepca`)
+- **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth; enabled by default)
+- **DNS UI**: `https://dns.${BASE_DOMAIN}` (profile `dns`, BasicAuth required; enabled by default)
+- **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (profile `stepca`; enabled by default)
 
 <a id="services"></a>
 ## Services
@@ -97,8 +98,8 @@ Common commands:
 Auth files:
 - `services/traefik/auth/dns-ui.htpasswd.example` (DNS UI BasicAuth)
 - `services/traefik/auth/traefik-dashboard.htpasswd.example` (Traefik dashboard BasicAuth)
-- Generate with `htpasswd -nbB admin 'change-me'` and replace the example file contents.
-- Update `.env` with the container paths: `DNS_UI_BASIC_AUTH_HTPASSWD_PATH=/etc/traefik/auth/dns-ui.htpasswd` and `TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH=/etc/traefik/auth/traefik-dashboard.htpasswd`.
+- `make bootstrap` copies the example files to `services/traefik/auth/*.htpasswd` (default credentials: `admin` / `change-me`).
+- Replace with your own credentials using `htpasswd -nbB admin 'new-pass' > services/traefik/auth/<file>.htpasswd`.
 - Preflight checks reject `.example` paths when enabling the dns profile or Traefik dashboard.
 
 Compose project pinning:
