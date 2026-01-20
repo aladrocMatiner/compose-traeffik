@@ -32,6 +32,10 @@ if [ -f "${ENV_FILE}" ]; then
   set -u
 fi
 
+if [ -z "${ENV_FILE:-}" ]; then
+  ENV_FILE="${REPO_ROOT}/.env"
+fi
+
 COMPOSE_PROJECT_NAME_VALUE="${COMPOSE_PROJECT_NAME:-}"
 if [ -z "${COMPOSE_PROJECT_NAME_VALUE}" ]; then
   COMPOSE_PROJECT_NAME_VALUE="${PROJECT_NAME:-}"
