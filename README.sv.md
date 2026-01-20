@@ -16,18 +16,23 @@ Detta repo ger en Docker Compose edge stack centrerad runt Traefik. Den ar gjord
    cd compose-traeffik
    ```
 
-2. **Bootstrap av env och secrets**
+2. **Bootstrap av env och secrets (produktion-minimal som standard)**
    ```bash
    make bootstrap
+   # Produktion-minimala defaults (valfria profiler avstangda).
    # Uppdatera DEV_DOMAIN, BASE_DOMAIN, LOOPBACK_X, ENDPOINTS vid behov.
    # Standard ar lokal-dominen local.test.
-   # Bootstrap kopierar BasicAuth-filer till services/traefik/auth/.
+   ```
+   Fulla defaults (valfria profiler aktiverade):
+   ```bash
+   make bootstrap-full
+   # Detta matchar de fulla defaultsen i templaten.
    ```
    Alternativ: generera `.env` direkt fran mallen:
    ```bash
-   ./scripts/env-generate.sh
-   # Anvand --force for att generera om fran .env.example.
-   # ./scripts/env-generate.sh --force
+   ./scripts/env-generate.sh --mode=prod
+   # Anvand --mode=full for fulla defaults eller --force for att generera om.
+   # ./scripts/env-generate.sh --mode=full --force
    ```
 
 3. **Skapa lokala certifikat**

@@ -96,7 +96,12 @@ ps:
 
 bootstrap:
 	@echo "Bootstrapping local environment (.env and directories)..."
-	./scripts/env-generate.sh
+	./scripts/env-generate.sh --mode=prod
+	mkdir -p shared/certs shared/certs/local-ca shared/certs/local
+
+bootstrap-full:
+	@echo "Bootstrapping local environment (.env and directories) with full defaults..."
+	./scripts/env-generate.sh --mode=full
 	mkdir -p shared/certs shared/certs/local-ca shared/certs/local
 
 certs-local:
@@ -238,7 +243,8 @@ help:
 	@echo ""
 	@echo "General Commands:"
 	@echo "  help                  Display this help message."
-	@echo "  bootstrap             Create .env with random secrets and required directories."
+	@echo "  bootstrap             Create .env with production-minimal defaults and required directories."
+	@echo "  bootstrap-full        Create .env with full defaults and required directories."
 	@echo "  up                    Start the default stack (Traefik + whoami)."
 	@echo "  down                  Stop and remove the default stack."
 	@echo "  restart               Restart the default stack."

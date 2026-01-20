@@ -5,7 +5,9 @@
 #
 # Usage:
 #   ./scripts/env-generate.sh
-#   ./scripts/env-generate.sh --force
+#   ./scripts/env-generate.sh --mode=prod
+#   ./scripts/env-generate.sh --mode=full
+#   ./scripts/env-generate.sh --mode=full --force
 #
 
 SCRIPT_DIR=$(dirname "$0")
@@ -17,10 +19,39 @@ REPO_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
 ENV_EXAMPLE=".env.example"
 ENV_FILE=".env"
 FORCE=false
+MODE="prod"
 
-if [ "${1:-}" = "--force" ]; then
-    FORCE=true
-fi
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --force)
+            FORCE=true
+            shift
+            ;;
+        --mode=*)
+            MODE="${1#--mode=}"
+            shift
+            ;;
+        --mode)
+            if [ -n "${2:-}" ]; then
+                MODE="$2"
+                shift 2
+            else
+                log_error "Missing value for --mode."
+            fi
+            ;;
+        *)
+            log_error "Unknown argument: $1"
+            ;;
+    esac
+done
+
+case "$MODE" in
+    prod|full)
+        ;;
+    *)
+        log_error "Invalid mode: ${MODE}. Use --mode=prod or --mode=full."
+        ;;
+esac
 
 if [ ! -f "$ENV_EXAMPLE" ]; then
     log_error "Missing $ENV_EXAMPLE. Cannot bootstrap environment."
@@ -97,10 +128,10 @@ SECRET_VARS=(
     "STEP_CA_PASSWORD"
 )
 
-DEFAULT_COMPOSE_PROFILES="dns,le,stepca"
-DEFAULT_TRAEFIK_DASHBOARD="true"
-DEFAULT_DNS_UI_BASIC_AUTH_HTPASSWD_PATH="/etc/traefik/auth/dns-ui.htpasswd"
-DEFAULT_TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH="/etc/traefik/auth/traefik-dashboard.htpasswd"
+DEFAULT_COMPOSE_PROFILES_FULL="dns,le,stepca"
+DEFAULT_TRAEFIK_DASHBOARD_FULL="true"
+DEFAULT_DNS_UI_BASIC_AUTH_HTPASSWD_PATH_FULL="/etc/traefik/auth/dns-ui.htpasswd"
+DEFAULT_TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH_FULL="/etc/traefik/auth/traefik-dashboard.htpasswd"
 
 for var in "${SECRET_VARS[@]}"; do
     current_raw=$(get_env_value "$var")
@@ -138,10 +169,17 @@ set_default_if_example() {
     fi
 }
 
-set_default_if_empty "TRAEFIK_DASHBOARD" "$DEFAULT_TRAEFIK_DASHBOARD"
-set_default_if_empty "COMPOSE_PROFILES" "$DEFAULT_COMPOSE_PROFILES"
-set_default_if_example "DNS_UI_BASIC_AUTH_HTPASSWD_PATH" "$DEFAULT_DNS_UI_BASIC_AUTH_HTPASSWD_PATH"
-set_default_if_example "TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH" "$DEFAULT_TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH"
+if [ "$MODE" = "full" ]; then
+    set_default_if_empty "TRAEFIK_DASHBOARD" "$DEFAULT_TRAEFIK_DASHBOARD_FULL"
+    set_default_if_empty "COMPOSE_PROFILES" "$DEFAULT_COMPOSE_PROFILES_FULL"
+    set_default_if_example "DNS_UI_BASIC_AUTH_HTPASSWD_PATH" "$DEFAULT_DNS_UI_BASIC_AUTH_HTPASSWD_PATH_FULL"
+    set_default_if_example "TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH" "$DEFAULT_TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH_FULL"
+else
+    set_env_value "TRAEFIK_DASHBOARD" "false"
+    set_env_value "COMPOSE_PROFILES" ""
+    set_env_value "DNS_UI_BASIC_AUTH_HTPASSWD_PATH" ""
+    set_env_value "TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH" ""
+fi
 
 ensure_htpasswd_file() {
     local container_path="$1"
@@ -169,10 +207,12 @@ ensure_htpasswd_file() {
     log_error "Missing example htpasswd for ${label}: ${example_path}"
 }
 
-dns_auth_path=$(trim_quotes "$(get_env_value "DNS_UI_BASIC_AUTH_HTPASSWD_PATH")")
-dashboard_auth_path=$(trim_quotes "$(get_env_value "TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH")")
+if [ "$MODE" = "full" ]; then
+    dns_auth_path=$(trim_quotes "$(get_env_value "DNS_UI_BASIC_AUTH_HTPASSWD_PATH")")
+    dashboard_auth_path=$(trim_quotes "$(get_env_value "TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH")")
 
-ensure_htpasswd_file "$dns_auth_path" "DNS UI"
-ensure_htpasswd_file "$dashboard_auth_path" "Traefik dashboard"
+    ensure_htpasswd_file "$dns_auth_path" "DNS UI"
+    ensure_htpasswd_file "$dashboard_auth_path" "Traefik dashboard"
+fi
 
 log_success "Environment bootstrap complete."

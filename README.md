@@ -16,18 +16,23 @@ This repository provides a Docker Compose edge stack centered on Traefik. It is 
    cd compose-traeffik
    ```
 
-2. **Bootstrap your env and secrets**
+2. **Bootstrap your env and secrets (production-minimal by default)**
    ```bash
    make bootstrap
+   # Production-minimal defaults (optional profiles disabled).
    # Update DEV_DOMAIN, BASE_DOMAIN, LOOPBACK_X, ENDPOINTS as needed.
    # Defaults use the local-only domain local.test.
-   # Bootstrap also copies BasicAuth files into services/traefik/auth/.
+   ```
+   Full defaults (optional profiles enabled):
+   ```bash
+   make bootstrap-full
+   # This mirrors the full .env template defaults.
    ```
    Alternative: generate `.env` directly from the template:
    ```bash
-   ./scripts/env-generate.sh
-   # Use --force to regenerate from .env.example.
-   # ./scripts/env-generate.sh --force
+   ./scripts/env-generate.sh --mode=prod
+   # Use --mode=full for full defaults or --force to regenerate.
+   # ./scripts/env-generate.sh --mode=full --force
    ```
 
 3. **Generate local certificates**
