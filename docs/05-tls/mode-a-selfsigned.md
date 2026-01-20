@@ -23,6 +23,7 @@ Use Mode A for local development when you want HTTPS without external certificat
    - `BASE_DOMAIN`
    - `LOOPBACK_X`
    - `ENDPOINTS`
+   - Optional CA overrides: `CA_SUBJECT_*`, `LEAF_*` (from the shared CA section)
 
 3. **Generate local self-signed certificates:**
    ```bash

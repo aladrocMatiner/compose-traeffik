@@ -19,10 +19,9 @@ Mode C uses Smallstep step-ca as an internal ACME server. Traefik requests certi
 
 2. **Set required values in `.env`**
    - `DEV_DOMAIN`
-   - `STEP_CA_NAME`
+   - Shared CA values: `CA_NAME`, `CA_DNS`, `CA_IPS` (or legacy `STEP_CA_NAME`, `STEP_CA_DNS`)
    - `STEP_CA_ADMIN_PROVISIONER_PASSWORD`
    - `STEP_CA_PASSWORD`
-   - `STEP_CA_DNS`
    - `STEP_CA_CA_SERVER`
    - `TLS_CERT_RESOLVER=stepca-resolver`
 

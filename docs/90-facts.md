@@ -49,7 +49,11 @@ This repository sets up a Docker Compose-based Traefik edge stack, integrating a
 *   `ACME_EMAIL=you@example.com`: Email for ACME registrations (Let's Encrypt, step-ca).
 *   `LETSENCRYPT_STAGING=true`: Toggle for Let's Encrypt staging environment (Certbot only).
 *   `LETSENCRYPT_CA_SERVER=https://acme-staging-v02.api.letsencrypt.org/directory`: ACME directory URL for Traefik.
-*   `STEP_CA_NAME="Local Dev CA"`: Name for the Smallstep CA.
+*   `CA_NAME="Local Dev CA"`: Shared CA name (used by Mode A and Mode C).
+*   `CA_SUBJECT_*`: Shared CA subject fields (Mode A).
+*   `CA_DNS`/`CA_IPS`: Shared CA DNS/IP list (Mode C, and Mode A defaults).
+*   `LEAF_*`: Shared leaf subject/SAN overrides (Mode A).
+*   `STEP_CA_NAME="Local Dev CA"`: Legacy name for the Smallstep CA (used if `CA_NAME` is unset).
 *   `STEP_CA_ADMIN_PROVISIONER_PASSWORD="adminpassword"`: Password for `step-ca` admin provisioner (bootstrap only).
 *   `STEP_CA_PASSWORD="capassword"`: Password for `step-ca` CA key (bootstrap only).
 *   `DNS_BIND_ADDRESS=127.0.0.1`: Bind address for DNS port 53.

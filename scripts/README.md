@@ -33,13 +33,14 @@ Preflight validation:
 | `scripts/validate-env.sh` | Preflight validation for profiles and admin auth | `./scripts/validate-env.sh` | `COMPOSE_PROFILES`, `DNS_ADMIN_PASSWORD`, `DNS_UI_BASIC_AUTH_HTPASSWD_PATH`, `TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH`, `TRAEFIK_DASHBOARD` | Fails fast on unsafe config |
 | `scripts/traefik-render-dynamic.sh` | Render Traefik dynamic config templates | `./scripts/traefik-render-dynamic.sh` | `DEV_DOMAIN` | Writes `services/traefik/dynamic-rendered` |
 | `scripts/healthcheck.sh` | Run smoke tests | `make test` | `DEV_DOMAIN`, `HTTP_TO_HTTPS_REDIRECT` | Runs tests, exits non-zero on failure |
-| `scripts/certs-selfsigned-generate.sh` | Generate local CA + leaf certs | `make certs-local` | `DEV_DOMAIN` | Writes `shared/certs/local-ca` and `shared/certs/local` |
+| `scripts/certs-selfsigned-generate.sh` | Generate local CA + leaf certs | `make certs-local` | `DEV_DOMAIN`, `CA_SUBJECT_*`, `LEAF_*` | Writes `shared/certs/local-ca` and `shared/certs/local` |
 | `scripts/certbot-issue.sh` | Issue LE certs (profile `le`) | `make certs-le-issue` | `DEV_DOMAIN`, `ACME_EMAIL`, `LETSENCRYPT_STAGING` | Runs certbot container, writes `services/certbot/conf` |
 | `scripts/certbot-renew.sh` | Renew LE certs (profile `le`) | `make certs-le-renew` | `LETSENCRYPT_STAGING` | Runs certbot renew |
-| `scripts/stepca-bootstrap.sh` | Bootstrap step-ca (profile `stepca`) | `make stepca-bootstrap` | `DEV_DOMAIN`, `STEP_CA_NAME`, `STEP_CA_ADMIN_PROVISIONER_PASSWORD`, `STEP_CA_PASSWORD` | Initializes step-ca data |
+| `scripts/stepca-bootstrap.sh` | Bootstrap step-ca (profile `stepca`) | `make stepca-bootstrap` | `DEV_DOMAIN`, `CA_NAME`/`STEP_CA_NAME`, `CA_DNS`/`CA_IPS` (or `STEP_CA_DNS`), `STEP_CA_ADMIN_PROVISIONER_PASSWORD`, `STEP_CA_PASSWORD` | Initializes step-ca data |
 | `scripts/stepca-trust-install.sh` | Install step-ca root cert (Ubuntu 24.04) | `sudo make stepca-trust-install` | `STEPCA_CA_CERT_PATH` (optional) | Writes to system trust store |
 | `scripts/stepca-trust-uninstall.sh` | Remove step-ca root cert (Ubuntu 24.04) | `sudo make stepca-trust-uninstall` | none | Removes system trust entry |
 | `scripts/stepca-trust-verify.sh` | Verify step-ca root trust (Ubuntu 24.04) | `make stepca-trust-verify` | `STEPCA_CA_CERT_PATH` (optional) | Reads system trust store |
+| `scripts/ca-config-verify.sh` | Validate shared CA configuration | `./scripts/ca-config-verify.sh` | `DEV_DOMAIN`, `CA_*`, `LEAF_*` (or legacy `STEP_CA_*`) | Prints effective CA configuration |
 | `scripts/hosts-subdomains.sh` | Manage hosts block for loopback subdomains | `make hosts-apply` | `BASE_DOMAIN`, `LOOPBACK_X` | Modifies hosts file (with sudo) |
 | `scripts/dns-provision.sh` | Provision DNS records (Technitium) | `make dns-provision` | `BASE_DOMAIN`, `LOOPBACK_X`, `DNS_ADMIN_PASSWORD` | Calls DNS API |
 | `scripts/dns-configure-ubuntu.sh` | Configure split-DNS (Ubuntu 24.04) | `sudo make dns-config-apply` | `BASE_DOMAIN` | Updates systemd-resolved config |

@@ -20,17 +20,37 @@ SCRIPT_DIR=$(dirname "$0")
 
 load_env
 check_env_var "DEV_DOMAIN"
-check_env_var "STEP_CA_NAME"
 check_env_var "STEP_CA_ADMIN_PROVISIONER_PASSWORD"
 check_env_var "STEP_CA_PASSWORD"
 
-if [ -z "${STEP_CA_DNS:-}" ]; then
-    STEP_CA_DNS="step-ca,localhost,127.0.0.1,step-ca.${DEV_DOMAIN}"
-    log_warn "STEP_CA_DNS is not set. Defaulting to '${STEP_CA_DNS}'."
+CA_NAME="${CA_NAME:-${STEP_CA_NAME:-}}"
+if [ -z "${CA_NAME}" ]; then
+    log_error "CA_NAME or STEP_CA_NAME must be set in .env."
 fi
 
-if [ -z "${STEP_CA_DNS}" ]; then
-    log_error "STEP_CA_DNS is empty. Set it in .env before bootstrapping."
+CA_DNS_RAW="${CA_DNS:-}"
+CA_IPS_RAW="${CA_IPS:-}"
+STEP_CA_DNS="${STEP_CA_DNS:-}"
+
+if [ -z "${CA_DNS_RAW}" ] && [ -z "${CA_IPS_RAW}" ]; then
+    if [ -z "${STEP_CA_DNS}" ]; then
+        STEP_CA_DNS="step-ca,localhost,127.0.0.1,step-ca.${DEV_DOMAIN}"
+        log_warn "CA_DNS/CA_IPS and STEP_CA_DNS are not set. Defaulting to '${STEP_CA_DNS}'."
+    fi
+    CA_DNS_LIST="${STEP_CA_DNS}"
+else
+    CA_DNS_LIST="${CA_DNS_RAW}"
+    if [ -n "${CA_IPS_RAW}" ]; then
+        if [ -n "${CA_DNS_LIST}" ]; then
+            CA_DNS_LIST="${CA_DNS_LIST},${CA_IPS_RAW}"
+        else
+            CA_DNS_LIST="${CA_IPS_RAW}"
+        fi
+    fi
+fi
+
+if [ -z "${CA_DNS_LIST}" ]; then
+    log_error "CA_DNS/CA_IPS or STEP_CA_DNS is empty. Set it in .env before bootstrapping."
 fi
 
 STEP_CA_ENABLE_SSH="${STEP_CA_ENABLE_SSH:-false}"
@@ -79,8 +99,8 @@ tmp_admin="/tmp/admin_password.txt"
 printf '%s' "${STEP_CA_PASSWORD}" > "\${tmp_ca}"
 printf '%s' "${STEP_CA_ADMIN_PROVISIONER_PASSWORD}" > "\${tmp_admin}"
 step ca init \
-  --name "${STEP_CA_NAME}" \
-  --dns "${STEP_CA_DNS}" \
+  --name "${CA_NAME}" \
+  --dns "${CA_DNS_LIST}" \
   --address ":9000" \
   --provisioner "admin" \
   --password-file "\${tmp_ca}" \
