@@ -128,6 +128,7 @@ SECRET_VARS=(
     "STEP_CA_PASSWORD"
 )
 
+DEFAULT_ENDPOINTS_FULL="whoami,traefik,stepca,dns"
 DEFAULT_COMPOSE_PROFILES_FULL="dns,le,stepca"
 DEFAULT_TRAEFIK_DASHBOARD_FULL="true"
 DEFAULT_DNS_UI_BASIC_AUTH_HTPASSWD_PATH_FULL="/etc/traefik/auth/dns-ui.htpasswd"
@@ -169,11 +170,56 @@ set_default_if_example() {
     fi
 }
 
+ensure_endpoint_in_list() {
+    local list="$1"
+    local endpoint="$2"
+    local trimmed
+    local part
+    local -a parts=()
+    local -a unique=()
+    local found=false
+
+    IFS=',' read -r -a parts <<< "$list"
+    for part in "${parts[@]}"; do
+        trimmed=$(trim_quotes "$part")
+        trimmed="${trimmed#"${trimmed%%[![:space:]]*}"}"
+        trimmed="${trimmed%"${trimmed##*[![:space:]]}"}"
+        if [ -z "$trimmed" ]; then
+            continue
+        fi
+        if [ "$trimmed" = "$endpoint" ]; then
+            found=true
+        fi
+        if [[ " ${unique[*]} " == *" ${trimmed} "* ]]; then
+            continue
+        fi
+        unique+=("$trimmed")
+    done
+
+    if [ "$found" = false ]; then
+        unique+=("$endpoint")
+    fi
+
+    (IFS=','; echo "${unique[*]}")
+}
+
 if [ "$MODE" = "full" ]; then
     set_default_if_empty "TRAEFIK_DASHBOARD" "$DEFAULT_TRAEFIK_DASHBOARD_FULL"
     set_default_if_empty "COMPOSE_PROFILES" "$DEFAULT_COMPOSE_PROFILES_FULL"
     set_default_if_example "DNS_UI_BASIC_AUTH_HTPASSWD_PATH" "$DEFAULT_DNS_UI_BASIC_AUTH_HTPASSWD_PATH_FULL"
     set_default_if_example "TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH" "$DEFAULT_TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH_FULL"
+    endpoints_raw=$(get_env_value "ENDPOINTS")
+    endpoints_trimmed=$(trim_quotes "$endpoints_raw")
+    if [ -z "$endpoints_trimmed" ]; then
+        set_env_value "ENDPOINTS" "$DEFAULT_ENDPOINTS_FULL"
+        log_info "Set ENDPOINTS default for full mode."
+    else
+        endpoints_updated=$(ensure_endpoint_in_list "$endpoints_trimmed" "dns")
+        if [ "$endpoints_updated" != "$endpoints_trimmed" ]; then
+            set_env_value "ENDPOINTS" "$endpoints_updated"
+            log_info "Added dns to ENDPOINTS for full mode."
+        fi
+    fi
 else
     set_env_value "TRAEFIK_DASHBOARD" "false"
     set_env_value "COMPOSE_PROFILES" ""

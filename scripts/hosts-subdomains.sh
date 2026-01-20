@@ -154,6 +154,15 @@ parse_endpoints_from_env() {
         results+=("$entry")
     done
 
+    local dns_host="${DNS_UI_HOSTNAME:-dns}"
+    if [ -n "${COMPOSE_PROFILES:-}" ]; then
+        if [[ ",${COMPOSE_PROFILES}," == *",dns,"* ]]; then
+            if [[ " ${seen[*]} " != *" ${dns_host} "* ]]; then
+                results+=("$dns_host")
+            fi
+        fi
+    fi
+
     printf '%s\n' "${results[@]}"
 }
 
