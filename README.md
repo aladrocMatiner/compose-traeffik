@@ -23,6 +23,12 @@ This repository provides a Docker Compose edge stack centered on Traefik. It is 
    # Defaults use the local-only domain local.test.
    # Bootstrap also copies BasicAuth files into services/traefik/auth/.
    ```
+   Alternative: generate `.env` directly from the template:
+   ```bash
+   ./scripts/env-generate.sh
+   # Use --force to regenerate from .env.example.
+   # ./scripts/env-generate.sh --force
+   ```
 
 3. **Generate local certificates**
    ```bash
