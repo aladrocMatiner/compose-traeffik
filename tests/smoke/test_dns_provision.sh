@@ -14,6 +14,9 @@ SCRIPT_DIR=$(dirname "$0")
 # shellcheck source=scripts/common.sh
 . "$SCRIPT_DIR/../../scripts/common.sh"
 
+load_env
+check_env_var "BASE_DOMAIN"
+
 TMP_DIR=$(mktemp -d)
 cleanup() {
     rm -rf "$TMP_DIR"
@@ -22,7 +25,7 @@ trap cleanup EXIT
 
 ENV_FILE="$TMP_DIR/env"
 cat > "$ENV_FILE" << 'ENV'
-BASE_DOMAIN=compose-traeffik.aladroc.io
+BASE_DOMAIN=${BASE_DOMAIN}
 LOOPBACK_X=10
 ENDPOINTS=whoami,traefik
 DNS_UI_HOSTNAME=dns
@@ -32,8 +35,8 @@ SCRIPT_PATH="$SCRIPT_DIR/../../scripts/dns-provision.sh"
 
 output=$("$SCRIPT_PATH" --env-file "$ENV_FILE" --dry-run)
 
-echo "$output" | grep -q "whoami.compose-traeffik.aladroc.io -> 127.0.10.1"
-echo "$output" | grep -q "traefik.compose-traeffik.aladroc.io -> 127.0.10.2"
-echo "$output" | grep -q "dns.compose-traeffik.aladroc.io -> 127.0.10.254"
+echo "$output" | grep -Fq "whoami.${BASE_DOMAIN} -> 127.0.10.1"
+echo "$output" | grep -Fq "traefik.${BASE_DOMAIN} -> 127.0.10.2"
+echo "$output" | grep -Fq "dns.${BASE_DOMAIN} -> 127.0.10.254"
 
 log_success "DNS provision dry-run output test passed."

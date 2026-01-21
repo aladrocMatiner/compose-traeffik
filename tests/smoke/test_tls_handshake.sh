@@ -18,6 +18,34 @@ check_command "openssl"
 
 TARGET_HOST="whoami.${DEV_DOMAIN}"
 TARGET_PORT="443"
+HOSTS_SCRIPT="${SCRIPT_DIR}/../../scripts/hosts-subdomains.sh"
+
+resolve_target_ip() {
+    local host="$1"
+    local ip
+
+    ip=$(getent hosts "$host" | awk '{print $1; exit}')
+    if [ -n "$ip" ]; then
+        printf '%s' "$ip"
+        return 0
+    fi
+
+    if [ -z "${BASE_DOMAIN:-}" ]; then
+        return 1
+    fi
+
+    if [ "${DEV_DOMAIN}" != "${BASE_DOMAIN}" ]; then
+        log_error "DNS resolution failed for ${host} and DEV_DOMAIN (${DEV_DOMAIN}) != BASE_DOMAIN (${BASE_DOMAIN})."
+    fi
+
+    ip=$("$HOSTS_SCRIPT" --env-file .env generate | awk -v host="whoami.${BASE_DOMAIN}" '$2==host {print $1; exit}')
+    if [ -n "$ip" ]; then
+        printf '%s' "$ip"
+        return 0
+    fi
+
+    return 1
+}
 
 log_info "Verifying TLS handshake for ${TARGET_HOST}:${TARGET_PORT}..."
 
@@ -32,7 +60,12 @@ if [ ! -f "${CA_FILE}" ]; then
     log_error "Local CA certificate not found at ${CA_FILE}. Run: make certs-local"
 fi
 
-TLS_OUTPUT=$(echo | openssl s_client -connect "${TARGET_HOST}:${TARGET_PORT}" \
+TARGET_IP=$(resolve_target_ip "$TARGET_HOST" || true)
+if [ -z "$TARGET_IP" ]; then
+    log_error "Unable to resolve ${TARGET_HOST}. Apply hosts or DNS (e.g., sudo make hosts-apply)."
+fi
+
+TLS_OUTPUT=$(echo | openssl s_client -connect "${TARGET_IP}:${TARGET_PORT}" \
     -servername "${TARGET_HOST}" -showcerts 2>&1)
 
 if ! echo "${TLS_OUTPUT}" | grep -Fq "CONNECTED"; then

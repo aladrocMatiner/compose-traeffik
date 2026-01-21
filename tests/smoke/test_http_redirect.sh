@@ -20,8 +20,42 @@ check_command "curl"
 
 TARGET_HTTP_URL="http://whoami.${DEV_DOMAIN}"
 TARGET_HTTPS_URL="https://whoami.${DEV_DOMAIN}"
+TARGET_HOST="whoami.${DEV_DOMAIN}"
+HOSTS_SCRIPT="${SCRIPT_DIR}/../../scripts/hosts-subdomains.sh"
+
+resolve_target_ip() {
+    local host="$1"
+    local ip
+
+    ip=$(getent hosts "$host" | awk '{print $1; exit}')
+    if [ -n "$ip" ]; then
+        printf '%s' "$ip"
+        return 0
+    fi
+
+    if [ -z "${BASE_DOMAIN:-}" ]; then
+        return 1
+    fi
+
+    if [ "${DEV_DOMAIN}" != "${BASE_DOMAIN}" ]; then
+        log_error "DNS resolution failed for ${host} and DEV_DOMAIN (${DEV_DOMAIN}) != BASE_DOMAIN (${BASE_DOMAIN})."
+    fi
+
+    ip=$("$HOSTS_SCRIPT" --env-file .env generate | awk -v host="whoami.${BASE_DOMAIN}" '$2==host {print $1; exit}')
+    if [ -n "$ip" ]; then
+        printf '%s' "$ip"
+        return 0
+    fi
+
+    return 1
+}
 
 log_info "Checking HTTP to HTTPS redirect for ${TARGET_HTTP_URL}..."
+
+TARGET_IP=$(resolve_target_ip "$TARGET_HOST" || true)
+if [ -z "$TARGET_IP" ]; then
+    log_error "Unable to resolve ${TARGET_HOST}. Apply hosts or DNS (e.g., sudo make hosts-apply)."
+fi
 
 EXPECTED_REDIRECT="false"
 if [ -n "${HTTP_TO_HTTPS_MIDDLEWARE:-}" ]; then
@@ -45,7 +79,10 @@ if [ "${EXPECTED_REDIRECT}" = "true" ]; then
     # -L: Follow redirects.
     # -o /dev/null: Discard body output.
     # -w %{url_effective}: Print the final URL after redirects.
-    FINAL_URL=$(curl -k -s -L -o /dev/null -w "%{url_effective}" "${TARGET_HTTP_URL}")
+    FINAL_URL=$(curl -k -s -L -o /dev/null -w "%{url_effective}" \
+        --resolve "${TARGET_HOST}:80:${TARGET_IP}" \
+        --resolve "${TARGET_HOST}:443:${TARGET_IP}" \
+        "${TARGET_HTTP_URL}")
     FINAL_URL_STRIPPED="${FINAL_URL%/}"
     TARGET_HTTPS_URL_STRIPPED="${TARGET_HTTPS_URL%/}"
 
@@ -62,8 +99,12 @@ if [ "${EXPECTED_REDIRECT}" = "true" ]; then
 fi
 
 # Redirect disabled: ensure HTTP does not redirect.
-HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "${TARGET_HTTP_URL}")
-REDIRECT_URL=$(curl -s -o /dev/null -w "%{redirect_url}" "${TARGET_HTTP_URL}")
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+    --resolve "${TARGET_HOST}:80:${TARGET_IP}" \
+    "${TARGET_HTTP_URL}")
+REDIRECT_URL=$(curl -s -o /dev/null -w "%{redirect_url}" \
+    --resolve "${TARGET_HOST}:80:${TARGET_IP}" \
+    "${TARGET_HTTP_URL}")
 
 if [ "$HTTP_CODE" -eq 200 ] && [ -z "$REDIRECT_URL" ]; then
     log_success "HTTP redirect disabled as expected."

@@ -24,14 +24,16 @@ This directory contains smoke tests that verify Traefik readiness, routing, TLS,
 
 ## Test inventory
 
-- `tests/smoke/test_traefik_ready.sh`: verifies Traefik is running and docker provider config is enabled.
-- `tests/smoke/test_routing.sh`: checks `https://whoami.${DEV_DOMAIN}` routes to whoami.
-- `tests/smoke/test_tls_handshake.sh`: validates TLS handshake for `whoami.${DEV_DOMAIN}`.
-- `tests/smoke/test_http_redirect.sh`: validates HTTP to HTTPS redirect when enabled.
-- `tests/smoke/test_hosts_subdomains.sh`: validates hosts block apply/remove using a temp file (no sudo).
-- `tests/smoke/test_dns_provision.sh`: checks DNS provisioning dry-run output.
-- `tests/smoke/test_dns_configure_ubuntu.sh`: checks DNS configure dry-run output.
-- `tests/smoke/test_dns_service_config.sh`: checks DNS service compose configuration.
+| Script | Purpose | Prerequisites | Expected signal |
+| --- | --- | --- | --- |
+| `tests/smoke/test_traefik_ready.sh` | Verify Traefik container runs and docker provider config is present. | Stack running, `docker`. | Logs success message about readiness and provider config. |
+| `tests/smoke/test_routing.sh` | Confirm `https://whoami.${DEV_DOMAIN}` routes to whoami. | Stack running, `curl`, `DEV_DOMAIN`, hosts/DNS mapping. | Response contains `Hostname`. |
+| `tests/smoke/test_tls_handshake.sh` | Validate TLS handshake and cert CN for `whoami.${DEV_DOMAIN}`. | Stack running, `openssl`, `DEV_DOMAIN`, `shared/certs/local-ca/ca.crt`. | Handshake succeeds and cert verifies against local CA. |
+| `tests/smoke/test_http_redirect.sh` | Check HTTP to HTTPS redirect behavior. | Stack running, `curl`, `DEV_DOMAIN`, redirect config in `.env`. | Redirects to HTTPS when enabled, otherwise returns HTTP 200. |
+| `tests/smoke/test_hosts_subdomains.sh` | Validate hosts block apply/remove using a temp file. | None (uses temp env/hosts). | Managed block is added then removed. |
+| `tests/smoke/test_dns_provision.sh` | Check DNS provision dry-run output. | None (uses temp env). | Output includes expected loopback mappings. |
+| `tests/smoke/test_dns_configure_ubuntu.sh` | Check dns-configure-ubuntu dry-run output. | None (uses temp env). | Output includes `resolvectl` commands for DNS and domain. |
+| `tests/smoke/test_dns_service_config.sh` | Validate DNS compose fragment and middleware wiring. | Compose/middleware files present. | Service config contains expected profile, bindings, and auth wiring. |
 
 ## Configuration
 
