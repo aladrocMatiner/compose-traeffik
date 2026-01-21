@@ -5,7 +5,7 @@
 <a id="overview"></a>
 ## Resumen
 
-BIND es un perfil DNS opcional que sirve zonas locales para los dominios del proyecto. La UI web se expone via Traefik en `https://bind.${BASE_DOMAIN}`.
+BIND es un perfil DNS opcional que sirve zonas locales para los dominios del proyecto.
 
 <a id="location"></a>
 ## Donde vive
@@ -45,10 +45,6 @@ Variables relevantes en `.env.example`:
 - `LOOPBACK_X`
 - `ENDPOINTS`
 - `BIND_BIND_ADDRESS`
-- `BIND_UI_HOSTNAME`
-- `BIND_UI_BASIC_AUTH_USER`
-- `BIND_UI_BASIC_AUTH_PASSWORD`
-- `BIND_UI_BASIC_AUTH_HTPASSWD_PATH`
 
 <a id="ports"></a>
 ## Puertos, redes, volumenes
@@ -60,15 +56,12 @@ Variables relevantes en `.env.example`:
 <a id="security"></a>
 ## Notas de seguridad
 
-- La UI se expone solo via Traefik y esta protegida con BasicAuth.
-- El puerto de UI no se publica directo en el host.
 - No habilitar `dns` y `bind` a la vez (conflicto en el puerto 53).
 
 <a id="troubleshooting"></a>
 ## Troubleshooting
 
 - Puerto 53 en uso: detiene el servicio en conflicto o cambia `BIND_BIND_ADDRESS`.
-- Auth de UI falla: regenera `bind-ui.htpasswd` con `./scripts/env-generate.sh --mode=full`.
 - Falta zone file: ejecuta `make bind-provision` antes de iniciar.
 
 <a id="related"></a>

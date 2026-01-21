@@ -74,7 +74,6 @@ Detaljerade TLS-floden:
 - **Whoami**: `https://whoami.${DEV_DOMAIN}` (standardstack)
 - **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth; aktiverad som standard)
 - **DNS UI**: `https://dns.${BASE_DOMAIN}` (profil `dns`, BasicAuth; aktiverad som standard)
-- **BIND UI**: `https://bind.${BASE_DOMAIN}` (profil `bind`, BasicAuth)
 - **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (profil `stepca`; aktiverad som standard)
 
 <a id="services"></a>
@@ -111,11 +110,9 @@ Vanliga kommandon:
 
 Auth-filer:
 - `services/traefik/auth/dns-ui.htpasswd.example`
-- `services/traefik/auth/bind-ui.htpasswd.example`
 - `services/traefik/auth/traefik-dashboard.htpasswd.example`
 - `make bootstrap-full` genererar `services/traefik/auth/*.htpasswd` fran `.env`-varden:
   - `DNS_UI_BASIC_AUTH_USER` / `DNS_UI_BASIC_AUTH_PASSWORD`
-  - `BIND_UI_BASIC_AUTH_USER` / `BIND_UI_BASIC_AUTH_PASSWORD`
   - `TRAEFIK_DASHBOARD_BASIC_AUTH_USER` / `TRAEFIK_DASHBOARD_BASIC_AUTH_PASSWORD`
 - For att rotera credentials, uppdatera `.env` och kor `./scripts/env-generate.sh --mode=full`.
 

@@ -241,20 +241,20 @@ dns-config-status:
 
 bind-up:
 	@echo "Starting BIND service (profile: bind)..."
-	COMPOSE_PROFILES=bind ./scripts/compose.sh --profile bind $(COMPOSE_OPTS) up -d bind bind-ui
+	COMPOSE_PROFILES=bind ./scripts/compose.sh --profile bind $(COMPOSE_OPTS) up -d bind
 
 bind-down:
 	@echo "Stopping BIND service..."
-	COMPOSE_PROFILES=bind ./scripts/compose.sh --profile bind $(COMPOSE_OPTS) stop bind bind-ui || true
-	COMPOSE_PROFILES=bind ./scripts/compose.sh --profile bind $(COMPOSE_OPTS) rm -f bind bind-ui || true
+	COMPOSE_PROFILES=bind ./scripts/compose.sh --profile bind $(COMPOSE_OPTS) stop bind || true
+	COMPOSE_PROFILES=bind ./scripts/compose.sh --profile bind $(COMPOSE_OPTS) rm -f bind || true
 
 bind-logs:
 	@echo "Showing BIND service logs..."
-	COMPOSE_PROFILES=bind ./scripts/compose.sh --profile bind $(COMPOSE_OPTS) logs -f bind bind-ui
+	COMPOSE_PROFILES=bind ./scripts/compose.sh --profile bind $(COMPOSE_OPTS) logs -f bind
 
 bind-status:
 	@echo "BIND service status:"
-	COMPOSE_PROFILES=bind ./scripts/compose.sh --profile bind $(COMPOSE_OPTS) ps bind bind-ui
+	COMPOSE_PROFILES=bind ./scripts/compose.sh --profile bind $(COMPOSE_OPTS) ps bind
 
 bind-provision:
 	./scripts/bind-provision.sh $(BIND_ENV_ARGS)

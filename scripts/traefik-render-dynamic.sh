@@ -43,7 +43,6 @@ if [ -z "${DEV_DOMAIN:-}" ]; then
 fi
 
 DNS_UI_BASIC_AUTH_HTPASSWD_PATH="${DNS_UI_BASIC_AUTH_HTPASSWD_PATH:-/etc/traefik/auth/dns-ui.htpasswd.example}"
-BIND_UI_BASIC_AUTH_HTPASSWD_PATH="${BIND_UI_BASIC_AUTH_HTPASSWD_PATH:-/etc/traefik/auth/bind-ui.htpasswd.example}"
 TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH="${TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH:-/etc/traefik/auth/traefik-dashboard.htpasswd.example}"
 
 escape_sed() {
@@ -51,7 +50,6 @@ escape_sed() {
 }
 
 dns_ui_auth_path_escaped=$(escape_sed "$DNS_UI_BASIC_AUTH_HTPASSWD_PATH")
-bind_ui_auth_path_escaped=$(escape_sed "$BIND_UI_BASIC_AUTH_HTPASSWD_PATH")
 dashboard_auth_path_escaped=$(escape_sed "$TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH")
 
 mkdir -p "$OUTPUT_DIR"
@@ -79,7 +77,6 @@ for file in "$TEMPLATE_DIR"/*.yml; do
     sed \
         -e "s/__DEV_DOMAIN__/${DEV_DOMAIN}/g" \
         -e "s/__DNS_UI_BASIC_AUTH_HTPASSWD_PATH__/${dns_ui_auth_path_escaped}/g" \
-        -e "s/__BIND_UI_BASIC_AUTH_HTPASSWD_PATH__/${bind_ui_auth_path_escaped}/g" \
         -e "s/__TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH__/${dashboard_auth_path_escaped}/g" \
         "$file" > "${OUTPUT_DIR}/${filename}"
 done

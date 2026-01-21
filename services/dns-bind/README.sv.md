@@ -5,7 +5,7 @@
 <a id="overview"></a>
 ## Oversikt
 
-BIND ar en valfri DNS-profil som serverar lokala zoner for projektets domaner. Web-UI:n exponeras via Traefik pa `https://bind.${BASE_DOMAIN}`.
+BIND ar en valfri DNS-profil som serverar lokala zoner for projektets domaner.
 
 <a id="location"></a>
 ## Var finns det
@@ -45,10 +45,6 @@ Relevanta env vars i `.env.example`:
 - `LOOPBACK_X`
 - `ENDPOINTS`
 - `BIND_BIND_ADDRESS`
-- `BIND_UI_HOSTNAME`
-- `BIND_UI_BASIC_AUTH_USER`
-- `BIND_UI_BASIC_AUTH_PASSWORD`
-- `BIND_UI_BASIC_AUTH_HTPASSWD_PATH`
 
 <a id="ports"></a>
 ## Portar, natverk, volymer
@@ -60,15 +56,12 @@ Relevanta env vars i `.env.example`:
 <a id="security"></a>
 ## Sakerhetsnoter
 
-- UI:n exponeras bara via Traefik och skyddas med BasicAuth.
-- UI-porten publiceras inte direkt pa hosten.
 - Aktivera inte `dns` och `bind` samtidigt (port 53-konflikt).
 
 <a id="troubleshooting"></a>
 ## Felsokning
 
 - Port 53 ar upptagen: stoppa den konflikterande tjansten eller byt `BIND_BIND_ADDRESS`.
-- UI-auth misslyckas: skapa om `bind-ui.htpasswd` med `./scripts/env-generate.sh --mode=full`.
 - Zone-filen saknas: kor `make bind-provision` innan du startar.
 
 <a id="related"></a>

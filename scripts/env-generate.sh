@@ -125,7 +125,6 @@ get_env_value() {
 SECRET_VARS=(
     "DNS_ADMIN_PASSWORD"
     "DNS_UI_BASIC_AUTH_PASSWORD"
-    "BIND_UI_BASIC_AUTH_PASSWORD"
     "TRAEFIK_DASHBOARD_BASIC_AUTH_PASSWORD"
     "STEP_CA_ADMIN_PROVISIONER_PASSWORD"
     "STEP_CA_PASSWORD"
@@ -136,7 +135,6 @@ DEFAULT_ENDPOINTS_FULL="whoami,traefik,stepca,dns"
 DEFAULT_COMPOSE_PROFILES_FULL="dns,le,stepca"
 DEFAULT_TRAEFIK_DASHBOARD_FULL="true"
 DEFAULT_DNS_UI_BASIC_AUTH_HTPASSWD_PATH_FULL="/etc/traefik/auth/dns-ui.htpasswd"
-DEFAULT_BIND_UI_BASIC_AUTH_HTPASSWD_PATH_FULL="/etc/traefik/auth/bind-ui.htpasswd"
 DEFAULT_TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH_FULL="/etc/traefik/auth/traefik-dashboard.htpasswd"
 
 for var in "${SECRET_VARS[@]}"; do
@@ -176,7 +174,6 @@ set_default_if_example() {
 }
 
 set_default_if_empty "DNS_UI_BASIC_AUTH_USER" "$DEFAULT_BASIC_AUTH_USER"
-set_default_if_empty "BIND_UI_BASIC_AUTH_USER" "$DEFAULT_BASIC_AUTH_USER"
 set_default_if_empty "TRAEFIK_DASHBOARD_BASIC_AUTH_USER" "$DEFAULT_BASIC_AUTH_USER"
 
 ensure_endpoint_in_list() {
@@ -216,7 +213,6 @@ if [ "$MODE" = "full" ]; then
     set_default_if_empty "TRAEFIK_DASHBOARD" "$DEFAULT_TRAEFIK_DASHBOARD_FULL"
     set_default_if_empty "COMPOSE_PROFILES" "$DEFAULT_COMPOSE_PROFILES_FULL"
     set_default_if_example "DNS_UI_BASIC_AUTH_HTPASSWD_PATH" "$DEFAULT_DNS_UI_BASIC_AUTH_HTPASSWD_PATH_FULL"
-    set_default_if_example "BIND_UI_BASIC_AUTH_HTPASSWD_PATH" "$DEFAULT_BIND_UI_BASIC_AUTH_HTPASSWD_PATH_FULL"
     set_default_if_example "TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH" "$DEFAULT_TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH_FULL"
     endpoints_raw=$(get_env_value "ENDPOINTS")
     endpoints_trimmed=$(trim_quotes "$endpoints_raw")
@@ -234,7 +230,6 @@ else
     set_env_value "TRAEFIK_DASHBOARD" "false"
     set_env_value "COMPOSE_PROFILES" ""
     set_env_value "DNS_UI_BASIC_AUTH_HTPASSWD_PATH" ""
-    set_env_value "BIND_UI_BASIC_AUTH_HTPASSWD_PATH" ""
     set_env_value "TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH" ""
 fi
 
@@ -289,17 +284,13 @@ ensure_htpasswd_file() {
 
 if [ "$MODE" = "full" ]; then
     dns_auth_path=$(trim_quotes "$(get_env_value "DNS_UI_BASIC_AUTH_HTPASSWD_PATH")")
-    bind_auth_path=$(trim_quotes "$(get_env_value "BIND_UI_BASIC_AUTH_HTPASSWD_PATH")")
     dashboard_auth_path=$(trim_quotes "$(get_env_value "TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH")")
     dns_auth_user=$(trim_quotes "$(get_env_value "DNS_UI_BASIC_AUTH_USER")")
     dns_auth_pass=$(trim_quotes "$(get_env_value "DNS_UI_BASIC_AUTH_PASSWORD")")
-    bind_auth_user=$(trim_quotes "$(get_env_value "BIND_UI_BASIC_AUTH_USER")")
-    bind_auth_pass=$(trim_quotes "$(get_env_value "BIND_UI_BASIC_AUTH_PASSWORD")")
     dashboard_auth_user=$(trim_quotes "$(get_env_value "TRAEFIK_DASHBOARD_BASIC_AUTH_USER")")
     dashboard_auth_pass=$(trim_quotes "$(get_env_value "TRAEFIK_DASHBOARD_BASIC_AUTH_PASSWORD")")
 
     ensure_htpasswd_file "$dns_auth_path" "DNS UI" "$dns_auth_user" "$dns_auth_pass"
-    ensure_htpasswd_file "$bind_auth_path" "Bind UI" "$bind_auth_user" "$bind_auth_pass"
     ensure_htpasswd_file "$dashboard_auth_path" "Traefik dashboard" "$dashboard_auth_user" "$dashboard_auth_pass"
 fi
 

@@ -54,8 +54,3 @@ http:
     dns-ui-auth:
       basicAuth:
         usersFile: __DNS_UI_BASIC_AUTH_HTPASSWD_PATH__
-
-    # --- Basic Auth for Bind UI ---
-    bind-ui-auth:
-      basicAuth:
-        usersFile: __BIND_UI_BASIC_AUTH_HTPASSWD_PATH__

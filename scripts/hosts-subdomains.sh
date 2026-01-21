@@ -155,16 +155,10 @@ parse_endpoints_from_env() {
     done
 
     local dns_host="${DNS_UI_HOSTNAME:-dns}"
-    local bind_host="${BIND_UI_HOSTNAME:-bind}"
     if [ -n "${COMPOSE_PROFILES:-}" ]; then
         if [[ ",${COMPOSE_PROFILES}," == *",dns,"* ]]; then
             if [[ " ${seen[*]} " != *" ${dns_host} "* ]]; then
                 results+=("$dns_host")
-            fi
-        fi
-        if [[ ",${COMPOSE_PROFILES}," == *",bind,"* ]]; then
-            if [[ " ${seen[*]} " != *" ${bind_host} "* ]]; then
-                results+=("$bind_host")
             fi
         fi
     fi

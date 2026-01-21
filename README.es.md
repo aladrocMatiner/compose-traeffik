@@ -74,7 +74,6 @@ Guias de TLS:
 - **Whoami**: `https://whoami.${DEV_DOMAIN}` (stack por defecto)
 - **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth; habilitado por defecto)
 - **DNS UI**: `https://dns.${BASE_DOMAIN}` (perfil `dns`, BasicAuth; habilitado por defecto)
-- **BIND UI**: `https://bind.${BASE_DOMAIN}` (perfil `bind`, BasicAuth)
 - **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (perfil `stepca`; habilitado por defecto)
 
 <a id="services"></a>
@@ -111,11 +110,9 @@ Comandos comunes:
 
 Archivos auth:
 - `services/traefik/auth/dns-ui.htpasswd.example`
-- `services/traefik/auth/bind-ui.htpasswd.example`
 - `services/traefik/auth/traefik-dashboard.htpasswd.example`
 - `make bootstrap-full` genera `services/traefik/auth/*.htpasswd` desde los valores del `.env`:
   - `DNS_UI_BASIC_AUTH_USER` / `DNS_UI_BASIC_AUTH_PASSWORD`
-  - `BIND_UI_BASIC_AUTH_USER` / `BIND_UI_BASIC_AUTH_PASSWORD`
   - `TRAEFIK_DASHBOARD_BASIC_AUTH_USER` / `TRAEFIK_DASHBOARD_BASIC_AUTH_PASSWORD`
 - Para rotar credenciales, actualiza el `.env` y ejecuta `./scripts/env-generate.sh --mode=full`.
 
