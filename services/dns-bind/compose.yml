@@ -1,0 +1,46 @@
+services:
+  bind:
+    image: internetsystemsconsortium/bind9:9.18
+    container_name: bind
+    profiles:
+      - bind
+    restart: unless-stopped
+    networks:
+      - proxy
+    ports:
+      - "${BIND_BIND_ADDRESS:-127.0.0.1}:53:53/udp"
+      - "${BIND_BIND_ADDRESS:-127.0.0.1}:53:53/tcp"
+    environment:
+      - BASE_DOMAIN=${BASE_DOMAIN}
+    volumes:
+      - ./services/dns-bind/config:/etc/bind
+      - ./services/dns-bind/zones:/etc/bind/zones
+    command: >
+      /bin/sh -c "sed \"s/__BASE_DOMAIN__/${BASE_DOMAIN}/g\" /etc/bind/named.conf.template > /etc/bind/named.conf
+      && named -g -c /etc/bind/named.conf"
+
+  bind-ui:
+    image: ghcr.io/linuxserver/webmin:latest
+    container_name: bind-ui
+    profiles:
+      - bind
+    restart: unless-stopped
+    networks:
+      - proxy
+    environment:
+      - PUID=${BIND_UI_PUID:-1000}
+      - PGID=${BIND_UI_PGID:-1000}
+      - TZ=${TZ:-UTC}
+      - WEBMIN_INIT_SSL=false
+    volumes:
+      - ./services/dns-bind/config:/etc/bind
+      - ./services/dns-bind/zones:/etc/bind/zones
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.bind-ui.rule=Host(`${BIND_UI_HOSTNAME:-bind}.${BASE_DOMAIN}`)"
+      - "traefik.http.routers.bind-ui.entrypoints=websecure"
+      - "traefik.http.routers.bind-ui.service=bind-ui-service"
+      - "traefik.http.routers.bind-ui.tls=true"
+      - "traefik.http.routers.bind-ui.tls.certresolver=${TLS_CERT_RESOLVER:-}"
+      - "traefik.http.routers.bind-ui.middlewares=security-headers@file,bind-ui-auth@file"
+      - "traefik.http.services.bind-ui-service.loadbalancer.server.port=10000"

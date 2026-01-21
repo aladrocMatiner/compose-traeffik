@@ -70,6 +70,14 @@
         "sv": "DNS (Technitium)",
         "es": "DNS (Technitium)"
       }
+    },
+    {
+      "slug": "dns-bind",
+      "title": {
+        "en": "DNS (BIND)",
+        "sv": "DNS (BIND)",
+        "es": "DNS (BIND)"
+      }
     }
   ]
 }

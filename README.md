@@ -74,6 +74,7 @@ For detailed TLS workflows, see:
 - **Whoami**: `https://whoami.${DEV_DOMAIN}` (default stack; uses Traefik HTTPS)
 - **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth; enabled by default)
 - **DNS UI**: `https://dns.${BASE_DOMAIN}` (profile `dns`, BasicAuth required; enabled by default)
+- **BIND UI**: `https://bind.${BASE_DOMAIN}` (profile `bind`, BasicAuth required)
 - **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (profile `stepca`; enabled by default)
 
 <a id="services"></a>
@@ -82,6 +83,7 @@ For detailed TLS workflows, see:
 - [Traefik](services/traefik/README.md) - reverse proxy and routing core.
 - [Whoami](services/whoami/README.md) - demo service used for routing tests.
 - [DNS (Technitium)](services/dns/README.md) - optional profile `dns`.
+- [DNS (BIND)](services/dns-bind/README.md) - optional profile `bind`.
 - [Certbot](services/certbot/README.md) - optional profile `le`.
 - [Step-CA](services/step-ca/README.md) - optional profile `stepca`.
 
@@ -109,9 +111,11 @@ Common commands:
 
 Auth files:
 - `services/traefik/auth/dns-ui.htpasswd.example` (DNS UI BasicAuth)
+- `services/traefik/auth/bind-ui.htpasswd.example` (BIND UI BasicAuth)
 - `services/traefik/auth/traefik-dashboard.htpasswd.example` (Traefik dashboard BasicAuth)
 - `make bootstrap-full` generates `services/traefik/auth/*.htpasswd` from `.env` values:
   - `DNS_UI_BASIC_AUTH_USER` / `DNS_UI_BASIC_AUTH_PASSWORD`
+  - `BIND_UI_BASIC_AUTH_USER` / `BIND_UI_BASIC_AUTH_PASSWORD`
   - `TRAEFIK_DASHBOARD_BASIC_AUTH_USER` / `TRAEFIK_DASHBOARD_BASIC_AUTH_PASSWORD`
 - To rotate credentials, update the `.env` values and re-run `./scripts/env-generate.sh --mode=full`.
 - Preflight checks reject `.example` paths when enabling the dns profile or Traefik dashboard.

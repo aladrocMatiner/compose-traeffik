@@ -13,6 +13,7 @@ COMPOSE_FILES=(
   -f "${REPO_ROOT}/services/traefik/compose.yml"
   -f "${REPO_ROOT}/services/whoami/compose.yml"
   -f "${REPO_ROOT}/services/dns/compose.yml"
+  -f "${REPO_ROOT}/services/dns-bind/compose.yml"
   -f "${REPO_ROOT}/services/certbot/compose.yml"
   -f "${REPO_ROOT}/services/step-ca/compose.yml"
 )

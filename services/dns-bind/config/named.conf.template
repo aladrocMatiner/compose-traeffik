@@ -1,0 +1,12 @@
+options {
+    directory "/var/cache/bind";
+    listen-on port 53 { any; };
+    listen-on-v6 { none; };
+    allow-query { any; };
+    recursion no;
+};
+
+zone "__BASE_DOMAIN__" IN {
+    type master;
+    file "/etc/bind/zones/db.__BASE_DOMAIN__";
+};

@@ -22,7 +22,7 @@ SHELL := /bin/bash # Ensure bash is used for shell commands
         stepca-trust-install stepca-trust-uninstall stepca-trust-verify \
         hosts-generate hosts-apply hosts-remove hosts-status \
         dns-up dns-down dns-logs dns-status dns-provision dns-provision-dry \
-        bind-provision bind-provision-dry \
+        bind-up bind-down bind-logs bind-status bind-provision bind-provision-dry \
 dns-config-apply dns-config-remove dns-config-status
 
 # Include .env for environment variables if it exists.
@@ -239,6 +239,23 @@ dns-config-status:
 
 # --- Bind DNS Provisioning ---
 
+bind-up:
+	@echo "Starting BIND service (profile: bind)..."
+	COMPOSE_PROFILES=bind ./scripts/compose.sh --profile bind $(COMPOSE_OPTS) up -d bind bind-ui
+
+bind-down:
+	@echo "Stopping BIND service..."
+	COMPOSE_PROFILES=bind ./scripts/compose.sh --profile bind $(COMPOSE_OPTS) stop bind bind-ui || true
+	COMPOSE_PROFILES=bind ./scripts/compose.sh --profile bind $(COMPOSE_OPTS) rm -f bind bind-ui || true
+
+bind-logs:
+	@echo "Showing BIND service logs..."
+	COMPOSE_PROFILES=bind ./scripts/compose.sh --profile bind $(COMPOSE_OPTS) logs -f bind bind-ui
+
+bind-status:
+	@echo "BIND service status:"
+	COMPOSE_PROFILES=bind ./scripts/compose.sh --profile bind $(COMPOSE_OPTS) ps bind bind-ui
+
 bind-provision:
 	./scripts/bind-provision.sh $(BIND_ENV_ARGS)
 
@@ -310,6 +327,10 @@ help:
 	@echo "  dns-config-status     Show Ubuntu split-DNS status."
 	@echo ""
 	@echo "Bind DNS:"
+	@echo "  bind-up               Start the BIND service (profile: bind)."
+	@echo "  bind-down             Stop and remove the BIND containers."
+	@echo "  bind-logs             Follow BIND service logs."
+	@echo "  bind-status           Show BIND service status."
 	@echo "  bind-provision        Generate the BIND zone file from ENDPOINTS."
 	@echo "  bind-provision-dry    Print the generated zone file without writing."
 	@echo ""

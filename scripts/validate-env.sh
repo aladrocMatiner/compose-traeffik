@@ -12,6 +12,7 @@ REPO_ROOT=$(cd "${SCRIPT_DIR}/.." && pwd)
 . "${SCRIPT_DIR}/common.sh"
 
 DNS_UI_BASIC_AUTH_HTPASSWD_PATH_ENV="${DNS_UI_BASIC_AUTH_HTPASSWD_PATH:-}"
+BIND_UI_BASIC_AUTH_HTPASSWD_PATH_ENV="${BIND_UI_BASIC_AUTH_HTPASSWD_PATH:-}"
 TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH_ENV="${TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH:-}"
 DNS_ADMIN_PASSWORD_ENV="${DNS_ADMIN_PASSWORD:-}"
 COMPOSE_PROFILES_ENV="${COMPOSE_PROFILES:-}"
@@ -21,6 +22,9 @@ load_env
 
 if [ -n "${DNS_UI_BASIC_AUTH_HTPASSWD_PATH_ENV}" ]; then
     DNS_UI_BASIC_AUTH_HTPASSWD_PATH="${DNS_UI_BASIC_AUTH_HTPASSWD_PATH_ENV}"
+fi
+if [ -n "${BIND_UI_BASIC_AUTH_HTPASSWD_PATH_ENV}" ]; then
+    BIND_UI_BASIC_AUTH_HTPASSWD_PATH="${BIND_UI_BASIC_AUTH_HTPASSWD_PATH_ENV}"
 fi
 if [ -n "${TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH_ENV}" ]; then
     TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH="${TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH_ENV}"
@@ -100,12 +104,19 @@ normalize_profiles() {
 normalize_profiles
 profiles="${COMPOSE_PROFILES_NORMALIZED:-}"
 dns_enabled=false
+bind_enabled=false
 for profile in $profiles; do
     if [ "$profile" = "dns" ]; then
         dns_enabled=true
-        break
+    fi
+    if [ "$profile" = "bind" ]; then
+        bind_enabled=true
     fi
 done
+
+if [ "$dns_enabled" = "true" ] && [ "$bind_enabled" = "true" ]; then
+    log_error "COMPOSE_PROFILES cannot enable both 'dns' and 'bind' due to port 53 conflicts."
+fi
 
 if [ "$dns_enabled" = "true" ]; then
     dns_password=$(trim "${DNS_ADMIN_PASSWORD:-}")
@@ -116,6 +127,10 @@ if [ "$dns_enabled" = "true" ]; then
         log_error "DNS_ADMIN_PASSWORD must not be the placeholder value 'change-me'. Set a real password."
     fi
     require_auth_file "DNS UI" "${DNS_UI_BASIC_AUTH_HTPASSWD_PATH:-}"
+fi
+
+if [ "$bind_enabled" = "true" ]; then
+    require_auth_file "Bind UI" "${BIND_UI_BASIC_AUTH_HTPASSWD_PATH:-}"
 fi
 
 if [ "${TRAEFIK_DASHBOARD:-false}" = "true" ]; then

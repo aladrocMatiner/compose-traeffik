@@ -5,11 +5,13 @@
 <a id="overview"></a>
 ## Resumen
 
-BIND es un perfil DNS opcional que sirve zonas locales para los dominios del proyecto. El script de provision genera el zone file desde los inputs del stack.
+BIND es un perfil DNS opcional que sirve zonas locales para los dominios del proyecto. La UI web se expone via Traefik en `https://bind.${BASE_DOMAIN}`.
 
 <a id="location"></a>
 ## Donde vive
 
+- `services/dns-bind/compose.yml`
+- `services/dns-bind/config/`
 - `services/dns-bind/zones/`
 
 <a id="run"></a>
@@ -20,9 +22,19 @@ Provisiona el zone file:
 make bind-provision
 ```
 
-Dry-run del zone file:
+Inicia el servicio:
 ```bash
-make bind-provision-dry
+make bind-up
+```
+
+Ver logs:
+```bash
+make bind-logs
+```
+
+Detiene el servicio:
+```bash
+make bind-down
 ```
 
 <a id="configuration"></a>
@@ -32,22 +44,32 @@ Variables relevantes en `.env.example`:
 - `BASE_DOMAIN`
 - `LOOPBACK_X`
 - `ENDPOINTS`
+- `BIND_BIND_ADDRESS`
+- `BIND_UI_HOSTNAME`
+- `BIND_UI_BASIC_AUTH_USER`
+- `BIND_UI_BASIC_AUTH_PASSWORD`
+- `BIND_UI_BASIC_AUTH_HTPASSWD_PATH`
 
-<a id="zones"></a>
-## Zone layout
+<a id="ports"></a>
+## Puertos, redes, volumenes
 
-El zone file se escribe en:
-- `services/dns-bind/zones/db.${BASE_DOMAIN}`
+- Puertos: `53/udp`, `53/tcp` (ligados a `BIND_BIND_ADDRESS`)
+- Red: `proxy` (`traefik-proxy`)
+- Volumenes: `services/dns-bind/config` y `services/dns-bind/zones`
 
-El archivo incluye registros A para cada endpoint y `bind.${BASE_DOMAIN}` en `127.0.${LOOPBACK_X}.254`.
+<a id="security"></a>
+## Notas de seguridad
 
-<a id="verification"></a>
-## Verificacion
+- La UI se expone solo via Traefik y esta protegida con BasicAuth.
+- El puerto de UI no se publica directo en el host.
+- No habilitar `dns` y `bind` a la vez (conflicto en el puerto 53).
 
-```bash
-ls -l services/dns-bind/zones/db.${BASE_DOMAIN}
-cat services/dns-bind/zones/db.${BASE_DOMAIN}
-```
+<a id="troubleshooting"></a>
+## Troubleshooting
+
+- Puerto 53 en uso: detiene el servicio en conflicto o cambia `BIND_BIND_ADDRESS`.
+- Auth de UI falla: regenera `bind-ui.htpasswd` con `./scripts/env-generate.sh --mode=full`.
+- Falta zone file: ejecuta `make bind-provision` antes de iniciar.
 
 <a id="related"></a>
 ## Paginas relacionadas
