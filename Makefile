@@ -22,6 +22,7 @@ SHELL := /bin/bash # Ensure bash is used for shell commands
         stepca-trust-install stepca-trust-uninstall stepca-trust-verify \
         hosts-generate hosts-apply hosts-remove hosts-status \
         dns-up dns-down dns-logs dns-status dns-provision dns-provision-dry \
+        bind-provision bind-provision-dry \
 dns-config-apply dns-config-remove dns-config-status
 
 # Include .env for environment variables if it exists.
@@ -67,6 +68,11 @@ endif
 DNS_ENV_ARGS :=
 ifneq ($(ENV_FILE),)
 DNS_ENV_ARGS += --env-file $(ENV_FILE)
+endif
+
+BIND_ENV_ARGS :=
+ifneq ($(ENV_FILE),)
+BIND_ENV_ARGS += --env-file $(ENV_FILE)
 endif
 
 # Start the stack
@@ -231,6 +237,14 @@ dns-config-remove:
 dns-config-status:
 	./scripts/dns-configure-ubuntu.sh $(DNS_ENV_ARGS) status
 
+# --- Bind DNS Provisioning ---
+
+bind-provision:
+	./scripts/bind-provision.sh $(BIND_ENV_ARGS)
+
+bind-provision-dry:
+	./scripts/bind-provision.sh $(BIND_ENV_ARGS) --dry-run
+
 # --- Help ---
 
 help:
@@ -294,6 +308,10 @@ help:
 	@echo "  dns-config-apply      Configure Ubuntu split-DNS (requires sudo)."
 	@echo "  dns-config-remove     Remove Ubuntu split-DNS config (requires sudo)."
 	@echo "  dns-config-status     Show Ubuntu split-DNS status."
+	@echo ""
+	@echo "Bind DNS:"
+	@echo "  bind-provision        Generate the BIND zone file from ENDPOINTS."
+	@echo "  bind-provision-dry    Print the generated zone file without writing."
 	@echo ""
 	@echo "Profiles:"
 	@echo "  Use COMPOSE_PROFILES=<profile_name> before make commands to activate profiles."
