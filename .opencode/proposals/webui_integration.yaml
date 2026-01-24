@@ -1,0 +1,96 @@
+# OpenSpec proposal: Integrate WebUI into the Traefik stack
+# This file describes the changes needed and generates a set of tasks.
+# It will be processed by the OpenCode workflow to create the UI service, update Traefik routing,
+# configure TLS, and ensure DNS resolution.
+
+proposal:
+  title: "Add WebUI service and route it through Traefik"
+  description: |
+    • Create a new `webui` Docker service (Node/React or static build).
+    • Expose HTTP(S) on ports 80/443.
+    • Add Traefik router, middleware, and TLS resolver for `/webui` path.
+    • Ensure DNS services provide hostname resolution for the UI domain.
+    • Update README with usage instructions.
+
+tasks:
+  - id: create-webui-service
+    type: generate
+    description: Create Dockerfile and compose service definition for webui.
+    target_file: "services/webui/compose.yml"
+    template: |
+      version: '3.8'
+      services:
+        webui:
+          image: node:18-alpine
+          working_dir: /app
+          volumes:
+            - ./webui:/app
+          command: sh -c "npm install && npm run build && npx serve -s build"
+          expose:
+            - 3000
+      # Add any required environment variables or secrets here.
+
+  - id: add-webui-dockerfile
+    type: create_file
+    description: Dockerfile for the webui service.
+    target_file: "services/webui/Dockerfile"
+    content: |
+      FROM node:18-alpine AS builder
+      WORKDIR /app
+      COPY package.json yarn.lock ./
+      RUN yarn install --frozen-lockfile
+      COPY . .
+      RUN yarn build
+      
+      FROM nginx:alpine
+      COPY --from=builder /app/build /usr/share/nginx/html
+      EXPOSE 80
+
+  - id: update-traefik-router
+    type: edit
+    description: Add router for webui in Traefik dynamic config.
+    target_file: "services/traefik/dynamic/webui.yml"
+    old_string: ''
+    new_string: |
+      http:
+        routers:
+          webui:
+            rule: PathPrefix(`/webui`)
+            service: webui
+            entrypoints: [web, websecure]
+            middlewares: [auth, https-redirect]
+            tls:
+              certResolver: myresolver
+    replaceAll: true
+
+  - id: add-webui-service-to-compose-base
+    type: edit
+    description: Add reference to webui service in base compose.
+    target_file: "compose/base.yml"
+    old_string: ''
+    new_string: |
+      services:
+        webui:
+          <<: *webui
+    replaceAll: true
+
+  - id: update-dns-records
+    type: generate
+    description: Ensure DNS service has a record for the UI domain.
+    target_file: "services/dns/records.json"
+    template: |
+      {
+        "webui.example.com": "${WEBUI_IP}"
+      }
+
+  - id: update-readme
+    type: append
+    description: Add usage instructions for the new WebUI.
+    target_file: "README.md"
+    content: |
+      ## WebUI
+      
+      The WebUI is now available at `https://webui.example.com` after deploying the stack. It proxies through Traefik and uses the same TLS resolver as other services.
+
+---
+# End of proposal
