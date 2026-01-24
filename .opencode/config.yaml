@@ -1,0 +1,10 @@
+# OpenCode configuration for auto‑commit of webui service
+
+automation:
+  github_token: ${{ secrets.OPENCODE_GITHUB_TOKEN }}
+  auto_commit: true
+  allowed_paths:
+    - "services/**"
+    - "compose/*.yml"
+    - "README.md"
+  non_interactive: true
