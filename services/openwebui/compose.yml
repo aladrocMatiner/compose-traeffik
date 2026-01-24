@@ -1,0 +1,24 @@
+# OpenWebUI service definition
+services:
+  openwebui:
+    image: ghcr.io/open-webui/open-webui:main
+    expose:
+      - "8080"
+    volumes:
+      - openwebui_data:/app/backend/data
+    environment:
+      - WEBUI_URL=https://openwebui.${ROOT_DOMAIN}
+      - ENABLE_SIGNUP=${OPENWEBUI_ENABLE_SIGNUP:-false}
+      - WEBUI_ADMIN_EMAIL=${OPENWEBUI_ADMIN_EMAIL:-}
+      - WEBUI_ADMIN_PASSWORD=${OPENWEBUI_ADMIN_PASSWORD:-}
+      - ENABLE_PERSISTENT_CONFIG=${OPENWEBUI_ENABLE_PERSISTENT_CONFIG:-true}
+      - OLLAMA_BASE_URL=${OPENWEBUI_OLLAMA_BASE_URL:-}
+      - OPENAI_API_BASE_URLS=${OPENWEBUI_OPENAI_API_BASE_URLS:-}
+      - OPENAI_API_KEYS=${OPENWEBUI_OPENAI_API_KEYS:-}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.openwebui.rule=Host(`openwebui.${ROOT_DOMAIN}`)"
+      - "traefik.http.services.openwebui.loadbalancer.server.port=8080"
+    restart: unless-stopped
+volumes:
+  openwebui_data:
