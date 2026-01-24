@@ -1,0 +1,16 @@
+$TTL 1h
+@   IN  SOA ns1.local.test. hostmaster.local.test. (
+        2026012120 ; serial
+        1h ; refresh
+        15m ; retry
+        1w ; expire
+        1h ; minimum
+)
+
+@   IN  NS  ns1.local.test.
+ns1 IN  A   127.0.10.254
+bind IN  A  127.0.10.254
+whoami IN  A   127.0.10.1
+traefik IN  A   127.0.10.2
+stepca IN  A   127.0.10.3
+dns IN  A   127.0.10.4
