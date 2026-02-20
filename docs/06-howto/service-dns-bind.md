@@ -71,6 +71,56 @@ getent hosts whoami.${BASE_DOMAIN}
 
 - BIND listens on `BIND_BIND_ADDRESS` (default localhost-only).
 - Recursion is disabled by default in the provided `named.conf.template`.
+- Zone transfer (`AXFR`) is denied by default.
+- CHAOS metadata (`version.bind`, `hostname.bind`, `id.server`) is minimized.
+- Non-loopback DNS exposure requires explicit opt-in via `BIND_ALLOW_NONLOCAL_BIND=true`.
+
+## Security Verification
+
+Use these checks after DNS changes:
+
+```bash
+make test
+./tests/smoke/test_bind_guardrails.sh
+./tests/smoke/test_bind_security_runtime.sh
+```
+
+Manual checks:
+
+```bash
+# Recursion should be unavailable/refused.
+dig @127.0.0.1 example.com A
+
+# AXFR should be denied.
+dig @127.0.0.1 ${BASE_DOMAIN} AXFR
+
+# Metadata should not disclose version/host identity.
+dig @127.0.0.1 version.bind TXT CH
+dig @127.0.0.1 hostname.bind TXT CH
+dig @127.0.0.1 id.server TXT CH
+```
+
+## Rollback Checklist
+
+If hardening changes break DNS unexpectedly:
+
+1. Validate config and zone generation:
+   ```bash
+   make bind-provision
+   make bind-status
+   make bind-logs
+   ```
+2. Restart BIND lifecycle cleanly:
+   ```bash
+   make bind-restart
+   ```
+3. Confirm smoke baseline:
+   ```bash
+   make test
+   ```
+4. If non-loopback DNS exposure was temporary, revert:
+   - `BIND_BIND_ADDRESS` to loopback
+   - `BIND_ALLOW_NONLOCAL_BIND=false`
 
 ## Links to Related Docs
 

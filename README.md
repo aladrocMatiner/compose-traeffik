@@ -116,6 +116,11 @@ Auth files:
 Compose project pinning:
 - The compose wrapper pins `--project-directory` and `--project-name` to avoid cross‑CWD conflicts. Override with `COMPOSE_PROJECT_NAME` in `.env` if needed.
 
+DNS security defaults:
+- BIND runs as authoritative local DNS with recursion disabled and AXFR blocked.
+- `BIND_BIND_ADDRESS` should stay on loopback by default.
+- To intentionally expose DNS on a non-loopback address, set `BIND_ALLOW_NONLOCAL_BIND=true`.
+
 <a id="testing"></a>
 ## Testing
 

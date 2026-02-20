@@ -116,6 +116,42 @@ else
     TEST_RESULTS=1
 fi
 
+# --- Test 9: BIND Guardrails (no sudo) ---
+log_info "Running test_bind_guardrails.sh..."
+if "$TEST_DIR/test_bind_guardrails.sh"; then
+    log_success "Test: BIND Guardrails"
+else
+    log_warn "Test failed: BIND Guardrails"
+    TEST_RESULTS=1
+fi
+
+# --- Test 10: BIND File Permissions (no sudo) ---
+log_info "Running test_bind_file_permissions.sh..."
+if "$TEST_DIR/test_bind_file_permissions.sh"; then
+    log_success "Test: BIND File Permissions"
+else
+    log_warn "Test failed: BIND File Permissions"
+    TEST_RESULTS=1
+fi
+
+# --- Test 11: BIND Provisioning Validation (no sudo) ---
+log_info "Running test_bind_provisioning_validation.sh..."
+if "$TEST_DIR/test_bind_provisioning_validation.sh"; then
+    log_success "Test: BIND Provisioning Validation"
+else
+    log_warn "Test failed: BIND Provisioning Validation"
+    TEST_RESULTS=1
+fi
+
+# --- Test 12: BIND Runtime Security (no sudo) ---
+log_info "Running test_bind_security_runtime.sh..."
+if "$TEST_DIR/test_bind_security_runtime.sh"; then
+    log_success "Test: BIND Runtime Security"
+else
+    log_warn "Test failed: BIND Runtime Security"
+    TEST_RESULTS=1
+fi
+
 if [ "$TEST_RESULTS" -eq 0 ]; then
     log_success "All smoke tests passed!"
 else

@@ -112,6 +112,11 @@ Archivos auth:
   - `TRAEFIK_DASHBOARD_BASIC_AUTH_USER` / `TRAEFIK_DASHBOARD_BASIC_AUTH_PASSWORD`
 - Para rotar credenciales, actualiza el `.env` y ejecuta `./scripts/env-generate.sh --mode=full`.
 
+Defaults de seguridad DNS:
+- BIND corre como DNS autoritativo local con recursion desactivada y AXFR bloqueado.
+- `BIND_BIND_ADDRESS` debe mantenerse en loopback por defecto.
+- Para exponer DNS fuera de loopback de forma intencional, usa `BIND_ALLOW_NONLOCAL_BIND=true`.
+
 <a id="testing"></a>
 ## Testing
 

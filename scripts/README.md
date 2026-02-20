@@ -99,6 +99,7 @@ COMPOSE_PROFILES=stepca make up
 - Docker/compose not found: install Docker and Compose v2, then retry.
 - Permission denied (certs or trust store): re-run with `sudo` where required.
 - Profile not enabled: use `COMPOSE_PROFILES=<profile> make up` when needed.
+- BIND exposed on non-loopback: set `BIND_ALLOW_NONLOCAL_BIND=true` explicitly if this is intentional.
 
 Useful commands:
 ```bash

@@ -1,3 +1,4 @@
+#!/bin/bash
 # File: tests/smoke/test_http_redirect.sh
 #
 # Smoke test: Checks for HTTP to HTTPS redirection if enabled.
@@ -6,6 +7,8 @@
 #
 # Returns 0 on success, 1 on failure.
 #
+
+set -euo pipefail
 
 SCRIPT_DIR=$(dirname "$0")
 # shellcheck source=scripts/common.sh
@@ -27,21 +30,16 @@ resolve_target_ip() {
     local host="$1"
     local ip
 
+    # Prefer deterministic local mapping when DEV_DOMAIN follows BASE_DOMAIN.
+    if [ -n "${BASE_DOMAIN:-}" ] && [ "${DEV_DOMAIN}" = "${BASE_DOMAIN}" ]; then
+        ip=$("$HOSTS_SCRIPT" --env-file .env generate | awk -v host="whoami.${BASE_DOMAIN}" '$2==host {print $1; exit}')
+        if [ -n "$ip" ]; then
+            printf '%s' "$ip"
+            return 0
+        fi
+    fi
+
     ip=$(getent hosts "$host" | awk '{print $1; exit}')
-    if [ -n "$ip" ]; then
-        printf '%s' "$ip"
-        return 0
-    fi
-
-    if [ -z "${BASE_DOMAIN:-}" ]; then
-        return 1
-    fi
-
-    if [ "${DEV_DOMAIN}" != "${BASE_DOMAIN}" ]; then
-        log_error "DNS resolution failed for ${host} and DEV_DOMAIN (${DEV_DOMAIN}) != BASE_DOMAIN (${BASE_DOMAIN})."
-    fi
-
-    ip=$("$HOSTS_SCRIPT" --env-file .env generate | awk -v host="whoami.${BASE_DOMAIN}" '$2==host {print $1; exit}')
     if [ -n "$ip" ]; then
         printf '%s' "$ip"
         return 0

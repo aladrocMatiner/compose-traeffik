@@ -112,6 +112,11 @@ Auth-filer:
   - `TRAEFIK_DASHBOARD_BASIC_AUTH_USER` / `TRAEFIK_DASHBOARD_BASIC_AUTH_PASSWORD`
 - For att rotera credentials, uppdatera `.env` och kor `./scripts/env-generate.sh --mode=full`.
 
+DNS-sakerhetsdefaults:
+- BIND kor som auktoritativ lokal DNS med recursion avstangt och AXFR blockerat.
+- `BIND_BIND_ADDRESS` bor vara loopback som standard.
+- For avsiktlig exponering utanfor loopback, satt `BIND_ALLOW_NONLOCAL_BIND=true`.
+
 <a id="testing"></a>
 ## Tester
 

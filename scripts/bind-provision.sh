@@ -89,6 +89,25 @@ validate_required_env() {
     if [ -z "${ENDPOINTS:-}" ]; then
         fail "ENDPOINTS is not set. Update the env file or set --env-file."
     fi
+    if [ "${#BASE_DOMAIN}" -gt 253 ]; then
+        fail "BASE_DOMAIN is too long."
+    fi
+    if [[ ! "${BASE_DOMAIN}" =~ ^[a-z0-9.-]+$ ]]; then
+        fail "BASE_DOMAIN must only use lowercase letters, digits, dots, and hyphens."
+    fi
+    if [[ "${BASE_DOMAIN}" == .* || "${BASE_DOMAIN}" == *. || "${BASE_DOMAIN}" == *..* ]]; then
+        fail "BASE_DOMAIN has invalid dot placement."
+    fi
+    IFS='.' read -r -a domain_labels <<< "${BASE_DOMAIN}"
+    local label
+    for label in "${domain_labels[@]}"; do
+        if [ -z "$label" ] || [ "${#label}" -gt 63 ]; then
+            fail "Invalid BASE_DOMAIN label length."
+        fi
+        if [[ ! "$label" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]]; then
+            fail "Invalid BASE_DOMAIN label format: ${label}"
+        fi
+    done
 }
 
 parse_endpoints_from_env() {
@@ -105,6 +124,12 @@ parse_endpoints_from_env() {
         fi
         if [ "$entry" = "bind" ]; then
             continue
+        fi
+        if [[ ! "$entry" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]]; then
+            fail "Invalid endpoint label '${entry}'. Use lowercase letters, digits, and internal hyphens only."
+        fi
+        if [ "${#entry}" -gt 63 ]; then
+            fail "Endpoint label '${entry}' is too long."
         fi
         if [[ " ${seen[*]} " == *" ${entry} "* ]]; then
             continue
@@ -179,7 +204,8 @@ ENV_FILE_PATH=$(resolve_env_file)
 load_env_file "$ENV_FILE_PATH"
 validate_required_env
 
-mapfile -t ENDPOINT_LIST < <(parse_endpoints_from_env "$ENDPOINTS")
+ENDPOINT_TEXT=$(parse_endpoints_from_env "$ENDPOINTS")
+mapfile -t ENDPOINT_LIST <<< "$ENDPOINT_TEXT"
 
 ZONE_CONTENT=$(build_zone "$BASE_DOMAIN" "$LOOPBACK_X" "${ENDPOINT_LIST[@]}")
 ZONE_DIR="${REPO_ROOT}/services/dns-bind/zones"
