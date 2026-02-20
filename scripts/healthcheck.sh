@@ -98,6 +98,24 @@ else
     TEST_RESULTS=1
 fi
 
+# --- Test 7: BIND Zone Generation (no sudo) ---
+log_info "Running test_bind_zone_generation.sh..."
+if "$TEST_DIR/test_bind_zone_generation.sh"; then
+    log_success "Test: BIND Zone Generation"
+else
+    log_warn "Test failed: BIND Zone Generation"
+    TEST_RESULTS=1
+fi
+
+# --- Test 8: BIND Make Target Wiring (no sudo) ---
+log_info "Running test_bind_make_targets.sh..."
+if "$TEST_DIR/test_bind_make_targets.sh"; then
+    log_success "Test: BIND Make Target Wiring"
+else
+    log_warn "Test failed: BIND Make Target Wiring"
+    TEST_RESULTS=1
+fi
+
 if [ "$TEST_RESULTS" -eq 0 ]; then
     log_success "All smoke tests passed!"
 else

@@ -32,6 +32,8 @@ This directory contains smoke tests that verify Traefik readiness, routing, TLS,
 | `tests/smoke/test_http_redirect.sh` | Check HTTP to HTTPS redirect behavior. | Stack running, `curl`, `DEV_DOMAIN`, redirect config in `.env`. | Redirects to HTTPS when enabled, otherwise returns HTTP 200. |
 | `tests/smoke/test_hosts_subdomains.sh` | Validate hosts block apply/remove using a temp file. | None (uses temp env/hosts). | Managed block is added then removed. |
 | `tests/smoke/test_bind_service_config.sh` | Validate BIND compose fragment and bindings. | Compose file present. | Service config contains expected profile, bindings, and mounts. |
+| `tests/smoke/test_bind_zone_generation.sh` | Validate BIND zone generation logic from `ENDPOINTS` in dry-run mode. | `scripts/bind-provision.sh`, `mktemp`, `awk`, `grep`. | Zone output contains expected records and ordering, deduplicates endpoints, and ignores `bind` endpoint duplicates. |
+| `tests/smoke/test_bind_make_targets.sh` | Validate BIND Make lifecycle targets and compose profile wiring. | `Makefile`, `awk`, `grep`. | Required BIND targets exist and lifecycle commands use `scripts/compose.sh --profile bind`. |
 
 ## Configuration
 
@@ -68,4 +70,14 @@ are enabled by default via `COMPOSE_PROFILES` in `.env`; edit it if you want a s
 - **HTTP redirect fails**
   - Symptom: `test_http_redirect.sh` fails.
   - Diagnose: check `HTTP_TO_HTTPS_MIDDLEWARE` (or `HTTP_TO_HTTPS_REDIRECT` if unset) in `.env`.
-  - Fix: set `HTTP_TO_HTTPS_MIDDLEWARE=redirect-to-https@file` and restart (`make up`).
+  - Fix: for redirect enabled set `HTTP_TO_HTTPS_MIDDLEWARE=redirect-to-https@file`; for disabled behavior set `HTTP_TO_HTTPS_MIDDLEWARE=noop@file`; then restart (`make up`).
+
+- **BIND zone generation fails**
+  - Symptom: `test_bind_zone_generation.sh` fails.
+  - Diagnose: run `./scripts/bind-provision.sh --dry-run` and inspect `BASE_DOMAIN`, `LOOPBACK_X`, `ENDPOINTS`.
+  - Fix: correct `.env` values and re-run tests.
+
+- **BIND Make targets wiring fails**
+  - Symptom: `test_bind_make_targets.sh` fails.
+  - Diagnose: run `make help` and inspect BIND target definitions in `Makefile`.
+  - Fix: ensure lifecycle targets are present and wired through `./scripts/compose.sh --profile bind`.

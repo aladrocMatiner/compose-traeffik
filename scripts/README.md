@@ -30,7 +30,7 @@ Preflight validation:
 | `scripts/logs.sh` | Follow service logs | `make logs` | none | Streams logs |
 | `scripts/validate-env.sh` | Preflight validation for profiles and admin auth | `./scripts/validate-env.sh` | `COMPOSE_PROFILES`, `TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH`, `TRAEFIK_DASHBOARD` | Fails fast on unsafe config |
 | `scripts/traefik-render-dynamic.sh` | Render Traefik dynamic config templates | `./scripts/traefik-render-dynamic.sh` | `DEV_DOMAIN` | Writes `services/traefik/dynamic-rendered` |
-| `scripts/healthcheck.sh` | Run smoke tests | `make test` | `DEV_DOMAIN`, `HTTP_TO_HTTPS_REDIRECT` | Runs tests, exits non-zero on failure |
+| `scripts/healthcheck.sh` | Run smoke tests | `make test` | `DEV_DOMAIN`, `HTTP_TO_HTTPS_REDIRECT` (fallback), `HTTP_TO_HTTPS_MIDDLEWARE` (preferred) | Runs tests, exits non-zero on failure |
 | `scripts/certs-selfsigned-generate.sh` | Generate local CA + leaf certs | `make certs-local` | `DEV_DOMAIN`, `CA_SUBJECT_*`, `LEAF_*` | Writes `shared/certs/local-ca` and `shared/certs/local` |
 | `scripts/certbot-issue.sh` | Issue LE certs (profile `le`) | `make certs-le-issue` | `DEV_DOMAIN`, `ACME_EMAIL`, `LETSENCRYPT_STAGING` | Runs certbot container, writes `services/certbot/conf` |
 | `scripts/certbot-renew.sh` | Renew LE certs (profile `le`) | `make certs-le-renew` | `LETSENCRYPT_STAGING` | Runs certbot renew |
@@ -52,6 +52,17 @@ make up
 make logs
 make test
 make down
+```
+
+### BIND lifecycle
+
+```bash
+make bind-provision
+make bind-up
+make bind-status
+make bind-restart
+make bind-logs
+make bind-down
 ```
 
 ### Certificates
