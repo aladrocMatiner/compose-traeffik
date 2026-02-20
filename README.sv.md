@@ -5,7 +5,7 @@
 <a id="overview"></a>
 ## Oversikt
 
-Detta repo ger en Docker Compose edge stack centrerad runt Traefik. Den ar gjord for lokal utveckling, med valfria profiler for DNS, Let's Encrypt (Certbot) och step-ca. Dokumentationssystemet bygger pa README-filer och finns pa engelska, svenska och spanska.
+Detta repo ger en Docker Compose edge stack centrerad runt Traefik. Den ar gjord for lokal utveckling, med valfria profiler for BIND (DNS), Let's Encrypt (Certbot) och step-ca. Dokumentationssystemet bygger pa README-filer och finns pa engelska, svenska och spanska.
 
 <a id="quickstart"></a>
 ## Snabbstart (Mode A: Lokal Self-Signed TLS)
@@ -73,7 +73,6 @@ Detaljerade TLS-floden:
 
 - **Whoami**: `https://whoami.${DEV_DOMAIN}` (standardstack)
 - **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth; aktiverad som standard)
-- **DNS UI**: `https://dns.${BASE_DOMAIN}` (profil `dns`, BasicAuth; aktiverad som standard)
 - **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (profil `stepca`; aktiverad som standard)
 
 <a id="services"></a>
@@ -81,7 +80,7 @@ Detaljerade TLS-floden:
 
 - [Traefik](services/traefik/README.sv.md) - reverse proxy och routing-karnan.
 - [Whoami](services/whoami/README.sv.md) - demo-service for routingtester.
-- [DNS (Technitium)](services/dns/README.sv.md) - valfri profil `dns`.
+- [DNS (BIND)](services/dns-bind/README.sv.md) - valfri profil `bind`.
 - [Certbot](services/certbot/README.sv.md) - valfri profil `le`.
 - [Step-CA](services/step-ca/README.sv.md) - valfri profil `stepca`.
 
@@ -104,16 +103,19 @@ Vanliga kommandon:
 - `make certs-local`
 - `make certs-le-issue`, `make certs-le-renew` (profil `le`)
 - `make stepca-up`, `make stepca-bootstrap`, `make stepca-trust-install`
-- `make dns-up`, `make dns-provision`, `make dns-config-apply`
+- `make bind-up`, `make bind-status`, `make bind-restart`, `make bind-provision`
 - `make hosts-generate`, `make hosts-apply`, `make hosts-status`
 
 Auth-filer:
-- `services/traefik/auth/dns-ui.htpasswd.example`
 - `services/traefik/auth/traefik-dashboard.htpasswd.example`
 - `make bootstrap-full` genererar `services/traefik/auth/*.htpasswd` fran `.env`-varden:
-  - `DNS_UI_BASIC_AUTH_USER` / `DNS_UI_BASIC_AUTH_PASSWORD`
   - `TRAEFIK_DASHBOARD_BASIC_AUTH_USER` / `TRAEFIK_DASHBOARD_BASIC_AUTH_PASSWORD`
 - For att rotera credentials, uppdatera `.env` och kor `./scripts/env-generate.sh --mode=full`.
+
+DNS-sakerhetsdefaults:
+- BIND kor som auktoritativ lokal DNS med recursion avstangt och AXFR blockerat.
+- `BIND_BIND_ADDRESS` bor vara loopback som standard.
+- For avsiktlig exponering utanfor loopback, satt `BIND_ALLOW_NONLOCAL_BIND=true`.
 
 <a id="testing"></a>
 ## Tester

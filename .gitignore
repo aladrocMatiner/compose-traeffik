@@ -28,8 +28,9 @@ services/traefik/auth/*.htpasswd
 # Rendered Traefik dynamic config
 services/traefik/dynamic-rendered/
 
-# DNS service data (Technitium)
-services/dns/data/
+# Legacy local DNS artifacts from prior branches/runs
+services/dns/
+services/dns-bind/zones/db.aladroc.io
 
 # --- Environment files ---
 .env

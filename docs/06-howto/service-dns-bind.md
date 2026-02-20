@@ -1,14 +1,13 @@
-# DNS Service (Technitium) - Bind + Split-DNS on Ubuntu 24.04
+# DNS Service (BIND)
 
 ## Purpose / When to Use
 
-Use this guide to enable the DNS service profile, expose its UI securely via Traefik, provision DNS records for project endpoints, and configure Ubuntu 24.04 to resolve `*.${BASE_DOMAIN}` via the local DNS server.
+Use this guide to enable the BIND DNS service profile, generate a local zone file for project endpoints, and run a local DNS server bound to your chosen address.
 
 ## Prerequisites
 
 - Docker and Docker Compose
 - `make`
-- Ubuntu 24.04 for split-DNS configuration
 - A configured `.env` file
 
 ## Steps
@@ -24,73 +23,104 @@ Use this guide to enable the DNS service profile, expose its UI securely via Tra
    - `DEV_DOMAIN` should match `BASE_DOMAIN` unless you intentionally separate them
    - `LOOPBACK_X` (loopback X octet)
    - `ENDPOINTS` (comma-separated list of endpoints, optional)
+   - `BIND_BIND_ADDRESS` (defaults to `127.0.0.1`)
 
-3. **Create DNS UI BasicAuth credentials:**
+3. **Generate the zone file:**
    ```bash
-   cp services/services/traefik/auth/dns-ui.htpasswd.example services/services/traefik/auth/dns-ui.htpasswd
-   # Replace with your own credentials:
-   # htpasswd -nbB admin 'change-me' > services/services/traefik/auth/dns-ui.htpasswd
+   make bind-provision
    ```
 
-4. **Start the DNS service (dns profile):**
+4. **Start the BIND service (bind profile):**
    ```bash
-   make dns-up
+   make bind-up
    ```
 
-5. **Provision DNS records:**
+5. **Check status and restart when needed:**
    ```bash
-   make dns-provision
-   ```
-
-6. **Configure Ubuntu 24.04 split-DNS (requires sudo):**
-   ```bash
-   sudo make dns-config-apply
+   make bind-status
+   make bind-restart
    ```
 
 ## Expected Result
 
-- The DNS service runs with port 53 bound to `DNS_BIND_ADDRESS` (default: `127.0.0.1`).
-- The DNS UI is available at `https://dns.$BASE_DOMAIN/` through Traefik.
-- A records exist for each endpoint, plus `dns.$BASE_DOMAIN` at `127.0.$LOOPBACK_X.254`.
-- Ubuntu resolves `*.${BASE_DOMAIN}` using the local DNS server.
+- The BIND service runs with port 53 bound to `BIND_BIND_ADDRESS` (default: `127.0.0.1`).
+- A zone file exists under `services/dns-bind/zones/` for `${BASE_DOMAIN}`.
+- A records exist for each endpoint plus `bind.${BASE_DOMAIN}` at `127.0.${LOOPBACK_X}.254`.
 
 ## Verification Commands
 
 ```bash
-make dns-status
-resolvectl status
+make bind-status
+make bind-logs
 
-dig @127.0.0.1 dns.$BASE_DOMAIN
-getent hosts whoami.$BASE_DOMAIN
-
-curl -vk "https://dns.$BASE_DOMAIN/"
+dig @127.0.0.1 whoami.${BASE_DOMAIN}
+getent hosts whoami.${BASE_DOMAIN}
 ```
 
 ## Common Pitfalls
 
 - **DNS port 53 already in use:**
-  - Symptom: DNS service fails to start or port binding errors.
-  - Fix: Stop the conflicting service or change `DNS_BIND_ADDRESS` to a different IP.
+  - Symptom: BIND fails to start or port binding errors.
+  - Fix: Stop the conflicting service or change `BIND_BIND_ADDRESS` to a different IP.
 
-- **UI not reachable:**
-  - Symptom: `https://dns.$BASE_DOMAIN/` does not load.
-  - Diagnose: Check Traefik logs and verify the `dns` profile is running.
-  - Fix: Run `make dns-up` and confirm Traefik is running.
-
-- **Authentication failures:**
-  - Symptom: Browser prompts repeatedly or returns 401.
-  - Fix: Regenerate `services/traefik/auth/dns-ui.htpasswd` with valid credentials.
-
-- **Split-DNS not applied:**
-  - Symptom: `getent hosts` returns no results for `*.${BASE_DOMAIN}`.
-  - Diagnose: Run `resolvectl status` and confirm the `~${BASE_DOMAIN}` routing is present.
-  - Fix: Re-run `sudo make dns-config-apply`.
+- **Missing zone file:**
+  - Symptom: BIND starts but queries for `${BASE_DOMAIN}` fail.
+  - Fix: Run `make bind-provision` before starting the service.
 
 ## Security Notes
 
-- The DNS UI is exposed only via Traefik HTTPS and protected by BasicAuth.
-- The DNS UI port is not published directly on the host.
-- To enable an IP allowlist, add `dns-ui-allowlist@docker` to `DNS_UI_MIDDLEWARES` and set `DNS_UI_ALLOWLIST_SOURCE_RANGES`.
+- BIND listens on `BIND_BIND_ADDRESS` (default localhost-only).
+- Recursion is disabled by default in the provided `named.conf.template`.
+- Zone transfer (`AXFR`) is denied by default.
+- CHAOS metadata (`version.bind`, `hostname.bind`, `id.server`) is minimized.
+- Non-loopback DNS exposure requires explicit opt-in via `BIND_ALLOW_NONLOCAL_BIND=true`.
+
+## Security Verification
+
+Use these checks after DNS changes:
+
+```bash
+make test
+./tests/smoke/test_bind_guardrails.sh
+./tests/smoke/test_bind_security_runtime.sh
+```
+
+Manual checks:
+
+```bash
+# Recursion should be unavailable/refused.
+dig @127.0.0.1 example.com A
+
+# AXFR should be denied.
+dig @127.0.0.1 ${BASE_DOMAIN} AXFR
+
+# Metadata should not disclose version/host identity.
+dig @127.0.0.1 version.bind TXT CH
+dig @127.0.0.1 hostname.bind TXT CH
+dig @127.0.0.1 id.server TXT CH
+```
+
+## Rollback Checklist
+
+If hardening changes break DNS unexpectedly:
+
+1. Validate config and zone generation:
+   ```bash
+   make bind-provision
+   make bind-status
+   make bind-logs
+   ```
+2. Restart BIND lifecycle cleanly:
+   ```bash
+   make bind-restart
+   ```
+3. Confirm smoke baseline:
+   ```bash
+   make test
+   ```
+4. If non-loopback DNS exposure was temporary, revert:
+   - `BIND_BIND_ADDRESS` to loopback
+   - `BIND_ALLOW_NONLOCAL_BIND=false`
 
 ## Links to Related Docs
 

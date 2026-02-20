@@ -14,7 +14,7 @@ This index links to the core references and service guides under `docs/`.
 
 ## Service Guides
 
-- [DNS Service (Technitium): Bind + Split-DNS on Ubuntu 24.04](06-howto/service-dns-bind.md)
+- [DNS Service (BIND)](06-howto/service-dns-bind.md) - setup, provisioning, lifecycle commands (`bind-up`, `bind-status`, `bind-restart`)
 
 ## TLS Mode Guides
 

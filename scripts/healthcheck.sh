@@ -89,30 +89,66 @@ else
     TEST_RESULTS=1
 fi
 
-# --- Test 6: DNS Provision (dry-run) ---
-log_info "Running test_dns_provision.sh..."
-if "$TEST_DIR/test_dns_provision.sh"; then
-    log_success "Test: DNS Provision Dry-Run"
+# --- Test 6: BIND Service Config (no sudo) ---
+log_info "Running test_bind_service_config.sh..."
+if "$TEST_DIR/test_bind_service_config.sh"; then
+    log_success "Test: BIND Service Config"
 else
-    log_warn "Test failed: DNS Provision Dry-Run"
+    log_warn "Test failed: BIND Service Config"
     TEST_RESULTS=1
 fi
 
-# --- Test 7: DNS Configure Ubuntu (dry-run) ---
-log_info "Running test_dns_configure_ubuntu.sh..."
-if "$TEST_DIR/test_dns_configure_ubuntu.sh"; then
-    log_success "Test: DNS Configure Ubuntu Dry-Run"
+# --- Test 7: BIND Zone Generation (no sudo) ---
+log_info "Running test_bind_zone_generation.sh..."
+if "$TEST_DIR/test_bind_zone_generation.sh"; then
+    log_success "Test: BIND Zone Generation"
 else
-    log_warn "Test failed: DNS Configure Ubuntu Dry-Run"
+    log_warn "Test failed: BIND Zone Generation"
     TEST_RESULTS=1
 fi
 
-# --- Test 8: DNS Service Config (no sudo) ---
-log_info "Running test_dns_service_config.sh..."
-if "$TEST_DIR/test_dns_service_config.sh"; then
-    log_success "Test: DNS Service Config"
+# --- Test 8: BIND Make Target Wiring (no sudo) ---
+log_info "Running test_bind_make_targets.sh..."
+if "$TEST_DIR/test_bind_make_targets.sh"; then
+    log_success "Test: BIND Make Target Wiring"
 else
-    log_warn "Test failed: DNS Service Config"
+    log_warn "Test failed: BIND Make Target Wiring"
+    TEST_RESULTS=1
+fi
+
+# --- Test 9: BIND Guardrails (no sudo) ---
+log_info "Running test_bind_guardrails.sh..."
+if "$TEST_DIR/test_bind_guardrails.sh"; then
+    log_success "Test: BIND Guardrails"
+else
+    log_warn "Test failed: BIND Guardrails"
+    TEST_RESULTS=1
+fi
+
+# --- Test 10: BIND File Permissions (no sudo) ---
+log_info "Running test_bind_file_permissions.sh..."
+if "$TEST_DIR/test_bind_file_permissions.sh"; then
+    log_success "Test: BIND File Permissions"
+else
+    log_warn "Test failed: BIND File Permissions"
+    TEST_RESULTS=1
+fi
+
+# --- Test 11: BIND Provisioning Validation (no sudo) ---
+log_info "Running test_bind_provisioning_validation.sh..."
+if "$TEST_DIR/test_bind_provisioning_validation.sh"; then
+    log_success "Test: BIND Provisioning Validation"
+else
+    log_warn "Test failed: BIND Provisioning Validation"
+    TEST_RESULTS=1
+fi
+
+# --- Test 12: BIND Runtime Security (no sudo) ---
+log_info "Running test_bind_security_runtime.sh..."
+if "$TEST_DIR/test_bind_security_runtime.sh"; then
+    log_success "Test: BIND Runtime Security"
+else
+    log_warn "Test failed: BIND Runtime Security"
     TEST_RESULTS=1
 fi
 

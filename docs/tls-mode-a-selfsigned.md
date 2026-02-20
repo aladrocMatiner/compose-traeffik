@@ -68,7 +68,7 @@ openssl s_client -connect "whoami.${DEV_DOMAIN}:443" -servername "whoami.${DEV_D
 
 Mode A is the default. To return from other modes:
 - Set `TLS_CERT_RESOLVER=` in `.env`.
-- Stop profile-specific services (`make stepca-down`, `make dns-down`) if needed.
+- Stop profile-specific services (`make stepca-down`) if needed.
 - Re-run `make certs-local` and `make up`.
 
 ## Common pitfalls

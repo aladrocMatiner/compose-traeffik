@@ -6,7 +6,6 @@ This repository now uses a layered compose workflow where each service lives und
 |-------------|--------------|-------|
 | `docker-compose.yml` | `compose/base.yml` + `services/<service>/compose.yml` | Use `docker compose -f compose/base.yml -f services/traefik/compose.yml -f services/whoami/compose.yml ...` or the helper script `./scripts/compose.sh`. |
 | `traefik/` | `services/traefik/` | Static config, dynmic templates, rendered output, and auth files live here. |
-| `dns/data/` | `services/dns/data/` | Technitium DNS persistent data directory. |
 | `step-ca/config/` / `step-ca/secrets/` | `services/step-ca/config/` / `services/step-ca/secrets/` | Update backup/restores to use the new directories. The data volume remains `stepca-data`. |
 | `step-ca/data/` | `stepca-data/` (Docker volume) | Container data now lives in a named volume declared in `compose/base.yml`. |
 | `certs/*` | `shared/certs/*` | Local CA and leaf certificates now live under `shared/certs/`. |

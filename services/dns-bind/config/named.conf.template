@@ -1,0 +1,19 @@
+options {
+    directory "/tmp";
+    listen-on port 53 { any; };
+    listen-on-v6 { none; };
+    allow-query { any; };
+    recursion no;
+    allow-recursion { none; };
+    allow-transfer { none; };
+    version "not currently available";
+    hostname "none";
+    server-id "none";
+    minimal-responses yes;
+};
+
+zone "__BASE_DOMAIN__" IN {
+    type master;
+    file "/etc/bind/zones/db.__BASE_DOMAIN__";
+    allow-transfer { none; };
+};
