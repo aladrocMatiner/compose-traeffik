@@ -50,6 +50,6 @@ grep -Fq './services/dns-bind/zones:/etc/bind/zones' "$COMPOSE_FILE"
 
 # Validate template rendering command
 grep -Fq 'named.conf.template' "$COMPOSE_FILE"
-grep -Fq 'named -g -c /etc/bind/named.conf' "$COMPOSE_FILE"
+grep -Fq 'named -g -c /tmp/named.conf' "$COMPOSE_FILE"
 
 log_success "BIND service configuration test passed."

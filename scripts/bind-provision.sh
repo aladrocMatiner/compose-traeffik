@@ -192,4 +192,5 @@ fi
 
 mkdir -p "$ZONE_DIR"
 printf '%s\n' "$ZONE_CONTENT" > "$ZONE_FILE"
+chmod 644 "$ZONE_FILE"
 log "Wrote zone file: ${ZONE_FILE}"
