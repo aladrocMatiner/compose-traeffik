@@ -103,7 +103,7 @@ Common commands:
 - `make certs-local`
 - `make certs-le-issue`, `make certs-le-renew` (profile `le`)
 - `make stepca-up`, `make stepca-bootstrap`, `make stepca-trust-install`
-- `make bind-up`, `make bind-provision`
+- `make bind-up`, `make bind-status`, `make bind-restart`, `make bind-provision`
 - `make hosts-generate`, `make hosts-apply`, `make hosts-status`
 
 Auth files:

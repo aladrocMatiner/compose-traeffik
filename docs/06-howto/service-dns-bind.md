@@ -35,6 +35,12 @@ Use this guide to enable the BIND DNS service profile, generate a local zone fil
    make bind-up
    ```
 
+5. **Check status and restart when needed:**
+   ```bash
+   make bind-status
+   make bind-restart
+   ```
+
 ## Expected Result
 
 - The BIND service runs with port 53 bound to `BIND_BIND_ADDRESS` (default: `127.0.0.1`).
@@ -45,6 +51,7 @@ Use this guide to enable the BIND DNS service profile, generate a local zone fil
 
 ```bash
 make bind-status
+make bind-logs
 
 dig @127.0.0.1 whoami.${BASE_DOMAIN}
 getent hosts whoami.${BASE_DOMAIN}

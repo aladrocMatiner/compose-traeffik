@@ -27,6 +27,16 @@ Inicia el servicio:
 make bind-up
 ```
 
+Consulta estado:
+```bash
+make bind-status
+```
+
+Reinicia tras cambios de configuracion:
+```bash
+make bind-restart
+```
+
 Ver logs:
 ```bash
 make bind-logs

@@ -27,6 +27,16 @@ Starta tjansten:
 make bind-up
 ```
 
+Visa status:
+```bash
+make bind-status
+```
+
+Starta om efter konfigurationsandringar:
+```bash
+make bind-restart
+```
+
 Visa loggar:
 ```bash
 make bind-logs

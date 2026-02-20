@@ -27,6 +27,16 @@ Start the service:
 make bind-up
 ```
 
+Check status:
+```bash
+make bind-status
+```
+
+Restart after config updates:
+```bash
+make bind-restart
+```
+
 View logs:
 ```bash
 make bind-logs

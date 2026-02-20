@@ -12,11 +12,14 @@ This documentation provides comprehensive guides for setting up, configuring, an
 
 To get your stack up and running quickly with locally generated self-signed certificates, follow these steps:
 
-1.  **Copy the example environment file:**
+1.  **Bootstrap environment and required directories:**
     ```bash
-    cp .env.example .env
+    make bootstrap
     ```
-    *Ensure you update your `/etc/hosts` file as described in the `Requirements` section of the main `README.md`.*
+    For full defaults (including optional profile values), use:
+    ```bash
+    make bootstrap-full
+    ```
 2.  **Generate local self-signed certificates:**
     ```bash
     make certs-local
@@ -32,9 +35,12 @@ To get your stack up and running quickly with locally generated self-signed cert
     You should see output indicating that Traefik is ready, routing works, and the TLS handshake is successful.
 5.  **Access the demo service:**
     Open your browser to `https://whoami.local.test`. You should see the `whoami` service's output, served over HTTPS.
-
-    > **Warning about Traefik Dashboard:**
-    > If you enable the Traefik dashboard by setting `TRAEFIK_DASHBOARD=true` in your `.env` file, it becomes accessible at `https://traefik.local.test/dashboard/`. Be aware that for local development convenience, the dashboard API is configured with `insecure: true`, meaning it has **no authentication**. Do not expose this publicly.
+6.  **Optional DNS flow with BIND:**
+    ```bash
+    make bind-provision
+    make bind-up
+    make bind-status
+    ```
 
 ---
 

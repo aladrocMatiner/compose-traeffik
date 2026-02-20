@@ -21,7 +21,7 @@ SHELL := /bin/bash # Ensure bash is used for shell commands
         stepca-up stepca-down stepca-bootstrap stepca-verify-cert \
         stepca-trust-install stepca-trust-uninstall stepca-trust-verify \
         hosts-generate hosts-apply hosts-remove hosts-status \
-        bind-up bind-down bind-logs bind-status bind-provision bind-provision-dry
+        bind-up bind-down bind-restart bind-logs bind-status bind-provision bind-provision-dry
 
 # Include .env for environment variables if it exists.
 # This makes variables in .env available to the Makefile.
@@ -41,6 +41,8 @@ COMPOSE_FILES := \
 
 # Pin compose project directory/name to avoid cross-CWD conflicts.
 COMPOSE_PROJECT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+REPO_ROOT := $(abspath $(COMPOSE_PROJECT_DIR))
+SCRIPTS_DIR := $(REPO_ROOT)/scripts
 COMPOSE_PROJECT_NAME ?= $(PROJECT_NAME)
 ifeq ($(COMPOSE_PROJECT_NAME),)
 COMPOSE_PROJECT_NAME := $(notdir $(abspath $(COMPOSE_PROJECT_DIR)))
@@ -200,26 +202,28 @@ hosts-status:
 
 bind-up:
 	@echo "Starting BIND service (profile: bind)..."
-	COMPOSE_PROFILES=bind ./scripts/compose.sh --profile bind $(COMPOSE_OPTS) up -d bind
+	COMPOSE_PROFILES=bind "$(SCRIPTS_DIR)/compose.sh" --profile bind $(COMPOSE_OPTS) up -d bind
 
 bind-down:
 	@echo "Stopping BIND service..."
-	COMPOSE_PROFILES=bind ./scripts/compose.sh --profile bind $(COMPOSE_OPTS) stop bind || true
-	COMPOSE_PROFILES=bind ./scripts/compose.sh --profile bind $(COMPOSE_OPTS) rm -f bind || true
+	COMPOSE_PROFILES=bind "$(SCRIPTS_DIR)/compose.sh" --profile bind $(COMPOSE_OPTS) stop bind || true
+	COMPOSE_PROFILES=bind "$(SCRIPTS_DIR)/compose.sh" --profile bind $(COMPOSE_OPTS) rm -f bind || true
+
+bind-restart: bind-down bind-up
 
 bind-logs:
 	@echo "Showing BIND service logs..."
-	COMPOSE_PROFILES=bind ./scripts/compose.sh --profile bind $(COMPOSE_OPTS) logs -f bind
+	COMPOSE_PROFILES=bind "$(SCRIPTS_DIR)/compose.sh" --profile bind $(COMPOSE_OPTS) logs -f bind
 
 bind-status:
 	@echo "BIND service status:"
-	COMPOSE_PROFILES=bind ./scripts/compose.sh --profile bind $(COMPOSE_OPTS) ps bind
+	COMPOSE_PROFILES=bind "$(SCRIPTS_DIR)/compose.sh" --profile bind $(COMPOSE_OPTS) ps bind
 
 bind-provision:
-	./scripts/bind-provision.sh $(BIND_ENV_ARGS)
+	"$(SCRIPTS_DIR)/bind-provision.sh" $(BIND_ENV_ARGS)
 
 bind-provision-dry:
-	./scripts/bind-provision.sh $(BIND_ENV_ARGS) --dry-run
+	"$(SCRIPTS_DIR)/bind-provision.sh" $(BIND_ENV_ARGS) --dry-run
 
 # --- Help ---
 
@@ -277,6 +281,7 @@ help:
 	@echo "Bind DNS:"
 	@echo "  bind-up               Start the BIND service (profile: bind)."
 	@echo "  bind-down             Stop and remove the BIND containers."
+	@echo "  bind-restart          Restart the BIND service (bind-down + bind-up)."
 	@echo "  bind-logs             Follow BIND service logs."
 	@echo "  bind-status           Show BIND service status."
 	@echo "  bind-provision        Generate the BIND zone file from ENDPOINTS."

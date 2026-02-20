@@ -78,6 +78,7 @@ This repository sets up a Docker Compose-based Traefik edge stack, integrating a
 *   **Bind DNS**:
     *   `bind-up`: Start BIND service (profile `bind`).
     *   `bind-down`: Stop BIND service.
+    *   `bind-restart`: Restart BIND service.
     *   `bind-logs`: Follow BIND service logs.
     *   `bind-status`: Show BIND service status.
     *   `bind-provision`: Generate BIND zone file from ENDPOINTS.
