@@ -1,6 +1,6 @@
 services:
   bind:
-    image: internetsystemsconsortium/bind9:9.18
+    image: internetsystemsconsortium/bind9:9.20
     container_name: bind
     profiles:
       - bind

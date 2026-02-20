@@ -10,7 +10,7 @@ This checklist is a mandatory tool for reviewing and ensuring the quality of all
     *   *Self-check*: Execute a sample of commands from the PR description to confirm functionality.
 *   [ ] **Environment Variable Validation**: Every environment variable mentioned in the documentation exists in `.env.example` and is referenced correctly (e.g., `DEV_DOMAIN`, not `MY_DOMAIN`).
 *   [ ] **Path Validation**: Every file or directory path referenced (e.g., `services/traefik/traefik.yml`, `services/traefik/dynamic/middlewares.yml`, `shared/certs/local-ca/ca.crt`) actually exists in the repository structure.
-*   [ ] **Compose Profiles & Networks**: Docker Compose profile names (`le`, `stepca`, `dns`) and network names (`traefik-proxy`, `stepca-internal`) match the files under `compose/base.yml` and `services/<service>/compose.yml` and are consistent with `docs/90-facts.md`.
+*   [ ] **Compose Profiles & Networks**: Docker Compose profile names (`le`, `stepca`, `bind`) and network names (`traefik-proxy`, `stepca-internal`) match the files under `compose/base.yml` and `services/<service>/compose.yml` and are consistent with `docs/90-facts.md`.
 
 ## 2. Content Checks
 

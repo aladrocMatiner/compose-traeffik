@@ -56,7 +56,7 @@ Relevant env vars in `.env.example`:
 <a id="security"></a>
 ## Security notes
 
-- Do not enable both `dns` and `bind` profiles on the same host (port 53 conflict).
+- Do not run another DNS service on the same host (port 53 conflict).
 
 <a id="troubleshooting"></a>
 ## Troubleshooting

@@ -21,9 +21,7 @@ SHELL := /bin/bash # Ensure bash is used for shell commands
         stepca-up stepca-down stepca-bootstrap stepca-verify-cert \
         stepca-trust-install stepca-trust-uninstall stepca-trust-verify \
         hosts-generate hosts-apply hosts-remove hosts-status \
-        dns-up dns-down dns-logs dns-status dns-provision dns-provision-dry \
-        bind-up bind-down bind-logs bind-status bind-provision bind-provision-dry \
-dns-config-apply dns-config-remove dns-config-status
+        bind-up bind-down bind-logs bind-status bind-provision bind-provision-dry
 
 # Include .env for environment variables if it exists.
 # This makes variables in .env available to the Makefile.
@@ -37,7 +35,7 @@ COMPOSE_FILES := \
   -f compose/base.yml \
   -f services/traefik/compose.yml \
   -f services/whoami/compose.yml \
-  -f services/dns/compose.yml \
+  -f services/dns-bind/compose.yml \
   -f services/certbot/compose.yml \
   -f services/step-ca/compose.yml
 
@@ -63,11 +61,6 @@ HOSTS_ENV_ARGS += --env-file $(ENV_FILE)
 endif
 ifneq ($(HOSTS_FILE),)
 HOSTS_ENV_ARGS += --hosts-file $(HOSTS_FILE)
-endif
-
-DNS_ENV_ARGS :=
-ifneq ($(ENV_FILE),)
-DNS_ENV_ARGS += --env-file $(ENV_FILE)
 endif
 
 BIND_ENV_ARGS :=
@@ -203,40 +196,6 @@ hosts-remove:
 hosts-status:
 	./scripts/hosts-subdomains.sh $(HOSTS_ENV_ARGS) status
 
-# --- DNS Service ---
-
-dns-up:
-	@echo "Starting DNS service (profile: dns)..."
-	COMPOSE_PROFILES=dns ./scripts/compose.sh --profile dns $(COMPOSE_OPTS) up -d dns
-
-dns-down:
-	@echo "Stopping DNS service..."
-	COMPOSE_PROFILES=dns ./scripts/compose.sh --profile dns $(COMPOSE_OPTS) stop dns || true
-	COMPOSE_PROFILES=dns ./scripts/compose.sh --profile dns $(COMPOSE_OPTS) rm -f dns || true
-
-dns-logs:
-	@echo "Showing DNS service logs..."
-	COMPOSE_PROFILES=dns ./scripts/compose.sh --profile dns $(COMPOSE_OPTS) logs -f dns
-
-dns-status:
-	@echo "DNS service status:"
-	COMPOSE_PROFILES=dns ./scripts/compose.sh --profile dns $(COMPOSE_OPTS) ps dns
-
-dns-provision:
-	./scripts/dns-provision.sh $(DNS_ENV_ARGS)
-
-dns-provision-dry:
-	./scripts/dns-provision.sh $(DNS_ENV_ARGS) --dry-run
-
-dns-config-apply:
-	./scripts/dns-configure-ubuntu.sh $(DNS_ENV_ARGS) apply
-
-dns-config-remove:
-	./scripts/dns-configure-ubuntu.sh $(DNS_ENV_ARGS) remove
-
-dns-config-status:
-	./scripts/dns-configure-ubuntu.sh $(DNS_ENV_ARGS) status
-
 # --- Bind DNS Provisioning ---
 
 bind-up:
@@ -315,17 +274,6 @@ help:
 	@echo "  hosts-remove          Remove the managed hosts block."
 	@echo "  hosts-status          Show whether the managed block exists."
 	@echo ""
-	@echo "DNS Service:"
-	@echo "  dns-up                Start the DNS service (profile: dns)."
-	@echo "  dns-down              Stop and remove the DNS container."
-	@echo "  dns-logs              Follow DNS service logs."
-	@echo "  dns-status            Show DNS service status."
-	@echo "  dns-provision         Provision DNS records via API."
-	@echo "  dns-provision-dry      Dry-run DNS provisioning."
-	@echo "  dns-config-apply      Configure Ubuntu split-DNS (requires sudo)."
-	@echo "  dns-config-remove     Remove Ubuntu split-DNS config (requires sudo)."
-	@echo "  dns-config-status     Show Ubuntu split-DNS status."
-	@echo ""
 	@echo "Bind DNS:"
 	@echo "  bind-up               Start the BIND service (profile: bind)."
 	@echo "  bind-down             Stop and remove the BIND containers."
@@ -336,6 +284,6 @@ help:
 	@echo ""
 	@echo "Profiles:"
 	@echo "  Use COMPOSE_PROFILES=<profile_name> before make commands to activate profiles."
-	@echo "  Available profiles: le, stepca"
+	@echo "  Available profiles: bind, le, stepca"
 	@echo "  Example: COMPOSE_PROFILES=le make up"
 	@echo ""

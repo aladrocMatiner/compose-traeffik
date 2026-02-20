@@ -56,7 +56,7 @@ Relevanta env vars i `.env.example`:
 <a id="security"></a>
 ## Sakerhetsnoter
 
-- Aktivera inte `dns` och `bind` samtidigt (port 53-konflikt).
+- Kor inte en annan DNS-tjanst pa samma host (port 53-konflikt).
 
 <a id="troubleshooting"></a>
 ## Felsokning

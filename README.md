@@ -5,7 +5,7 @@
 <a id="overview"></a>
 ## Overview
 
-This repository provides a Docker Compose edge stack centered on Traefik. It is designed for local development, with optional profiles for DNS, Let's Encrypt (Certbot), and step-ca. The documentation system is README-based and available in English, Swedish, and Spanish.
+This repository provides a Docker Compose edge stack centered on Traefik. It is designed for local development, with optional profiles for BIND (DNS), Let's Encrypt (Certbot), and step-ca. The documentation system is README-based and available in English, Swedish, and Spanish.
 
 <a id="quickstart"></a>
 ## Quickstart (Mode A: Local Self-Signed TLS)
@@ -73,7 +73,6 @@ For detailed TLS workflows, see:
 
 - **Whoami**: `https://whoami.${DEV_DOMAIN}` (default stack; uses Traefik HTTPS)
 - **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth; enabled by default)
-- **DNS UI**: `https://dns.${BASE_DOMAIN}` (profile `dns`, BasicAuth required; enabled by default)
 - **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (profile `stepca`; enabled by default)
 
 <a id="services"></a>
@@ -81,7 +80,6 @@ For detailed TLS workflows, see:
 
 - [Traefik](services/traefik/README.md) - reverse proxy and routing core.
 - [Whoami](services/whoami/README.md) - demo service used for routing tests.
-- [DNS (Technitium)](services/dns/README.md) - optional profile `dns`.
 - [DNS (BIND)](services/dns-bind/README.md) - optional profile `bind`.
 - [Certbot](services/certbot/README.md) - optional profile `le`.
 - [Step-CA](services/step-ca/README.md) - optional profile `stepca`.
@@ -105,17 +103,15 @@ Common commands:
 - `make certs-local`
 - `make certs-le-issue`, `make certs-le-renew` (profile `le`)
 - `make stepca-up`, `make stepca-bootstrap`, `make stepca-trust-install`
-- `make dns-up`, `make dns-provision`, `make dns-config-apply`
+- `make bind-up`, `make bind-provision`
 - `make hosts-generate`, `make hosts-apply`, `make hosts-status`
 
 Auth files:
-- `services/traefik/auth/dns-ui.htpasswd.example` (DNS UI BasicAuth)
 - `services/traefik/auth/traefik-dashboard.htpasswd.example` (Traefik dashboard BasicAuth)
 - `make bootstrap-full` generates `services/traefik/auth/*.htpasswd` from `.env` values:
-  - `DNS_UI_BASIC_AUTH_USER` / `DNS_UI_BASIC_AUTH_PASSWORD`
   - `TRAEFIK_DASHBOARD_BASIC_AUTH_USER` / `TRAEFIK_DASHBOARD_BASIC_AUTH_PASSWORD`
 - To rotate credentials, update the `.env` values and re-run `./scripts/env-generate.sh --mode=full`.
-- Preflight checks reject `.example` paths when enabling the dns profile or Traefik dashboard.
+- Preflight checks reject `.example` paths when enabling the Traefik dashboard.
 
 Compose project pinning:
 - The compose wrapper pins `--project-directory` and `--project-name` to avoid cross‑CWD conflicts. Override with `COMPOSE_PROJECT_NAME` in `.env` if needed.

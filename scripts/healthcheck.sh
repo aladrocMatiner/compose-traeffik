@@ -89,30 +89,12 @@ else
     TEST_RESULTS=1
 fi
 
-# --- Test 6: DNS Provision (dry-run) ---
-log_info "Running test_dns_provision.sh..."
-if "$TEST_DIR/test_dns_provision.sh"; then
-    log_success "Test: DNS Provision Dry-Run"
+# --- Test 6: BIND Service Config (no sudo) ---
+log_info "Running test_bind_service_config.sh..."
+if "$TEST_DIR/test_bind_service_config.sh"; then
+    log_success "Test: BIND Service Config"
 else
-    log_warn "Test failed: DNS Provision Dry-Run"
-    TEST_RESULTS=1
-fi
-
-# --- Test 7: DNS Configure Ubuntu (dry-run) ---
-log_info "Running test_dns_configure_ubuntu.sh..."
-if "$TEST_DIR/test_dns_configure_ubuntu.sh"; then
-    log_success "Test: DNS Configure Ubuntu Dry-Run"
-else
-    log_warn "Test failed: DNS Configure Ubuntu Dry-Run"
-    TEST_RESULTS=1
-fi
-
-# --- Test 8: DNS Service Config (no sudo) ---
-log_info "Running test_dns_service_config.sh..."
-if "$TEST_DIR/test_dns_service_config.sh"; then
-    log_success "Test: DNS Service Config"
-else
-    log_warn "Test failed: DNS Service Config"
+    log_warn "Test failed: BIND Service Config"
     TEST_RESULTS=1
 fi
 

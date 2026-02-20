@@ -56,7 +56,7 @@ Variables relevantes en `.env.example`:
 <a id="security"></a>
 ## Notas de seguridad
 
-- No habilitar `dns` y `bind` a la vez (conflicto en el puerto 53).
+- No ejecutar otro servicio DNS en el mismo host (conflicto en el puerto 53).
 
 <a id="troubleshooting"></a>
 ## Troubleshooting
