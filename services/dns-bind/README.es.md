@@ -56,6 +56,11 @@ Variables relevantes en `.env.example`:
 - `ENDPOINTS`
 - `BIND_BIND_ADDRESS`
 
+Ruta del fichero de zona:
+- Fichero generado: `services/dns-bind/zones/db.${BASE_DOMAIN}`
+- Ejemplo: `services/dns-bind/zones/db.aladroc.io`
+- Agrega registros DNS personalizados en ese `db.<dominio>`.
+
 <a id="ports"></a>
 ## Puertos, redes, volumenes
 

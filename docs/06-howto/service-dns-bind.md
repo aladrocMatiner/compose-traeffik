@@ -29,6 +29,10 @@ Use this guide to enable the BIND DNS service profile, generate a local zone fil
    ```bash
    make bind-provision
    ```
+   Zone file location:
+   - `services/dns-bind/zones/db.${BASE_DOMAIN}`
+   - Example: `services/dns-bind/zones/db.aladroc.io`
+   - Manual custom records must be added to that `db.<domain>` file.
 
 4. **Start the BIND service (bind profile):**
    ```bash
