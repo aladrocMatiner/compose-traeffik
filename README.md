@@ -118,8 +118,8 @@ Compose project pinning:
 
 DNS security defaults:
 - BIND runs as authoritative local DNS with recursion disabled and AXFR blocked.
-- `BIND_BIND_ADDRESS` should stay on loopback by default.
-- To intentionally expose DNS on a non-loopback address, set `BIND_ALLOW_NONLOCAL_BIND=true`.
+- `BIND_BIND_ADDRESS` controls the bind interface.
+- Non-loopback exposure requires `BIND_ALLOW_NONLOCAL_BIND=true`.
 
 <a id="testing"></a>
 ## Testing

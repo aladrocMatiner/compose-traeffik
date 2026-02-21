@@ -23,7 +23,8 @@ Use this guide to enable the BIND DNS service profile, generate a local zone fil
    - `DEV_DOMAIN` should match `BASE_DOMAIN` unless you intentionally separate them
    - `LOOPBACK_X` (loopback X octet)
    - `ENDPOINTS` (comma-separated list of endpoints, optional)
-   - `BIND_BIND_ADDRESS` (defaults to `127.0.0.1`)
+   - `BIND_BIND_ADDRESS` (set to your target interface IP)
+   - `BIND_ALLOW_NONLOCAL_BIND=true` when using non-loopback addresses
 
 3. **Generate the zone file:**
    ```bash
@@ -47,7 +48,7 @@ Use this guide to enable the BIND DNS service profile, generate a local zone fil
 
 ## Expected Result
 
-- The BIND service runs with port 53 bound to `BIND_BIND_ADDRESS` (default: `127.0.0.1`).
+- The BIND service runs with port 53 bound to `BIND_BIND_ADDRESS`.
 - A zone file exists under `services/dns-bind/zones/` for `${BASE_DOMAIN}`.
 - A records exist for each endpoint plus `bind.${BASE_DOMAIN}` at `127.0.${LOOPBACK_X}.254`.
 
@@ -73,11 +74,11 @@ getent hosts whoami.${BASE_DOMAIN}
 
 ## Security Notes
 
-- BIND listens on `BIND_BIND_ADDRESS` (default localhost-only).
+- BIND listens on `BIND_BIND_ADDRESS`.
 - Recursion is disabled by default in the provided `named.conf.template`.
 - Zone transfer (`AXFR`) is denied by default.
 - CHAOS metadata (`version.bind`, `hostname.bind`, `id.server`) is minimized.
-- Non-loopback DNS exposure requires explicit opt-in via `BIND_ALLOW_NONLOCAL_BIND=true`.
+- Non-loopback DNS exposure requires `BIND_ALLOW_NONLOCAL_BIND=true`.
 
 ## Security Verification
 

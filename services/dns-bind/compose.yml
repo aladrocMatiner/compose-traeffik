@@ -14,8 +14,8 @@ services:
     networks:
       - proxy
     ports:
-      - "${BIND_BIND_ADDRESS:-127.0.0.1}:53:53/udp"
-      - "${BIND_BIND_ADDRESS:-127.0.0.1}:53:53/tcp"
+      - "${BIND_BIND_ADDRESS:-10.64.70.90}:53:53/udp"
+      - "${BIND_BIND_ADDRESS:-10.64.70.90}:53:53/tcp"
     environment:
       - BASE_DOMAIN=${BASE_DOMAIN}
     volumes:
