@@ -3,8 +3,15 @@ options {
     listen-on port 53 { any; };
     listen-on-v6 { none; };
     allow-query { any; };
-    recursion no;
-    allow-recursion { none; };
+    recursion yes;
+    allow-recursion { localhost; localnets; };
+    forwarders {
+        1.1.1.1;
+        1.0.0.1;
+        8.8.8.8;
+        8.4.4.8;
+    };
+    forward only;
     allow-transfer { none; };
     version "not currently available";
     hostname "none";
