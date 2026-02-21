@@ -56,6 +56,11 @@ Relevant env vars in `.env.example`:
 - `ENDPOINTS`
 - `BIND_BIND_ADDRESS`
 
+Zone file path:
+- Generated file: `services/dns-bind/zones/db.${BASE_DOMAIN}`
+- Example: `services/dns-bind/zones/db.aladroc.io`
+- Add custom DNS records in that `db.<domain>` file.
+
 <a id="ports"></a>
 ## Ports, networks, volumes
 

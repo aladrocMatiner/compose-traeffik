@@ -56,6 +56,11 @@ Relevanta env vars i `.env.example`:
 - `ENDPOINTS`
 - `BIND_BIND_ADDRESS`
 
+Sokvag for zonfil:
+- Genererad fil: `services/dns-bind/zones/db.${BASE_DOMAIN}`
+- Exempel: `services/dns-bind/zones/db.aladroc.io`
+- Lagg till egna DNS-poster i den filen `db.<domän>`.
+
 <a id="ports"></a>
 ## Portar, natverk, volymer
 

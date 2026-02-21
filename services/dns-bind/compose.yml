@@ -19,7 +19,7 @@ services:
     environment:
       - BASE_DOMAIN=${BASE_DOMAIN}
     volumes:
-      - ./services/dns-bind/config:/etc/bind:ro
+      - ./services/dns-bind/config/named.conf.template:/etc/bind/named.conf.template:ro
       - ./services/dns-bind/zones:/etc/bind/zones:ro
     tmpfs:
       - /tmp
