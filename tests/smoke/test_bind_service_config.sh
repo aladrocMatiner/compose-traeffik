@@ -46,7 +46,7 @@ grep -Fq 'no-new-privileges:true' "$COMPOSE_FILE"
 grep -Fq 'cap_drop:' "$COMPOSE_FILE"
 grep -Fq 'cap_add:' "$COMPOSE_FILE"
 grep -Fq 'NET_BIND_SERVICE' "$COMPOSE_FILE"
-grep -Fq '/etc/bind:ro' "$COMPOSE_FILE"
+grep -Fq '/etc/bind/named.conf.template:ro' "$COMPOSE_FILE"
 grep -Fq '/etc/bind/zones:ro' "$COMPOSE_FILE"
 
 # Validate pinned image tag
