@@ -14,6 +14,6 @@ options {
 
 zone "__BASE_DOMAIN__" IN {
     type master;
-    file "/etc/bind/zones/db.__BASE_DOMAIN__";
+    file "/zones/db.__BASE_DOMAIN__";
     allow-transfer { none; };
 };
