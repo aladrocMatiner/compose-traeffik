@@ -20,7 +20,7 @@ services:
       - BASE_DOMAIN=${BASE_DOMAIN}
     volumes:
       - ./services/dns-bind/config/named.conf.template:/etc/bind/named.conf.template:ro
-      - ./services/dns-bind/zones:/etc/bind/zones:ro
+      - ./services/dns-bind/zones:/zones:ro
     tmpfs:
       - /tmp
       - /run/named
@@ -28,4 +28,4 @@ services:
       - /bin/sh
       - -ec
     command:
-      - 'sed "s/__BASE_DOMAIN__/${BASE_DOMAIN}/g" /etc/bind/named.conf.template > /tmp/named.conf && named-checkconf /tmp/named.conf && named-checkzone "${BASE_DOMAIN}" "/etc/bind/zones/db.${BASE_DOMAIN}" && exec named -g -c /tmp/named.conf'
+      - 'sed "s/__BASE_DOMAIN__/${BASE_DOMAIN}/g" /etc/bind/named.conf.template > /tmp/named.conf && named-checkconf /tmp/named.conf && named-checkzone "${BASE_DOMAIN}" "/zones/db.${BASE_DOMAIN}" && exec named -g -c /tmp/named.conf'

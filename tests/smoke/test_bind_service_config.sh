@@ -47,7 +47,7 @@ grep -Fq 'cap_drop:' "$COMPOSE_FILE"
 grep -Fq 'cap_add:' "$COMPOSE_FILE"
 grep -Fq 'NET_BIND_SERVICE' "$COMPOSE_FILE"
 grep -Fq '/etc/bind/named.conf.template:ro' "$COMPOSE_FILE"
-grep -Fq '/etc/bind/zones:ro' "$COMPOSE_FILE"
+grep -Fq '/zones:ro' "$COMPOSE_FILE"
 
 # Validate pinned image tag
 grep -Fq 'internetsystemsconsortium/bind9:9.20' "$COMPOSE_FILE"
@@ -60,6 +60,6 @@ grep -Fq './services/dns-bind/zones:/etc/bind/zones' "$COMPOSE_FILE"
 grep -Fq 'named.conf.template' "$COMPOSE_FILE"
 grep -Fq 'named -g -c /tmp/named.conf' "$COMPOSE_FILE"
 grep -Fq 'named-checkconf /tmp/named.conf' "$COMPOSE_FILE"
-grep -Fq 'named-checkzone "${BASE_DOMAIN}" "/etc/bind/zones/db.${BASE_DOMAIN}"' "$COMPOSE_FILE"
+grep -Fq 'named-checkzone "${BASE_DOMAIN}" "/zones/db.${BASE_DOMAIN}"' "$COMPOSE_FILE"
 
 log_success "BIND service configuration test passed."
