@@ -172,6 +172,8 @@ Suite smoke estatica de GitLab: `make test-gitlab`.
 - Verifica que `DEV_DOMAIN` y `BASE_DOMAIN` coincidan con tu hosts/DNS.
 - Si los puertos 80/443 estan en uso, deten servicios en conflicto y reintenta `make up`.
 - Usa `make logs` para ver logs de Traefik y servicios.
+- Para la UI WireGuard, verifica `WG_UI_HOSTNAME`, `WG_SERVER_ENDPOINT` y el mapeo hosts/DNS (`ENDPOINTS` puede necesitar `wg`).
+- Si `make wg-up` falla en preflight, revisa `WG_BIND_ADDRESS`, `WG_ALLOW_NONLOCAL_BIND`, `WG_SERVER_PORT` y `WG_INSECURE`.
 
 <a id="add-service-doc"></a>
 ## Agregar docs de servicio

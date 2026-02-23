@@ -356,31 +356,41 @@ is_ipv4_loopback() {
             return 1
         fi
     done
+    return 0
+}
+
+is_ipv4_loopback() {
+    local value="$1"
+    if ! is_ipv4_address "$value"; then
+        return 1
+    fi
+    IFS='.' read -r a _ _ _ <<< "$value"
     [ "$a" -eq 127 ]
 }
 
 validate_domain_name() {
     local domain="$1"
+    local var_name="${2:-BASE_DOMAIN}"
     if [ -z "$domain" ]; then
-        log_error "BASE_DOMAIN is required when bind profile is enabled."
+        log_error "${var_name} is required."
     fi
     if [ "${#domain}" -gt 253 ]; then
-        log_error "BASE_DOMAIN is too long: ${domain}"
+        log_error "${var_name} is too long: ${domain}"
     fi
     if [[ ! "$domain" =~ ^[a-z0-9.-]+$ ]]; then
-        log_error "BASE_DOMAIN contains invalid characters: ${domain}"
+        log_error "${var_name} contains invalid characters: ${domain}"
     fi
     if [[ "$domain" == .* || "$domain" == *. || "$domain" == *..* ]]; then
-        log_error "BASE_DOMAIN has invalid dot placement: ${domain}"
+        log_error "${var_name} has invalid dot placement: ${domain}"
     fi
     IFS='.' read -r -a labels <<< "$domain"
     local label
     for label in "${labels[@]}"; do
         if [ -z "$label" ] || [ "${#label}" -gt 63 ]; then
-            log_error "BASE_DOMAIN label is invalid: ${domain}"
+            log_error "${var_name} label is invalid: ${domain}"
         fi
         if [[ ! "$label" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]]; then
-            log_error "BASE_DOMAIN label has invalid format: ${label}"
+            log_error "${var_name} label has invalid format: ${label}"
         fi
     done
 }

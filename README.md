@@ -148,6 +148,11 @@ Auth files:
 Compose project pinning:
 - The compose wrapper pins `--project-directory` and `--project-name` to avoid cross‑CWD conflicts. Override with `COMPOSE_PROJECT_NAME` in `.env` if needed.
 
+WireGuard bootstrap and exposure defaults:
+- Run `make wg-bootstrap` before the first `make wg-up` to populate `WG_INIT_*` admin bootstrap variables in `.env`.
+- `WG_BIND_ADDRESS` defaults to loopback. For intentional remote WireGuard exposure, set a non-loopback bind and `WG_ALLOW_NONLOCAL_BIND=true`.
+- If you use `make hosts-*` for local UI resolution, add `wg` to `ENDPOINTS`.
+
 DNS security defaults:
 - BIND runs as authoritative local DNS with recursion disabled and AXFR blocked.
 - `BIND_BIND_ADDRESS` controls the bind interface.
@@ -176,6 +181,8 @@ Run the GitLab static smoke suite only with `make test-gitlab`.
 - Check that `DEV_DOMAIN` and `BASE_DOMAIN` match your hosts/DNS setup.
 - If ports 80/443 are in use, stop conflicting services and retry `make up`.
 - Use `make logs` to inspect Traefik and service logs.
+- For WireGuard UI, verify `WG_UI_HOSTNAME`, `WG_SERVER_ENDPOINT`, and hosts/DNS mapping (`ENDPOINTS` may need `wg`).
+- If `make wg-up` fails preflight, review `WG_BIND_ADDRESS`, `WG_ALLOW_NONLOCAL_BIND`, `WG_SERVER_PORT`, and `WG_INSECURE`.
 
 <a id="add-service-doc"></a>
 ## Add a service doc

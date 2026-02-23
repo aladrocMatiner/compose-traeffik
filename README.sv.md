@@ -172,6 +172,8 @@ Statisk GitLab smoke-suite: `make test-gitlab`.
 - Kontrollera att `DEV_DOMAIN` och `BASE_DOMAIN` matchar din hosts/DNS.
 - Om portar 80/443 ar upptagna, stoppa konflikter och forsok `make up` igen.
 - Anvand `make logs` for att se Traefik och service-loggar.
+- For WireGuard UI: kontrollera `WG_UI_HOSTNAME`, `WG_SERVER_ENDPOINT` och hosts/DNS-mappning (`ENDPOINTS` kan behova `wg`).
+- Om `make wg-up` stoppas av preflight, granska `WG_BIND_ADDRESS`, `WG_ALLOW_NONLOCAL_BIND`, `WG_SERVER_PORT` och `WG_INSECURE`.
 
 <a id="add-service-doc"></a>
 ## Lagg till en service-doc
