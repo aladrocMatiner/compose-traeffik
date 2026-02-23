@@ -152,6 +152,42 @@ else
     TEST_RESULTS=1
 fi
 
+# --- Test 13: WireGuard Service Config (no sudo) ---
+log_info "Running test_wg_easy_service_config.sh..."
+if "$TEST_DIR/test_wg_easy_service_config.sh"; then
+    log_success "Test: WireGuard Service Config"
+else
+    log_warn "Test failed: WireGuard Service Config"
+    TEST_RESULTS=1
+fi
+
+# --- Test 14: WireGuard Guardrails (no sudo) ---
+log_info "Running test_wg_guardrails.sh..."
+if "$TEST_DIR/test_wg_guardrails.sh"; then
+    log_success "Test: WireGuard Guardrails"
+else
+    log_warn "Test failed: WireGuard Guardrails"
+    TEST_RESULTS=1
+fi
+
+# --- Test 15: WireGuard Make Target Wiring (no sudo) ---
+log_info "Running test_wg_make_targets.sh..."
+if "$TEST_DIR/test_wg_make_targets.sh"; then
+    log_success "Test: WireGuard Make Target Wiring"
+else
+    log_warn "Test failed: WireGuard Make Target Wiring"
+    TEST_RESULTS=1
+fi
+
+# --- Test 16: WireGuard Bootstrap Env (no sudo) ---
+log_info "Running test_wg_bootstrap_env.sh..."
+if "$TEST_DIR/test_wg_bootstrap_env.sh"; then
+    log_success "Test: WireGuard Bootstrap Env"
+else
+    log_warn "Test failed: WireGuard Bootstrap Env"
+    TEST_RESULTS=1
+fi
+
 if [ "$TEST_RESULTS" -eq 0 ]; then
     log_success "All smoke tests passed!"
 else

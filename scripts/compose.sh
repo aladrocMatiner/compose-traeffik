@@ -15,6 +15,7 @@ COMPOSE_FILES=(
   -f "${REPO_ROOT}/services/dns-bind/compose.yml"
   -f "${REPO_ROOT}/services/certbot/compose.yml"
   -f "${REPO_ROOT}/services/step-ca/compose.yml"
+  -f "${REPO_ROOT}/services/wg-easy/compose.yml"
 )
 
 run_preflight() {

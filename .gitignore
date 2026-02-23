@@ -15,6 +15,9 @@ services/step-ca/config/
 services/step-ca/secrets/
 stepca-data/
 
+# WireGuard (wg-easy) runtime state
+services/wg-easy/data/
+
 # Traefik ACME storage (from certs-data volume)
 # Although a Docker volume, local paths *could* be inadvertently created or referenced.
 # Better to explicitly ignore any local files that might match these patterns.

@@ -21,7 +21,8 @@ SHELL := /bin/bash # Ensure bash is used for shell commands
         stepca-up stepca-down stepca-bootstrap stepca-verify-cert \
         stepca-trust-install stepca-trust-uninstall stepca-trust-verify \
         hosts-generate hosts-apply hosts-remove hosts-status \
-        bind-up bind-down bind-restart bind-logs bind-status bind-provision bind-provision-dry
+        bind-up bind-down bind-restart bind-logs bind-status bind-provision bind-provision-dry \
+        wg-up wg-down wg-restart wg-logs wg-status wg-bootstrap
 
 # Include .env for environment variables if it exists.
 # This makes variables in .env available to the Makefile.
@@ -37,7 +38,8 @@ COMPOSE_FILES := \
   -f services/whoami/compose.yml \
   -f services/dns-bind/compose.yml \
   -f services/certbot/compose.yml \
-  -f services/step-ca/compose.yml
+  -f services/step-ca/compose.yml \
+  -f services/wg-easy/compose.yml
 
 # Pin compose project directory/name to avoid cross-CWD conflicts.
 COMPOSE_PROJECT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
@@ -69,6 +71,8 @@ BIND_ENV_ARGS :=
 ifneq ($(ENV_FILE),)
 BIND_ENV_ARGS += --env-file $(ENV_FILE)
 endif
+
+WG_BOOTSTRAP_ARGS ?=
 
 # Start the stack
 up:
@@ -225,6 +229,31 @@ bind-provision:
 bind-provision-dry:
 	"$(SCRIPTS_DIR)/bind-provision.sh" $(BIND_ENV_ARGS) --dry-run
 
+# --- WireGuard (wg-easy) ---
+
+wg-up:
+	@echo "Starting wg-easy service (profile: wg)..."
+	COMPOSE_PROFILES=wg "$(SCRIPTS_DIR)/compose.sh" --profile wg $(COMPOSE_OPTS) up -d wg-easy
+
+wg-down:
+	@echo "Stopping wg-easy service..."
+	COMPOSE_PROFILES=wg "$(SCRIPTS_DIR)/compose.sh" --profile wg $(COMPOSE_OPTS) stop wg-easy || true
+	COMPOSE_PROFILES=wg "$(SCRIPTS_DIR)/compose.sh" --profile wg $(COMPOSE_OPTS) rm -f wg-easy || true
+
+wg-restart: wg-down wg-up
+
+wg-logs:
+	@echo "Showing wg-easy service logs..."
+	COMPOSE_PROFILES=wg "$(SCRIPTS_DIR)/compose.sh" --profile wg $(COMPOSE_OPTS) logs -f wg-easy
+
+wg-status:
+	@echo "wg-easy service status:"
+	COMPOSE_PROFILES=wg "$(SCRIPTS_DIR)/compose.sh" --profile wg $(COMPOSE_OPTS) ps wg-easy
+
+wg-bootstrap:
+	@echo "Bootstrapping wg-easy admin variables in .env..."
+	./scripts/wg-bootstrap.sh $(WG_BOOTSTRAP_ARGS)
+
 # --- Help ---
 
 help:
@@ -287,8 +316,17 @@ help:
 	@echo "  bind-provision        Generate the BIND zone file from ENDPOINTS."
 	@echo "  bind-provision-dry    Print the generated zone file without writing."
 	@echo ""
+	@echo "WireGuard (wg-easy):"
+	@echo "  wg-bootstrap         Generate/persist wg-easy admin bootstrap variables in .env."
+	@echo "                      Use WG_BOOTSTRAP_ARGS=--force to rotate supported values."
+	@echo "  wg-up                Start the wg-easy service (profile: wg)."
+	@echo "  wg-down              Stop and remove the wg-easy container."
+	@echo "  wg-restart           Restart the wg-easy service (wg-down + wg-up)."
+	@echo "  wg-logs              Follow wg-easy service logs."
+	@echo "  wg-status            Show wg-easy service status."
+	@echo ""
 	@echo "Profiles:"
 	@echo "  Use COMPOSE_PROFILES=<profile_name> before make commands to activate profiles."
-	@echo "  Available profiles: bind, le, stepca"
+	@echo "  Available profiles: bind, le, stepca, wg"
 	@echo "  Example: COMPOSE_PROFILES=le make up"
 	@echo ""

@@ -74,6 +74,8 @@ Guias de TLS:
 - **Whoami**: `https://whoami.${DEV_DOMAIN}` (stack por defecto)
 - **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth; habilitado por defecto)
 - **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (perfil `stepca`; habilitado por defecto)
+- **WireGuard UI (wg-easy)**: `https://wg.${DEV_DOMAIN}` (perfil `wg`; HTTPS via Traefik)
+- **Tunel WireGuard (wg-easy)**: `udp://${WG_SERVER_ENDPOINT:-wg.${DEV_DOMAIN}}:${WG_SERVER_PORT:-51820}` (perfil `wg`; requiere bind no-loopback intencional para clientes remotos)
 
 <a id="services"></a>
 ## Servicios
@@ -83,6 +85,7 @@ Guias de TLS:
 - [DNS (BIND)](services/dns-bind/README.es.md) - perfil opcional `bind`.
 - [Certbot](services/certbot/README.es.md) - perfil opcional `le`.
 - [Step-CA](services/step-ca/README.es.md) - perfil opcional `stepca`.
+- [WireGuard (wg-easy)](services/wg-easy/README.es.md) - perfil opcional `wg`.
 
 <a id="docs-map"></a>
 ## Mapa de documentos
@@ -104,6 +107,7 @@ Comandos comunes:
 - `make certs-le-issue`, `make certs-le-renew` (perfil `le`)
 - `make stepca-up`, `make stepca-bootstrap`, `make stepca-trust-install`
 - `make bind-up`, `make bind-status`, `make bind-restart`, `make bind-provision`
+- `make wg-bootstrap`, `make wg-up`, `make wg-status`, `make wg-restart`
 - `make hosts-generate`, `make hosts-apply`, `make hosts-status`
 
 Archivos auth:
@@ -116,6 +120,11 @@ Defaults de seguridad DNS:
 - BIND corre como DNS autoritativo local con recursion desactivada y AXFR bloqueado.
 - `BIND_BIND_ADDRESS` debe mantenerse en loopback por defecto.
 - Para exponer DNS fuera de loopback de forma intencional, usa `BIND_ALLOW_NONLOCAL_BIND=true`.
+
+Bootstrap y defaults de exposicion WireGuard:
+- Ejecuta `make wg-bootstrap` antes del primer `make wg-up` para rellenar `WG_INIT_*` en `.env`.
+- `WG_BIND_ADDRESS` usa loopback por defecto. Para exposicion remota intencional, usa un bind no-loopback y `WG_ALLOW_NONLOCAL_BIND=true`.
+- Si usas `make hosts-*` para resolver la UI localmente, agrega `wg` a `ENDPOINTS`.
 
 <a id="testing"></a>
 ## Testing
@@ -133,6 +142,8 @@ Scripts operativos: ver `scripts/README.md`.
 - Verifica que `DEV_DOMAIN` y `BASE_DOMAIN` coincidan con tu hosts/DNS.
 - Si los puertos 80/443 estan en uso, deten servicios en conflicto y reintenta `make up`.
 - Usa `make logs` para ver logs de Traefik y servicios.
+- Para la UI WireGuard, verifica `WG_UI_HOSTNAME`, `WG_SERVER_ENDPOINT` y el mapeo hosts/DNS (`ENDPOINTS` puede necesitar `wg`).
+- Si `make wg-up` falla en preflight, revisa `WG_BIND_ADDRESS`, `WG_ALLOW_NONLOCAL_BIND`, `WG_SERVER_PORT` y `WG_INSECURE`.
 
 <a id="add-service-doc"></a>
 ## Agregar docs de servicio

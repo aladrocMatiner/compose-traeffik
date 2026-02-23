@@ -1,0 +1,40 @@
+services:
+  wg-easy:
+    image: ${WG_EASY_IMAGE:-ghcr.io/wg-easy/wg-easy:15.2.2}
+    container_name: wg-easy
+    profiles:
+      - wg
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    sysctls:
+      - net.ipv4.ip_forward=1
+      - net.ipv4.conf.all.src_valid_mark=1
+    networks:
+      - proxy
+    ports:
+      - "${WG_BIND_ADDRESS:-127.0.0.1}:${WG_SERVER_PORT:-51820}:51820/udp"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=51821
+      - INSECURE=${WG_INSECURE:-false}
+      - INIT_ENABLED=${WG_INIT_ENABLED:-true}
+      - INIT_USERNAME=${WG_INIT_USERNAME:-admin}
+      - INIT_PASSWORD=${WG_INIT_PASSWORD:-}
+      - INIT_HOST=${WG_SERVER_ENDPOINT:-wg.${DEV_DOMAIN}}
+      - INIT_PORT=${WG_SERVER_PORT:-51820}
+    volumes:
+      - ./services/wg-easy/data:/etc/wireguard
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.wg-easy-websecure.rule=Host(`${WG_UI_HOSTNAME:-wg}.${DEV_DOMAIN}`)"
+      - "traefik.http.routers.wg-easy-websecure.entrypoints=websecure"
+      - "traefik.http.routers.wg-easy-websecure.service=wg-easy-service"
+      - "traefik.http.routers.wg-easy-websecure.tls=true"
+      - "traefik.http.routers.wg-easy-websecure.tls.certresolver=${TLS_CERT_RESOLVER:-}"
+      - "traefik.http.routers.wg-easy-websecure.middlewares=${WG_UI_MIDDLEWARES:-security-headers@file}"
+      - "traefik.http.services.wg-easy-service.loadbalancer.server.port=51821"

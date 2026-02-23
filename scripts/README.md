@@ -15,6 +15,7 @@ Prerequisites:
 Preflight validation:
 - `scripts/validate-env.sh` runs before `make up` and any `scripts/compose.sh` call.
 - It enforces safe defaults for admin UIs (Traefik dashboard) and validates profile syntax.
+- It also validates WireGuard (`wg`) profile guardrails (`WG_*`) when that profile is enabled.
 - Create htpasswd files under `services/traefik/auth/`, for example:
   - `htpasswd -nbB admin 'change-me' > services/traefik/auth/traefik-dashboard.htpasswd`
 - Set the container paths in `.env`:
@@ -41,6 +42,7 @@ Preflight validation:
 | `scripts/ca-config-verify.sh` | Validate shared CA configuration | `./scripts/ca-config-verify.sh` | `DEV_DOMAIN`, `CA_*`, `LEAF_*` (or legacy `STEP_CA_*`) | Prints effective CA configuration |
 | `scripts/hosts-subdomains.sh` | Manage hosts block for loopback subdomains | `make hosts-apply` | `BASE_DOMAIN`, `LOOPBACK_X` | Modifies hosts file (with sudo) |
 | `scripts/bind-provision.sh` | Generate BIND zone file from ENDPOINTS | `make bind-provision` | `BASE_DOMAIN`, `LOOPBACK_X`, `ENDPOINTS` | Writes `services/dns-bind/zones` |
+| `scripts/wg-bootstrap.sh` | Populate wg-easy admin bootstrap values in `.env` | `make wg-bootstrap` | `.env` (writes `WG_INIT_*`) | Updates `.env` (idempotent by default) |
 | `scripts/common.sh` | Shared helpers | sourced by other scripts | none | none |
 
 ## Workflows
@@ -63,6 +65,16 @@ make bind-status
 make bind-restart
 make bind-logs
 make bind-down
+```
+
+### WireGuard (wg-easy) lifecycle
+
+```bash
+make wg-bootstrap
+make wg-up
+make wg-status
+make wg-logs
+make wg-down
 ```
 
 ### Certificates
@@ -100,6 +112,8 @@ COMPOSE_PROFILES=stepca make up
 - Permission denied (certs or trust store): re-run with `sudo` where required.
 - Profile not enabled: use `COMPOSE_PROFILES=<profile> make up` when needed.
 - BIND exposed on non-loopback: set `BIND_ALLOW_NONLOCAL_BIND=true` explicitly if this is intentional.
+- WireGuard preflight blocked: review `WG_BIND_ADDRESS`, `WG_ALLOW_NONLOCAL_BIND`, `WG_SERVER_PORT`, `WG_SERVER_ENDPOINT`, and keep `WG_INSECURE=false`.
+- WireGuard bootstrap creds: run `make wg-bootstrap` (use `WG_BOOTSTRAP_ARGS=--force make wg-bootstrap` only for intentional rotation).
 
 Useful commands:
 ```bash

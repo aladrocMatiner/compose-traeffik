@@ -74,6 +74,8 @@ Detaljerade TLS-floden:
 - **Whoami**: `https://whoami.${DEV_DOMAIN}` (standardstack)
 - **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth; aktiverad som standard)
 - **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (profil `stepca`; aktiverad som standard)
+- **WireGuard UI (wg-easy)**: `https://wg.${DEV_DOMAIN}` (profil `wg`; HTTPS via Traefik)
+- **WireGuard-tunnel (wg-easy)**: `udp://${WG_SERVER_ENDPOINT:-wg.${DEV_DOMAIN}}:${WG_SERVER_PORT:-51820}` (profil `wg`; kraver avsiktlig icke-loopback bind for fjarrklienter)
 
 <a id="services"></a>
 ## Tjanster
@@ -83,6 +85,7 @@ Detaljerade TLS-floden:
 - [DNS (BIND)](services/dns-bind/README.sv.md) - valfri profil `bind`.
 - [Certbot](services/certbot/README.sv.md) - valfri profil `le`.
 - [Step-CA](services/step-ca/README.sv.md) - valfri profil `stepca`.
+- [WireGuard (wg-easy)](services/wg-easy/README.sv.md) - valfri profil `wg`.
 
 <a id="docs-map"></a>
 ## Dokumentkarta
@@ -104,6 +107,7 @@ Vanliga kommandon:
 - `make certs-le-issue`, `make certs-le-renew` (profil `le`)
 - `make stepca-up`, `make stepca-bootstrap`, `make stepca-trust-install`
 - `make bind-up`, `make bind-status`, `make bind-restart`, `make bind-provision`
+- `make wg-bootstrap`, `make wg-up`, `make wg-status`, `make wg-restart`
 - `make hosts-generate`, `make hosts-apply`, `make hosts-status`
 
 Auth-filer:
@@ -116,6 +120,11 @@ DNS-sakerhetsdefaults:
 - BIND kor som auktoritativ lokal DNS med recursion avstangt och AXFR blockerat.
 - `BIND_BIND_ADDRESS` bor vara loopback som standard.
 - For avsiktlig exponering utanfor loopback, satt `BIND_ALLOW_NONLOCAL_BIND=true`.
+
+WireGuard-bootstrap och exponeringsdefaults:
+- Kor `make wg-bootstrap` fore forsta `make wg-up` for att fylla `WG_INIT_*` i `.env`.
+- `WG_BIND_ADDRESS` ar loopback som standard. For avsiktlig fjarrexponering, satt en icke-loopback address och `WG_ALLOW_NONLOCAL_BIND=true`.
+- Om du anvander `make hosts-*` for lokal UI-upplosning, lagg till `wg` i `ENDPOINTS`.
 
 <a id="testing"></a>
 ## Tester
@@ -133,6 +142,8 @@ Operativa script: se `scripts/README.md`.
 - Kontrollera att `DEV_DOMAIN` och `BASE_DOMAIN` matchar din hosts/DNS.
 - Om portar 80/443 ar upptagna, stoppa konflikter och forsok `make up` igen.
 - Anvand `make logs` for att se Traefik och service-loggar.
+- For WireGuard UI: kontrollera `WG_UI_HOSTNAME`, `WG_SERVER_ENDPOINT` och hosts/DNS-mappning (`ENDPOINTS` kan behova `wg`).
+- Om `make wg-up` stoppas av preflight, granska `WG_BIND_ADDRESS`, `WG_ALLOW_NONLOCAL_BIND`, `WG_SERVER_PORT` och `WG_INSECURE`.
 
 <a id="add-service-doc"></a>
 ## Lagg till en service-doc

@@ -74,6 +74,8 @@ For detailed TLS workflows, see:
 - **Whoami**: `https://whoami.${DEV_DOMAIN}` (default stack; uses Traefik HTTPS)
 - **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth; enabled by default)
 - **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (profile `stepca`; enabled by default)
+- **WireGuard UI (wg-easy)**: `https://wg.${DEV_DOMAIN}` (profile `wg`; HTTPS via Traefik)
+- **WireGuard tunnel (wg-easy)**: `udp://${WG_SERVER_ENDPOINT:-wg.${DEV_DOMAIN}}:${WG_SERVER_PORT:-51820}` (profile `wg`; requires intentional non-loopback bind for remote clients)
 
 <a id="services"></a>
 ## Services
@@ -83,6 +85,7 @@ For detailed TLS workflows, see:
 - [DNS (BIND)](services/dns-bind/README.md) - optional profile `bind`.
 - [Certbot](services/certbot/README.md) - optional profile `le`.
 - [Step-CA](services/step-ca/README.md) - optional profile `stepca`.
+- [WireGuard (wg-easy)](services/wg-easy/README.md) - optional profile `wg`.
 
 <a id="docs-map"></a>
 ## Docs map
@@ -104,6 +107,7 @@ Common commands:
 - `make certs-le-issue`, `make certs-le-renew` (profile `le`)
 - `make stepca-up`, `make stepca-bootstrap`, `make stepca-trust-install`
 - `make bind-up`, `make bind-status`, `make bind-restart`, `make bind-provision`
+- `make wg-bootstrap`, `make wg-up`, `make wg-status`, `make wg-restart`
 - `make hosts-generate`, `make hosts-apply`, `make hosts-status`
 
 Auth files:
@@ -115,6 +119,11 @@ Auth files:
 
 Compose project pinning:
 - The compose wrapper pins `--project-directory` and `--project-name` to avoid cross‑CWD conflicts. Override with `COMPOSE_PROJECT_NAME` in `.env` if needed.
+
+WireGuard bootstrap and exposure defaults:
+- Run `make wg-bootstrap` before the first `make wg-up` to populate `WG_INIT_*` admin bootstrap variables in `.env`.
+- `WG_BIND_ADDRESS` defaults to loopback. For intentional remote WireGuard exposure, set a non-loopback bind and `WG_ALLOW_NONLOCAL_BIND=true`.
+- If you use `make hosts-*` for local UI resolution, add `wg` to `ENDPOINTS`.
 
 DNS security defaults:
 - BIND runs as authoritative local DNS with recursion disabled and AXFR blocked.
@@ -137,6 +146,8 @@ Operational scripts: see `scripts/README.md`.
 - Check that `DEV_DOMAIN` and `BASE_DOMAIN` match your hosts/DNS setup.
 - If ports 80/443 are in use, stop conflicting services and retry `make up`.
 - Use `make logs` to inspect Traefik and service logs.
+- For WireGuard UI, verify `WG_UI_HOSTNAME`, `WG_SERVER_ENDPOINT`, and hosts/DNS mapping (`ENDPOINTS` may need `wg`).
+- If `make wg-up` fails preflight, review `WG_BIND_ADDRESS`, `WG_ALLOW_NONLOCAL_BIND`, `WG_SERVER_PORT`, and `WG_INSECURE`.
 
 <a id="add-service-doc"></a>
 ## Add a service doc
