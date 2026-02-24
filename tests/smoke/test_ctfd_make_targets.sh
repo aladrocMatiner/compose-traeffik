@@ -14,6 +14,8 @@ for target in ctfd-bootstrap ctfd-up ctfd-down ctfd-restart ctfd-logs ctfd-statu
     grep -q "^${target}:" "$MAKEFILE" || log_error "Missing Make target: ${target}"
 done
 
+grep -q '^test-ctfd:' "$MAKEFILE" || log_error "Missing Make target: test-ctfd"
+
 for target in ctfd-up ctfd-down ctfd-logs ctfd-status; do
     if ! awk -v t="$target" '
         $0 ~ "^" t ":" { in_target=1; next }

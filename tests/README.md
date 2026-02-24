@@ -14,7 +14,17 @@ This directory contains smoke tests that verify Traefik readiness, routing, TLS,
    ```bash
    make test
    ```
-   This runs `scripts/healthcheck.sh`, which executes all scripts in `tests/smoke/`.
+   This runs `scripts/healthcheck.sh` in service-aware mode:
+   - always runs common utility smoke tests
+   - runs service/module suites only when their containers are currently running (`traefik+whoami`, `bind`, `ctfd`, `observability`)
+
+   Use service-scoped targets when you want to run a specific suite regardless of what is running:
+   ```bash
+   make test-core
+   make test-dns
+   make test-ctfd
+   make test-observability
+   ```
 
 3. **Run a single test**
    ```bash
@@ -67,7 +77,7 @@ are enabled by default via `COMPOSE_PROFILES` in `.env`; edit it if you want a s
 
 ## Expected output
 
-- `make test` prints per-test results and exits with non-zero status on failure.
+- `make test` prints per-test results (and skipped suites when services are not running) and exits with non-zero status on failure.
 - A successful run ends with `All smoke tests passed!`.
 
 ## Common failures and fixes

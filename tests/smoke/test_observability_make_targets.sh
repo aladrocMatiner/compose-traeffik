@@ -14,6 +14,8 @@ for target in observability-bootstrap observability-up observability-down observ
     grep -q "^${target}:" "$MAKEFILE" || log_error "Missing Make target: ${target}"
 done
 
+grep -q '^test-observability:' "$MAKEFILE" || log_error "Missing Make target: test-observability"
+
 for target in observability-up observability-down observability-logs observability-status; do
     if ! awk -v t="$target" '
         $0 ~ "^" t ":" { in_target=1; next }

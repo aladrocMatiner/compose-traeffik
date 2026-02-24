@@ -29,6 +29,8 @@ for target in bind-up bind-down bind-restart bind-logs bind-status bind-provisio
     fi
 done
 
+grep -q '^test-dns:' "$MAKEFILE" || log_error "Missing Make target: test-dns"
+
 # Lifecycle targets must route through compose wrapper with bind profile.
 for target in bind-up bind-down bind-logs bind-status; do
     if ! awk -v t="$target" '

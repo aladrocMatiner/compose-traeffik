@@ -15,7 +15,7 @@
 # --- Configuration Variables ---
 SHELL := /bin/bash # Ensure bash is used for shell commands
 .DEFAULT_GOAL := help # Default target if none is specified
-.PHONY: help up down restart logs ps test docs-check bootstrap \
+.PHONY: help up down restart logs ps test test-core test-dns test-ctfd test-observability docs-check bootstrap \
         certs-local local-ca-trust-install local-ca-trust-uninstall local-ca-trust-verify \
         certs-le-issue certs-le-renew \
         stepca-up stepca-down stepca-bootstrap stepca-verify-cert \
@@ -83,6 +83,39 @@ OBS_ENV_ARGS :=
 ifneq ($(ENV_FILE),)
 OBS_ENV_ARGS += --env-file $(ENV_FILE)
 endif
+
+SMOKE_TEST_DIR := $(REPO_ROOT)/tests/smoke
+
+CORE_SMOKE_TESTS := \
+	test_traefik_ready.sh \
+	test_routing.sh \
+	test_tls_handshake.sh \
+	test_http_redirect.sh \
+	test_hosts_subdomains.sh
+
+DNS_SMOKE_TESTS := \
+	test_bind_service_config.sh \
+	test_bind_zone_generation.sh \
+	test_bind_make_targets.sh \
+	test_bind_guardrails.sh \
+	test_bind_file_permissions.sh \
+	test_bind_provisioning_validation.sh \
+	test_bind_security_runtime.sh
+
+CTFD_SMOKE_TESTS := \
+	test_ctfd_service_config.sh \
+	test_ctfd_guardrails.sh \
+	test_ctfd_make_targets.sh \
+	test_ctfd_bootstrap_env.sh
+
+OBSERVABILITY_SMOKE_TESTS := \
+	test_observability_service_config.sh \
+	test_observability_traefik_config.sh \
+	test_observability_guardrails.sh \
+	test_observability_make_targets.sh \
+	test_observability_bootstrap_env.sh \
+	test_observability_grafana_provisioning.sh \
+	test_observability_app_pack_tolerance.sh
 
 # Start the stack
 up:
@@ -189,6 +222,50 @@ stepca-trust-verify:
 test:
 	@echo "Running smoke tests..."
 	./scripts/healthcheck.sh
+
+test-core:
+	@echo "Running core Traefik/whoami smoke tests..."
+	@set -euo pipefail; rc=0; \
+	for test_script in $(CORE_SMOKE_TESTS); do \
+		echo "==> $$test_script"; \
+		if ! "$(SMOKE_TEST_DIR)/$$test_script"; then \
+			rc=1; \
+		fi; \
+	done; \
+	exit $$rc
+
+test-dns:
+	@echo "Running DNS/BIND smoke tests..."
+	@set -euo pipefail; rc=0; \
+	for test_script in $(DNS_SMOKE_TESTS); do \
+		echo "==> $$test_script"; \
+		if ! "$(SMOKE_TEST_DIR)/$$test_script"; then \
+			rc=1; \
+		fi; \
+	done; \
+	exit $$rc
+
+test-ctfd:
+	@echo "Running CTFd smoke tests..."
+	@set -euo pipefail; rc=0; \
+	for test_script in $(CTFD_SMOKE_TESTS); do \
+		echo "==> $$test_script"; \
+		if ! "$(SMOKE_TEST_DIR)/$$test_script"; then \
+			rc=1; \
+		fi; \
+	done; \
+	exit $$rc
+
+test-observability:
+	@echo "Running observability smoke tests..."
+	@set -euo pipefail; rc=0; \
+	for test_script in $(OBSERVABILITY_SMOKE_TESTS); do \
+		echo "==> $$test_script"; \
+		if ! "$(SMOKE_TEST_DIR)/$$test_script"; then \
+			rc=1; \
+		fi; \
+	done; \
+	exit $$rc
 
 # --- Documentation ---
 
@@ -329,7 +406,11 @@ help:
 	@echo "  stepca-trust-verify   Verify Step-CA root CA trust on Ubuntu."
 	@echo ""
 	@echo "Testing:"
-	@echo "  test                  Run all smoke tests for the current configuration."
+	@echo "  test                  Run smoke tests for running services (plus common utility tests)."
+	@echo "  test-core             Run core Traefik/whoami smoke tests."
+	@echo "  test-dns              Run DNS/BIND smoke tests only."
+	@echo "  test-ctfd             Run CTFd smoke tests only."
+	@echo "  test-observability    Run observability smoke tests only."
 	@echo ""
 	@echo "Docs:"
 	@echo "  docs-check            Validate multilingual README structure and links."
