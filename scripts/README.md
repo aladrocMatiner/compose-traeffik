@@ -15,6 +15,7 @@ Prerequisites:
 Preflight validation:
 - `scripts/validate-env.sh` runs before `make up` and any `scripts/compose.sh` call.
 - It enforces safe defaults for admin UIs (Traefik dashboard) and validates profile syntax.
+- It also validates module-specific requirements for `ctfd` and `observability` when those profiles are enabled.
 - Create htpasswd files under `services/traefik/auth/`, for example:
   - `htpasswd -nbB admin 'change-me' > services/traefik/auth/traefik-dashboard.htpasswd`
 - Set the container paths in `.env`:
@@ -41,6 +42,8 @@ Preflight validation:
 | `scripts/ca-config-verify.sh` | Validate shared CA configuration | `./scripts/ca-config-verify.sh` | `DEV_DOMAIN`, `CA_*`, `LEAF_*` (or legacy `STEP_CA_*`) | Prints effective CA configuration |
 | `scripts/hosts-subdomains.sh` | Manage hosts block for loopback subdomains | `make hosts-apply` | `BASE_DOMAIN`, `LOOPBACK_X` | Modifies hosts file (with sudo) |
 | `scripts/bind-provision.sh` | Generate BIND zone file from ENDPOINTS | `make bind-provision` | `BASE_DOMAIN`, `LOOPBACK_X`, `ENDPOINTS` | Writes `services/dns-bind/zones` |
+| `scripts/ctfd-bootstrap.sh` | Generate/persist CTFd secrets in `.env` | `make ctfd-bootstrap` | `CTFD_*` (writes missing values) | Updates `.env` |
+| `scripts/observability-bootstrap.sh` | Generate/persist Grafana secrets in `.env` | `make observability-bootstrap` | `GRAFANA_*` (writes missing values) | Updates `.env` |
 | `scripts/common.sh` | Shared helpers | sourced by other scripts | none | none |
 
 ## Workflows
@@ -63,6 +66,24 @@ make bind-status
 make bind-restart
 make bind-logs
 make bind-down
+```
+
+### CTFd module
+
+```bash
+make ctfd-bootstrap
+make ctfd-up
+make ctfd-status
+make ctfd-logs
+```
+
+### Observability module
+
+```bash
+make observability-bootstrap
+make observability-up
+make observability-status
+make observability-logs
 ```
 
 ### Certificates

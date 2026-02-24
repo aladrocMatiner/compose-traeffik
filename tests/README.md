@@ -38,6 +38,17 @@ This directory contains smoke tests that verify Traefik readiness, routing, TLS,
 | `tests/smoke/test_bind_file_permissions.sh` | Validate config/zone file permissions are not world-writable. | `stat`, generated zone file or `bind-provision`. | Template, zone dir, and zone file reject world-writable modes. |
 | `tests/smoke/test_bind_provisioning_validation.sh` | Validate `bind-provision` rejects invalid domain and endpoint labels. | `mktemp`, `scripts/bind-provision.sh`. | Invalid `BASE_DOMAIN` or endpoint labels fail with non-zero exit. |
 | `tests/smoke/test_bind_security_runtime.sh` | Validate runtime DNS security behavior (no recursion, AXFR denied, hidden CHAOS metadata, expected listener). | `dig`, `docker`, `make`, loopback test address. | Security checks pass and BIND responds only on the expected test bind address. |
+| `tests/smoke/test_ctfd_service_config.sh` | Validate CTFd compose wiring (app+db+redis), Traefik labels, no host ports, and startup coordination. | `services/ctfd/compose.yml`, `grep`, `awk`. | Compose fragment contains expected profile, internal network, labels, volumes, and healthchecks. |
+| `tests/smoke/test_ctfd_guardrails.sh` | Validate preflight guardrails for CTFd secrets and hostname label. | `scripts/validate-env.sh`. | Missing/invalid CTFd config fails; valid config passes. |
+| `tests/smoke/test_ctfd_make_targets.sh` | Validate CTFd Make target wiring and compose wrapper usage. | `Makefile`, `awk`, `grep`. | `ctfd-*` targets exist and lifecycle targets use `scripts/compose.sh --profile ctfd`. |
+| `tests/smoke/test_ctfd_bootstrap_env.sh` | Validate `ctfd-bootstrap` secret generation and idempotency. | `.env.example`, `scripts/ctfd-bootstrap.sh`, `mktemp`. | Missing CTFd secrets are generated and preserved on rerun. |
+| `tests/smoke/test_observability_service_config.sh` | Validate observability compose wiring, exposure rules, and Prometheus internal reachability to Traefik. | `services/observability/compose.yml`, `grep`, `awk`. | Grafana is routed, Prometheus/Loki are internal-only, Prometheus joins `proxy`, Alloy mounts are read-only. |
+| `tests/smoke/test_observability_traefik_config.sh` | Validate Traefik metrics + JSON access logs configuration and sensitive-header redaction settings. | `services/traefik/traefik.yml`, `grep`. | Metrics and access log settings exist with header drops for auth/cookies. |
+| `tests/smoke/test_observability_guardrails.sh` | Validate observability preflight guardrails and warn-only behavior without CTFd. | `scripts/validate-env.sh`. | Missing Grafana password fails; observability-only mode passes with warning. |
+| `tests/smoke/test_observability_make_targets.sh` | Validate observability Make target wiring and compose wrapper usage. | `Makefile`, `awk`, `grep`. | `observability-*` targets exist and lifecycle targets use `scripts/compose.sh --profile observability`. |
+| `tests/smoke/test_observability_bootstrap_env.sh` | Validate `observability-bootstrap` secret generation and idempotency. | `.env.example`, `scripts/observability-bootstrap.sh`, `mktemp`. | Missing Grafana secrets are generated and preserved on rerun. |
+| `tests/smoke/test_observability_grafana_provisioning.sh` | Validate Grafana datasources and dashboard provisioning assets for core + CTFd pack. | Grafana provisioning files and dashboard JSON. | Prometheus/Loki datasources and dashboard paths/queries are present. |
+| `tests/smoke/test_observability_app_pack_tolerance.sh` | Validate app-specific observability assets do not create a hard dependency on CTFd being enabled. | Alloy config, `scripts/validate-env.sh`. | Discovery-based CTFd log targeting is present and observability-only preflight still passes. |
 
 ## Configuration
 
@@ -48,6 +59,8 @@ Smoke tests use environment variables loaded from `.env` via `scripts/healthchec
 - `BIND_BIND_ADDRESS` (default listener for BIND)
 - `BIND_ALLOW_NONLOCAL_BIND` (must be `true` to allow non-loopback bind)
 - `BIND_SECURITY_TEST_ADDRESS` (optional loopback override for runtime security smoke)
+- `CTFD_*` (used by CTFd guardrail/bootstrap tests when provided inline)
+- `GRAFANA_*` (used by observability guardrail/bootstrap tests when provided inline)
 
 Ensure `.env` exists (prefer `make bootstrap`) before running tests. Optional profiles
 are enabled by default via `COMPOSE_PROFILES` in `.env`; edit it if you want a smaller stack.

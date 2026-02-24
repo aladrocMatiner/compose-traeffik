@@ -1,0 +1,105 @@
+services:
+  ctfd:
+    image: ${CTFD_IMAGE:-ctfd/ctfd:3.8.1}
+    container_name: ctfd
+    profiles:
+      - ctfd
+    restart: unless-stopped
+    depends_on:
+      ctfd-db:
+        condition: service_healthy
+      ctfd-redis:
+        condition: service_healthy
+    networks:
+      - proxy
+      - ctfd-internal
+    environment:
+      - SECRET_KEY=${CTFD_SECRET_KEY:-}
+      - DATABASE_URL=mysql+pymysql://${CTFD_DB_USER:-ctfd}:${CTFD_DB_PASSWORD:-}@ctfd-db/${CTFD_DB_NAME:-ctfd}
+      - REDIS_URL=redis://ctfd-redis:6379
+      - WORKERS=${CTFD_WORKERS:-1}
+      - REVERSE_PROXY=true
+      - UPLOAD_FOLDER=/var/uploads
+      - LOG_FOLDER=/var/log/CTFd
+      - ACCESS_LOG=-
+      - ERROR_LOG=-
+    volumes:
+      - ctfd-uploads:/var/uploads
+      - ctfd-logs:/var/log/CTFd
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ctfd-web.rule=Host(`${CTFD_HOSTNAME:-ctfd}.${DEV_DOMAIN}`)"
+      - "traefik.http.routers.ctfd-web.entrypoints=web"
+      - "traefik.http.routers.ctfd-web.middlewares=${HTTP_TO_HTTPS_MIDDLEWARE:-redirect-to-https@file}"
+      - "traefik.http.routers.ctfd-websecure.rule=Host(`${CTFD_HOSTNAME:-ctfd}.${DEV_DOMAIN}`)"
+      - "traefik.http.routers.ctfd-websecure.entrypoints=websecure"
+      - "traefik.http.routers.ctfd-websecure.service=ctfd-service"
+      - "traefik.http.routers.ctfd-websecure.tls=true"
+      - "traefik.http.routers.ctfd-websecure.tls.certresolver=${TLS_CERT_RESOLVER:-}"
+      - "traefik.http.routers.ctfd-websecure.middlewares=security-headers@file"
+      - "traefik.http.services.ctfd-service.loadbalancer.server.port=8000"
+
+  ctfd-db:
+    image: ${CTFD_DB_IMAGE:-mariadb:10.11.14}
+    container_name: ctfd-db
+    profiles:
+      - ctfd
+    restart: unless-stopped
+    command:
+      - mysqld
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --wait_timeout=28800
+      - --log-warnings=0
+    environment:
+      - MARIADB_ROOT_PASSWORD=${CTFD_DB_ROOT_PASSWORD:-}
+      - MARIADB_DATABASE=${CTFD_DB_NAME:-ctfd}
+      - MARIADB_USER=${CTFD_DB_USER:-ctfd}
+      - MARIADB_PASSWORD=${CTFD_DB_PASSWORD:-}
+      - MARIADB_AUTO_UPGRADE=1
+    networks:
+      - ctfd-internal
+    volumes:
+      - ctfd-db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -uroot -p$${MARIADB_ROOT_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  ctfd-redis:
+    image: ${CTFD_REDIS_IMAGE:-redis:7.2.11-alpine}
+    container_name: ctfd-redis
+    profiles:
+      - ctfd
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+    networks:
+      - ctfd-internal
+    volumes:
+      - ctfd-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+networks:
+  ctfd-internal:
+    name: ctfd-internal
+    internal: true
+
+volumes:
+  ctfd-db-data:
+    name: ctfd-db-data
+  ctfd-redis-data:
+    name: ctfd-redis-data
+  ctfd-uploads:
+    name: ctfd-uploads
+  ctfd-logs:
+    name: ctfd-logs

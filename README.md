@@ -74,6 +74,9 @@ For detailed TLS workflows, see:
 - **Whoami**: `https://whoami.${DEV_DOMAIN}` (default stack; uses Traefik HTTPS)
 - **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth; enabled by default)
 - **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (profile `stepca`; enabled by default)
+- **CTFd**: `https://ctfd.${DEV_DOMAIN}` (profile `ctfd`; optional)
+- **Grafana**: `https://grafana.${DEV_DOMAIN}` (profile `observability`; optional)
+- **Prometheus/Loki**: internal-only by default (profile `observability`; no public endpoint)
 
 <a id="services"></a>
 ## Services
@@ -83,6 +86,8 @@ For detailed TLS workflows, see:
 - [DNS (BIND)](services/dns-bind/README.md) - optional profile `bind`.
 - [Certbot](services/certbot/README.md) - optional profile `le`.
 - [Step-CA](services/step-ca/README.md) - optional profile `stepca`.
+- [CTFd](services/ctfd/README.md) - optional profile `ctfd` (CTF platform + DB + Redis).
+- [Observability](services/observability/README.md) - optional profile `observability` (Grafana/Prometheus/Loki/Alloy).
 
 <a id="docs-map"></a>
 ## Docs map
@@ -104,6 +109,8 @@ Common commands:
 - `make certs-le-issue`, `make certs-le-renew` (profile `le`)
 - `make stepca-up`, `make stepca-bootstrap`, `make stepca-trust-install`
 - `make bind-up`, `make bind-status`, `make bind-restart`, `make bind-provision`
+- `make ctfd-bootstrap`, `make ctfd-up`, `make ctfd-status`
+- `make observability-bootstrap`, `make observability-up`, `make observability-status`
 - `make hosts-generate`, `make hosts-apply`, `make hosts-status`
 
 Auth files:
@@ -120,6 +127,10 @@ DNS security defaults:
 - BIND runs as authoritative local DNS with recursion disabled and AXFR blocked.
 - `BIND_BIND_ADDRESS` controls the bind interface.
 - Non-loopback exposure requires `BIND_ALLOW_NONLOCAL_BIND=true`.
+
+Hosts endpoint mapping note:
+- If you manage `ENDPOINTS` manually, add `ctfd` and/or `grafana` before running `make hosts-apply`.
+- Or leave `ENDPOINTS` empty to use host auto-discovery from service `Host()` rules.
 
 <a id="testing"></a>
 ## Testing

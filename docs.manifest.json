@@ -70,6 +70,22 @@
         "sv": "DNS (BIND)",
         "es": "DNS (BIND)"
       }
+    },
+    {
+      "slug": "ctfd",
+      "title": {
+        "en": "CTFd",
+        "sv": "CTFd",
+        "es": "CTFd"
+      }
+    },
+    {
+      "slug": "observability",
+      "title": {
+        "en": "Observability",
+        "sv": "Observability",
+        "es": "Observability"
+      }
     }
   ]
 }

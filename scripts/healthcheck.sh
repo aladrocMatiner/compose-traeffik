@@ -152,6 +152,105 @@ else
     TEST_RESULTS=1
 fi
 
+# --- Test 13: CTFd Service Config (no sudo) ---
+log_info "Running test_ctfd_service_config.sh..."
+if "$TEST_DIR/test_ctfd_service_config.sh"; then
+    log_success "Test: CTFd Service Config"
+else
+    log_warn "Test failed: CTFd Service Config"
+    TEST_RESULTS=1
+fi
+
+# --- Test 14: CTFd Guardrails (no sudo) ---
+log_info "Running test_ctfd_guardrails.sh..."
+if "$TEST_DIR/test_ctfd_guardrails.sh"; then
+    log_success "Test: CTFd Guardrails"
+else
+    log_warn "Test failed: CTFd Guardrails"
+    TEST_RESULTS=1
+fi
+
+# --- Test 15: CTFd Make Targets (no sudo) ---
+log_info "Running test_ctfd_make_targets.sh..."
+if "$TEST_DIR/test_ctfd_make_targets.sh"; then
+    log_success "Test: CTFd Make Target Wiring"
+else
+    log_warn "Test failed: CTFd Make Target Wiring"
+    TEST_RESULTS=1
+fi
+
+# --- Test 16: CTFd Bootstrap Env (no sudo) ---
+log_info "Running test_ctfd_bootstrap_env.sh..."
+if "$TEST_DIR/test_ctfd_bootstrap_env.sh"; then
+    log_success "Test: CTFd Bootstrap Env"
+else
+    log_warn "Test failed: CTFd Bootstrap Env"
+    TEST_RESULTS=1
+fi
+
+# --- Test 17: Observability Service Config (no sudo) ---
+log_info "Running test_observability_service_config.sh..."
+if "$TEST_DIR/test_observability_service_config.sh"; then
+    log_success "Test: Observability Service Config"
+else
+    log_warn "Test failed: Observability Service Config"
+    TEST_RESULTS=1
+fi
+
+# --- Test 18: Observability Traefik Config (no sudo) ---
+log_info "Running test_observability_traefik_config.sh..."
+if "$TEST_DIR/test_observability_traefik_config.sh"; then
+    log_success "Test: Observability Traefik Config"
+else
+    log_warn "Test failed: Observability Traefik Config"
+    TEST_RESULTS=1
+fi
+
+# --- Test 19: Observability Guardrails (no sudo) ---
+log_info "Running test_observability_guardrails.sh..."
+if "$TEST_DIR/test_observability_guardrails.sh"; then
+    log_success "Test: Observability Guardrails"
+else
+    log_warn "Test failed: Observability Guardrails"
+    TEST_RESULTS=1
+fi
+
+# --- Test 20: Observability Make Targets (no sudo) ---
+log_info "Running test_observability_make_targets.sh..."
+if "$TEST_DIR/test_observability_make_targets.sh"; then
+    log_success "Test: Observability Make Targets"
+else
+    log_warn "Test failed: Observability Make Targets"
+    TEST_RESULTS=1
+fi
+
+# --- Test 21: Observability Bootstrap Env (no sudo) ---
+log_info "Running test_observability_bootstrap_env.sh..."
+if "$TEST_DIR/test_observability_bootstrap_env.sh"; then
+    log_success "Test: Observability Bootstrap Env"
+else
+    log_warn "Test failed: Observability Bootstrap Env"
+    TEST_RESULTS=1
+fi
+
+# --- Test 22: Observability Grafana Provisioning (no sudo) ---
+log_info "Running test_observability_grafana_provisioning.sh..."
+if "$TEST_DIR/test_observability_grafana_provisioning.sh"; then
+    log_success "Test: Observability Grafana Provisioning"
+else
+    log_warn "Test failed: Observability Grafana Provisioning"
+    TEST_RESULTS=1
+fi
+
+# --- Test 23: Observability App-Pack Tolerance (no sudo) ---
+log_info "Running test_observability_app_pack_tolerance.sh..."
+if "$TEST_DIR/test_observability_app_pack_tolerance.sh"; then
+    log_success "Test: Observability App-Pack Tolerance"
+else
+    log_warn "Test failed: Observability App-Pack Tolerance"
+    TEST_RESULTS=1
+fi
+
 if [ "$TEST_RESULTS" -eq 0 ]; then
     log_success "All smoke tests passed!"
 else

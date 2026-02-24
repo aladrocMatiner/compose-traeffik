@@ -1,0 +1,20 @@
+apiVersion: 1
+
+providers:
+  - name: "Core Observability"
+    orgId: 1
+    folder: "Core"
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards/core
+
+  - name: "CTFd"
+    orgId: 1
+    folder: "CTFd"
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards/ctfd

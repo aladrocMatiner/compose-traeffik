@@ -21,7 +21,9 @@ SHELL := /bin/bash # Ensure bash is used for shell commands
         stepca-up stepca-down stepca-bootstrap stepca-verify-cert \
         stepca-trust-install stepca-trust-uninstall stepca-trust-verify \
         hosts-generate hosts-apply hosts-remove hosts-status \
-        bind-up bind-down bind-restart bind-logs bind-status bind-provision bind-provision-dry
+        bind-up bind-down bind-restart bind-logs bind-status bind-provision bind-provision-dry \
+        ctfd-bootstrap ctfd-up ctfd-down ctfd-restart ctfd-logs ctfd-status \
+        observability-bootstrap observability-up observability-down observability-restart observability-logs observability-status
 
 # Include .env for environment variables if it exists.
 # This makes variables in .env available to the Makefile.
@@ -37,7 +39,9 @@ COMPOSE_FILES := \
   -f services/whoami/compose.yml \
   -f services/dns-bind/compose.yml \
   -f services/certbot/compose.yml \
-  -f services/step-ca/compose.yml
+  -f services/step-ca/compose.yml \
+  -f services/ctfd/compose.yml \
+  -f services/observability/compose.yml
 
 # Pin compose project directory/name to avoid cross-CWD conflicts.
 COMPOSE_PROJECT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
@@ -68,6 +72,16 @@ endif
 BIND_ENV_ARGS :=
 ifneq ($(ENV_FILE),)
 BIND_ENV_ARGS += --env-file $(ENV_FILE)
+endif
+
+CTFD_ENV_ARGS :=
+ifneq ($(ENV_FILE),)
+CTFD_ENV_ARGS += --env-file $(ENV_FILE)
+endif
+
+OBS_ENV_ARGS :=
+ifneq ($(ENV_FILE),)
+OBS_ENV_ARGS += --env-file $(ENV_FILE)
 endif
 
 # Start the stack
@@ -225,6 +239,54 @@ bind-provision:
 bind-provision-dry:
 	"$(SCRIPTS_DIR)/bind-provision.sh" $(BIND_ENV_ARGS) --dry-run
 
+# --- CTFd Module ---
+
+ctfd-bootstrap:
+	"$(SCRIPTS_DIR)/ctfd-bootstrap.sh" $(CTFD_ENV_ARGS)
+
+ctfd-up:
+	@echo "Starting CTFd module (profile: ctfd)..."
+	COMPOSE_PROFILES=ctfd "$(SCRIPTS_DIR)/compose.sh" --profile ctfd $(COMPOSE_OPTS) up -d ctfd ctfd-db ctfd-redis
+
+ctfd-down:
+	@echo "Stopping CTFd module..."
+	COMPOSE_PROFILES=ctfd "$(SCRIPTS_DIR)/compose.sh" --profile ctfd $(COMPOSE_OPTS) stop ctfd ctfd-db ctfd-redis || true
+	COMPOSE_PROFILES=ctfd "$(SCRIPTS_DIR)/compose.sh" --profile ctfd $(COMPOSE_OPTS) rm -f ctfd ctfd-db ctfd-redis || true
+
+ctfd-restart: ctfd-down ctfd-up
+
+ctfd-logs:
+	@echo "Showing CTFd module logs..."
+	COMPOSE_PROFILES=ctfd "$(SCRIPTS_DIR)/compose.sh" --profile ctfd $(COMPOSE_OPTS) logs -f ctfd ctfd-db ctfd-redis
+
+ctfd-status:
+	@echo "CTFd module status:"
+	COMPOSE_PROFILES=ctfd "$(SCRIPTS_DIR)/compose.sh" --profile ctfd $(COMPOSE_OPTS) ps ctfd ctfd-db ctfd-redis
+
+# --- Observability Module ---
+
+observability-bootstrap:
+	"$(SCRIPTS_DIR)/observability-bootstrap.sh" $(OBS_ENV_ARGS)
+
+observability-up:
+	@echo "Starting observability module (profile: observability)..."
+	COMPOSE_PROFILES=observability "$(SCRIPTS_DIR)/compose.sh" --profile observability $(COMPOSE_OPTS) up -d grafana prometheus loki alloy
+
+observability-down:
+	@echo "Stopping observability module..."
+	COMPOSE_PROFILES=observability "$(SCRIPTS_DIR)/compose.sh" --profile observability $(COMPOSE_OPTS) stop grafana prometheus loki alloy || true
+	COMPOSE_PROFILES=observability "$(SCRIPTS_DIR)/compose.sh" --profile observability $(COMPOSE_OPTS) rm -f grafana prometheus loki alloy || true
+
+observability-restart: observability-down observability-up
+
+observability-logs:
+	@echo "Showing observability module logs..."
+	COMPOSE_PROFILES=observability "$(SCRIPTS_DIR)/compose.sh" --profile observability $(COMPOSE_OPTS) logs -f grafana prometheus loki alloy
+
+observability-status:
+	@echo "Observability module status:"
+	COMPOSE_PROFILES=observability "$(SCRIPTS_DIR)/compose.sh" --profile observability $(COMPOSE_OPTS) ps grafana prometheus loki alloy
+
 # --- Help ---
 
 help:
@@ -287,8 +349,24 @@ help:
 	@echo "  bind-provision        Generate the BIND zone file from ENDPOINTS."
 	@echo "  bind-provision-dry    Print the generated zone file without writing."
 	@echo ""
+	@echo "CTFd:"
+	@echo "  ctfd-bootstrap        Generate/persist CTFd secrets in .env."
+	@echo "  ctfd-up               Start the CTFd module (profile: ctfd)."
+	@echo "  ctfd-down             Stop and remove the CTFd module containers."
+	@echo "  ctfd-restart          Restart the CTFd module."
+	@echo "  ctfd-logs             Follow CTFd module logs."
+	@echo "  ctfd-status           Show CTFd module status."
+	@echo ""
+	@echo "Observability:"
+	@echo "  observability-bootstrap  Generate/persist Grafana admin secrets in .env."
+	@echo "  observability-up         Start the observability module (profile: observability)."
+	@echo "  observability-down       Stop and remove observability module containers."
+	@echo "  observability-restart    Restart the observability module."
+	@echo "  observability-logs       Follow observability module logs."
+	@echo "  observability-status     Show observability module status."
+	@echo ""
 	@echo "Profiles:"
 	@echo "  Use COMPOSE_PROFILES=<profile_name> before make commands to activate profiles."
-	@echo "  Available profiles: bind, le, stepca"
+	@echo "  Available profiles: bind, ctfd, le, observability, stepca"
 	@echo "  Example: COMPOSE_PROFILES=le make up"
 	@echo ""
