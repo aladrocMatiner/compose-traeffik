@@ -5,7 +5,7 @@
 <a id="overview"></a>
 ## Oversikt
 
-Detta repo ger en Docker Compose edge stack centrerad runt Traefik. Den ar gjord for lokal utveckling, med valfria profiler for DNS, Let's Encrypt (Certbot) och step-ca. Dokumentationssystemet bygger pa README-filer och finns pa engelska, svenska och spanska.
+Detta repo ger en Docker Compose edge stack centrerad runt Traefik. Den ar gjord for lokal utveckling, med valfria profiler for LiteLLM, DNS, Let's Encrypt (Certbot) och step-ca. Dokumentationssystemet bygger pa README-filer och finns pa engelska, svenska och spanska.
 
 <a id="quickstart"></a>
 ## Snabbstart (Mode A: Lokal Self-Signed TLS)
@@ -74,6 +74,8 @@ Detaljerade TLS-floden:
 - **Whoami**: `https://whoami.${DEV_DOMAIN}` (standardstack)
 - **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth; aktiverad som standard)
 - **DNS UI**: `https://dns.${BASE_DOMAIN}` (profil `dns`, BasicAuth; aktiverad som standard)
+- **LiteLLM**: `https://${LITELLM_HOSTNAME:-llm}.${DEV_DOMAIN}` (profil `litellm`, LiteLLM bearer/master key kravs)
+- **LiteLLM admin/docs UI**: `https://${LITELLM_UI_HOSTNAME:-llm-admin}.${DEV_DOMAIN}` (profil `litellm`, Traefik BasicAuth kravs)
 - **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (profil `stepca`; aktiverad som standard)
 
 <a id="services"></a>
@@ -82,6 +84,7 @@ Detaljerade TLS-floden:
 - [Traefik](services/traefik/README.sv.md) - reverse proxy och routing-karnan.
 - [Whoami](services/whoami/README.sv.md) - demo-service for routingtester.
 - [DNS (Technitium)](services/dns/README.sv.md) - valfri profil `dns`.
+- [LiteLLM](services/litellm/README.sv.md) - valfri profil `litellm` (OpenAI-kompatibel LLM-router/proxy).
 - [Certbot](services/certbot/README.sv.md) - valfri profil `le`.
 - [Step-CA](services/step-ca/README.sv.md) - valfri profil `stepca`.
 
@@ -104,8 +107,13 @@ Vanliga kommandon:
 - `make certs-local`
 - `make certs-le-issue`, `make certs-le-renew` (profil `le`)
 - `make stepca-up`, `make stepca-bootstrap`, `make stepca-trust-install`
+- `make litellm-bootstrap`, `make litellm-up`, `make litellm-logs`, `make litellm-status`
+- `make litellm-standalone-up`, `make litellm-standalone-down`, `make litellm-standalone-logs` (bara Traefik + LiteLLM)
 - `make dns-up`, `make dns-provision`, `make dns-config-apply`
 - `make hosts-generate`, `make hosts-apply`, `make hosts-status`
+- Lagg till `llm` och/eller `llm-admin` i `ENDPOINTS` om du vill att hosts/DNS-verktygen mappar LiteLLM API/admin-hostnamn automatiskt.
+- LiteLLM standalone-lage startar inte `whoami`, `dns` eller lokal `stepca`.
+- Standalone TLS med fjarr-`step-ca`: peka `STEP_CA_CA_SERVER` till fjarr-ACME-endpointen och lita pa CA:n i klienterna.
 
 Auth-filer:
 - `services/traefik/auth/dns-ui.htpasswd.example`

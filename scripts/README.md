@@ -15,12 +15,14 @@ Prerequisites:
 Preflight validation:
 - `scripts/validate-env.sh` runs before `make up` and any `scripts/compose.sh` call.
 - It enforces safe defaults for admin UIs (DNS and dashboard) and validates profile syntax.
+- When the `litellm` profile is enabled, it also requires `LITELLM_MASTER_KEY`, `LITELLM_SALT_KEY`, and a LiteLLM UI htpasswd file at `LITELLM_UI_BASIC_AUTH_HTPASSWD_PATH`.
 - Create htpasswd files under `services/traefik/auth/`, for example:
   - `htpasswd -nbB admin 'change-me' > services/traefik/auth/dns-ui.htpasswd`
   - `htpasswd -nbB admin 'change-me' > services/traefik/auth/traefik-dashboard.htpasswd`
 - Set the container paths in `.env`:
   - `DNS_UI_BASIC_AUTH_HTPASSWD_PATH=/etc/traefik/auth/dns-ui.htpasswd`
   - `TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH=/etc/traefik/auth/traefik-dashboard.htpasswd`
+  - `LITELLM_UI_BASIC_AUTH_HTPASSWD_PATH=/etc/traefik/auth/litellm-ui.htpasswd`
 
 ## Script inventory
 
@@ -30,7 +32,8 @@ Preflight validation:
 | `scripts/up.sh` | Start the stack and render Traefik dynamic config | `make up` | none (loads `.env` if present) | Starts containers |
 | `scripts/down.sh` | Stop the stack | `make down` | none | Stops containers |
 | `scripts/logs.sh` | Follow service logs | `make logs` | none | Streams logs |
-| `scripts/validate-env.sh` | Preflight validation for profiles and admin auth | `./scripts/validate-env.sh` | `COMPOSE_PROFILES`, `DNS_ADMIN_PASSWORD`, `DNS_UI_BASIC_AUTH_HTPASSWD_PATH`, `TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH`, `TRAEFIK_DASHBOARD` | Fails fast on unsafe config |
+| `scripts/validate-env.sh` | Preflight validation for profiles and admin auth | `./scripts/validate-env.sh` | `COMPOSE_PROFILES`, `DNS_ADMIN_PASSWORD`, `DNS_UI_BASIC_AUTH_HTPASSWD_PATH`, `TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH`, `TRAEFIK_DASHBOARD`, `LITELLM_HOSTNAME`, `LITELLM_UI_HOSTNAME`, `LITELLM_LOCAL_API_BASE`, `LITELLM_UI_BASIC_AUTH_HTPASSWD_PATH`, `LITELLM_MASTER_KEY`, `LITELLM_SALT_KEY` | Fails fast on unsafe config |
+| `scripts/litellm-bootstrap.sh` | Generate/rotate LiteLLM API secrets and UI BasicAuth assets | `make litellm-bootstrap` | `ENV_FILE` (optional) | Writes LiteLLM secrets to env file and creates LiteLLM UI htpasswd |
 | `scripts/traefik-render-dynamic.sh` | Render Traefik dynamic config templates | `./scripts/traefik-render-dynamic.sh` | `DEV_DOMAIN` | Writes `services/traefik/dynamic-rendered` |
 | `scripts/healthcheck.sh` | Run smoke tests | `make test` | `DEV_DOMAIN`, `HTTP_TO_HTTPS_REDIRECT` | Runs tests, exits non-zero on failure |
 | `scripts/certs-selfsigned-generate.sh` | Generate local CA + leaf certs | `make certs-local` | `DEV_DOMAIN`, `CA_SUBJECT_*`, `LEAF_*` | Writes `shared/certs/local-ca` and `shared/certs/local` |
@@ -79,9 +82,18 @@ sudo make stepca-trust-install
 COMPOSE_PROFILES=stepca make up
 ```
 
+Standalone LiteLLM edge mode (Traefik + LiteLLM only):
+```bash
+make litellm-bootstrap
+make litellm-standalone-up
+make litellm-standalone-logs
+```
+Use this mode when DNS, step-ca, and the inference backend are external services on your network.
+
 ## Safety and idempotency
 
 - Safe to rerun: `up.sh`, `down.sh`, `logs.sh`, `healthcheck.sh`, `hosts-subdomains.sh` (apply/remove), `dns-provision.sh` (dry-run).
+- `scripts/litellm-bootstrap.sh` is idempotent by default; use `LITELLM_BOOTSTRAP_ARGS=--force make litellm-bootstrap` to rotate LiteLLM API secrets and UI BasicAuth credentials/htpasswd (clients and browser logins must be updated).
 - Modifies system state: `stepca-trust-install.sh`, `stepca-trust-uninstall.sh`, `dns-configure-ubuntu.sh`, `hosts-subdomains.sh` (when applied to `/etc/hosts`).
 - Scripts that write files: `certs-selfsigned-generate.sh`, `traefik-render-dynamic.sh`, `certbot-issue.sh`.
 

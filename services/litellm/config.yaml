@@ -1,0 +1,28 @@
+# LiteLLM proxy config (v1.81.x style)
+# Keep secrets in .env and reference them with `os.environ/<VAR>`.
+# Requests to routes below will fail until the corresponding provider keys are set.
+
+model_list:
+  - model_name: os.environ/LITELLM_LOCAL_MODEL_ALIAS
+    litellm_params:
+      model: os.environ/LITELLM_LOCAL_MODEL_REF
+      api_base: os.environ/LITELLM_LOCAL_API_BASE
+
+  - model_name: gpt-4o-mini
+    litellm_params:
+      model: openai/gpt-4o-mini
+      api_key: os.environ/OPENAI_API_KEY
+
+  - model_name: claude-3-5-haiku
+    litellm_params:
+      model: anthropic/claude-3-5-haiku-latest
+      api_key: os.environ/ANTHROPIC_API_KEY
+
+  - model_name: openrouter-gpt-4o-mini
+    litellm_params:
+      model: openrouter/openai/gpt-4o-mini
+      api_key: os.environ/OPENROUTER_API_KEY
+
+general_settings:
+  # Keep auth enabled by default for the proxy endpoint.
+  master_key: os.environ/LITELLM_MASTER_KEY

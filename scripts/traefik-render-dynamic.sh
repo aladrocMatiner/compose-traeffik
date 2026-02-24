@@ -44,6 +44,7 @@ fi
 
 DNS_UI_BASIC_AUTH_HTPASSWD_PATH="${DNS_UI_BASIC_AUTH_HTPASSWD_PATH:-/etc/traefik/auth/dns-ui.htpasswd.example}"
 TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH="${TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH:-/etc/traefik/auth/traefik-dashboard.htpasswd.example}"
+LITELLM_UI_BASIC_AUTH_HTPASSWD_PATH="${LITELLM_UI_BASIC_AUTH_HTPASSWD_PATH:-/etc/traefik/auth/litellm-ui.htpasswd.example}"
 
 escape_sed() {
     printf '%s' "$1" | sed 's/[&/]/\\&/g'
@@ -51,6 +52,7 @@ escape_sed() {
 
 dns_ui_auth_path_escaped=$(escape_sed "$DNS_UI_BASIC_AUTH_HTPASSWD_PATH")
 dashboard_auth_path_escaped=$(escape_sed "$TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH")
+litellm_ui_auth_path_escaped=$(escape_sed "$LITELLM_UI_BASIC_AUTH_HTPASSWD_PATH")
 
 mkdir -p "$OUTPUT_DIR"
 
@@ -78,5 +80,6 @@ for file in "$TEMPLATE_DIR"/*.yml; do
         -e "s/__DEV_DOMAIN__/${DEV_DOMAIN}/g" \
         -e "s/__DNS_UI_BASIC_AUTH_HTPASSWD_PATH__/${dns_ui_auth_path_escaped}/g" \
         -e "s/__TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH__/${dashboard_auth_path_escaped}/g" \
+        -e "s/__LITELLM_UI_BASIC_AUTH_HTPASSWD_PATH__/${litellm_ui_auth_path_escaped}/g" \
         "$file" > "${OUTPUT_DIR}/${filename}"
 done

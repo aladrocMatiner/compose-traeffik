@@ -116,6 +116,60 @@ else
     TEST_RESULTS=1
 fi
 
+# --- Test 9: LiteLLM Service Config (no sudo) ---
+log_info "Running test_litellm_service_config.sh..."
+if "$TEST_DIR/test_litellm_service_config.sh"; then
+    log_success "Test: LiteLLM Service Config"
+else
+    log_warn "Test failed: LiteLLM Service Config"
+    TEST_RESULTS=1
+fi
+
+# --- Test 10: LiteLLM Config Template (no sudo) ---
+log_info "Running test_litellm_config_template.sh..."
+if "$TEST_DIR/test_litellm_config_template.sh"; then
+    log_success "Test: LiteLLM Config Template"
+else
+    log_warn "Test failed: LiteLLM Config Template"
+    TEST_RESULTS=1
+fi
+
+# --- Test 11: LiteLLM Guardrails (no sudo) ---
+log_info "Running test_litellm_guardrails.sh..."
+if "$TEST_DIR/test_litellm_guardrails.sh"; then
+    log_success "Test: LiteLLM Guardrails"
+else
+    log_warn "Test failed: LiteLLM Guardrails"
+    TEST_RESULTS=1
+fi
+
+# --- Test 12: LiteLLM Makefile Wiring (no sudo) ---
+log_info "Running test_litellm_make_targets.sh..."
+if "$TEST_DIR/test_litellm_make_targets.sh"; then
+    log_success "Test: LiteLLM Makefile Wiring"
+else
+    log_warn "Test failed: LiteLLM Makefile Wiring"
+    TEST_RESULTS=1
+fi
+
+# --- Test 13: LiteLLM Bootstrap Env (no sudo) ---
+log_info "Running test_litellm_bootstrap_env.sh..."
+if "$TEST_DIR/test_litellm_bootstrap_env.sh"; then
+    log_success "Test: LiteLLM Bootstrap Env"
+else
+    log_warn "Test failed: LiteLLM Bootstrap Env"
+    TEST_RESULTS=1
+fi
+
+# --- Test 14: LiteLLM Standalone Mode Wiring (no sudo) ---
+log_info "Running test_litellm_standalone_mode_wiring.sh..."
+if "$TEST_DIR/test_litellm_standalone_mode_wiring.sh"; then
+    log_success "Test: LiteLLM Standalone Mode Wiring"
+else
+    log_warn "Test failed: LiteLLM Standalone Mode Wiring"
+    TEST_RESULTS=1
+fi
+
 if [ "$TEST_RESULTS" -eq 0 ]; then
     log_success "All smoke tests passed!"
 else

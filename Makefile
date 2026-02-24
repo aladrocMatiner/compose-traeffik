@@ -20,6 +20,8 @@ SHELL := /bin/bash # Ensure bash is used for shell commands
         certs-le-issue certs-le-renew \
         stepca-up stepca-down stepca-bootstrap stepca-verify-cert \
         stepca-trust-install stepca-trust-uninstall stepca-trust-verify \
+        litellm-bootstrap litellm-up litellm-down litellm-restart litellm-logs litellm-status \
+        litellm-standalone-up litellm-standalone-down litellm-standalone-logs litellm-standalone-status \
         hosts-generate hosts-apply hosts-remove hosts-status \
         dns-up dns-down dns-logs dns-status dns-provision dns-provision-dry \
 dns-config-apply dns-config-remove dns-config-status
@@ -36,6 +38,7 @@ COMPOSE_FILES := \
   -f compose/base.yml \
   -f services/traefik/compose.yml \
   -f services/whoami/compose.yml \
+  -f services/litellm/compose.yml \
   -f services/dns/compose.yml \
   -f services/certbot/compose.yml \
   -f services/step-ca/compose.yml
@@ -67,6 +70,11 @@ endif
 DNS_ENV_ARGS :=
 ifneq ($(ENV_FILE),)
 DNS_ENV_ARGS += --env-file $(ENV_FILE)
+endif
+
+LITELLM_BOOTSTRAP_ENV_ARGS :=
+ifneq ($(ENV_FILE),)
+LITELLM_BOOTSTRAP_ENV_ARGS += --env-file $(ENV_FILE)
 endif
 
 # Start the stack
@@ -181,6 +189,49 @@ docs-check:
 	@echo "Validating multilingual README structure..."
 	./scripts/docs-check.sh
 
+# --- LiteLLM Router ---
+
+litellm-bootstrap:
+	./scripts/litellm-bootstrap.sh $(LITELLM_BOOTSTRAP_ENV_ARGS) $(LITELLM_BOOTSTRAP_ARGS)
+
+litellm-up:
+	@echo "Starting LiteLLM service (profile: litellm)..."
+	COMPOSE_PROFILES=litellm ./scripts/compose.sh --profile litellm $(COMPOSE_OPTS) up -d litellm
+
+litellm-down:
+	@echo "Stopping LiteLLM service..."
+	COMPOSE_PROFILES=litellm ./scripts/compose.sh --profile litellm $(COMPOSE_OPTS) stop litellm || true
+	COMPOSE_PROFILES=litellm ./scripts/compose.sh --profile litellm $(COMPOSE_OPTS) rm -f litellm || true
+
+litellm-restart: litellm-down litellm-up
+
+litellm-logs:
+	@echo "Showing LiteLLM service logs..."
+	COMPOSE_PROFILES=litellm ./scripts/compose.sh --profile litellm $(COMPOSE_OPTS) logs -f litellm
+
+litellm-status:
+	@echo "LiteLLM service status:"
+	COMPOSE_PROFILES=litellm ./scripts/compose.sh --profile litellm $(COMPOSE_OPTS) ps litellm
+
+litellm-standalone-up:
+	@echo "Starting standalone LiteLLM edge mode (traefik + litellm)..."
+	./scripts/validate-env.sh
+	./scripts/traefik-render-dynamic.sh
+	COMPOSE_PROFILES=litellm ./scripts/compose.sh --profile litellm $(COMPOSE_OPTS) up -d traefik litellm
+
+litellm-standalone-down:
+	@echo "Stopping standalone LiteLLM edge mode (traefik + litellm)..."
+	COMPOSE_PROFILES=litellm ./scripts/compose.sh --profile litellm $(COMPOSE_OPTS) stop traefik litellm || true
+	COMPOSE_PROFILES=litellm ./scripts/compose.sh --profile litellm $(COMPOSE_OPTS) rm -f traefik litellm || true
+
+litellm-standalone-logs:
+	@echo "Showing standalone LiteLLM edge logs (traefik + litellm)..."
+	COMPOSE_PROFILES=litellm ./scripts/compose.sh --profile litellm $(COMPOSE_OPTS) logs -f traefik litellm
+
+litellm-standalone-status:
+	@echo "Standalone LiteLLM edge status (traefik + litellm):"
+	COMPOSE_PROFILES=litellm ./scripts/compose.sh --profile litellm $(COMPOSE_OPTS) ps traefik litellm
+
 # --- Hosts Subdomain Mapper ---
 
 hosts-generate:
@@ -284,6 +335,18 @@ help:
 	@echo "  hosts-remove          Remove the managed hosts block."
 	@echo "  hosts-status          Show whether the managed block exists."
 	@echo ""
+	@echo "LiteLLM Router:"
+	@echo "  litellm-bootstrap     Generate LiteLLM secrets in .env (use ENV_FILE=... and LITELLM_BOOTSTRAP_ARGS=--force as needed)."
+	@echo "  litellm-up            Start the LiteLLM service (profile: litellm)."
+	@echo "  litellm-down          Stop and remove the LiteLLM container."
+	@echo "  litellm-restart       Restart the LiteLLM service."
+	@echo "  litellm-logs          Follow LiteLLM service logs."
+	@echo "  litellm-status        Show LiteLLM service status."
+	@echo "  litellm-standalone-up Start standalone LiteLLM edge mode (traefik + litellm only)."
+	@echo "  litellm-standalone-down Stop/remove standalone LiteLLM edge containers."
+	@echo "  litellm-standalone-logs Follow logs for standalone LiteLLM edge mode."
+	@echo "  litellm-standalone-status Show status for standalone LiteLLM edge mode."
+	@echo ""
 	@echo "DNS Service:"
 	@echo "  dns-up                Start the DNS service (profile: dns)."
 	@echo "  dns-down              Stop and remove the DNS container."
@@ -297,6 +360,6 @@ help:
 	@echo ""
 	@echo "Profiles:"
 	@echo "  Use COMPOSE_PROFILES=<profile_name> before make commands to activate profiles."
-	@echo "  Available profiles: le, stepca"
+	@echo "  Available profiles: litellm, dns, le, stepca"
 	@echo "  Example: COMPOSE_PROFILES=le make up"
 	@echo ""
