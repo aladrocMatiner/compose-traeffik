@@ -21,7 +21,8 @@ SHELL := /bin/bash # Ensure bash is used for shell commands
         stepca-up stepca-down stepca-bootstrap stepca-verify-cert \
         stepca-trust-install stepca-trust-uninstall stepca-trust-verify \
         hosts-generate hosts-apply hosts-remove hosts-status \
-        bind-up bind-down bind-restart bind-logs bind-status bind-provision bind-provision-dry
+        bind-up bind-down bind-restart bind-logs bind-status bind-provision bind-provision-dry \
+        awx-bootstrap awx-k3d-up awx-k3d-down awx-up awx-down awx-status awx-logs awx-admin-password test-awx
 
 # Include .env for environment variables if it exists.
 # This makes variables in .env available to the Makefile.
@@ -68,6 +69,11 @@ endif
 BIND_ENV_ARGS :=
 ifneq ($(ENV_FILE),)
 BIND_ENV_ARGS += --env-file $(ENV_FILE)
+endif
+
+AWX_ENV_ARGS :=
+ifneq ($(ENV_FILE),)
+AWX_ENV_ARGS += --env-file $(ENV_FILE)
 endif
 
 # Start the stack
@@ -225,6 +231,49 @@ bind-provision:
 bind-provision-dry:
 	"$(SCRIPTS_DIR)/bind-provision.sh" $(BIND_ENV_ARGS) --dry-run
 
+# --- AWX (k3d + AWX Operator) Hybrid Module ---
+
+awx-bootstrap:
+	"$(SCRIPTS_DIR)/awx-bootstrap.sh" $(AWX_ENV_ARGS)
+
+awx-k3d-up:
+	@echo "Creating/ensuring local k3d cluster for AWX..."
+	"$(SCRIPTS_DIR)/awx-k3d-up.sh" $(AWX_ENV_ARGS)
+
+awx-k3d-down:
+	@echo "Deleting local k3d cluster for AWX..."
+	"$(SCRIPTS_DIR)/awx-k3d-down.sh" $(AWX_ENV_ARGS)
+
+awx-up:
+	@echo "Deploying/updating AWX (operator + instance) on k3d..."
+	@echo "Note: Traefik should be running (make up) to access https://$${AWX_HOSTNAME:-awx}.$${DEV_DOMAIN}"
+	"$(SCRIPTS_DIR)/awx-up.sh" $(AWX_ENV_ARGS)
+
+awx-down:
+	@echo "Deleting AWX instance (cluster is kept)..."
+	"$(SCRIPTS_DIR)/awx-down.sh" $(AWX_ENV_ARGS)
+
+awx-status:
+	@echo "AWX/k3d status:"
+	"$(SCRIPTS_DIR)/awx-status.sh" $(AWX_ENV_ARGS)
+
+awx-logs:
+	@echo "AWX logs (default: list pods; pass ROLE=<operator|web|task> for convenience)..."
+	"$(SCRIPTS_DIR)/awx-logs.sh" $(AWX_ENV_ARGS) $(if $(ROLE),$(ROLE),)
+
+awx-admin-password:
+	@echo "AWX admin password from Kubernetes secret:"
+	"$(SCRIPTS_DIR)/awx-admin-password.sh" $(AWX_ENV_ARGS)
+
+test-awx:
+	@echo "Running AWX static smoke tests..."
+	@set -euo pipefail; rc=0; \
+	for test_script in test_awx_make_targets.sh test_awx_guardrails.sh test_awx_k8s_templates.sh test_awx_traefik_routing_config.sh; do \
+		echo "==> $$test_script"; \
+		if ! "./tests/smoke/$$test_script"; then rc=1; fi; \
+	done; \
+	exit $$rc
+
 # --- Help ---
 
 help:
@@ -286,6 +335,17 @@ help:
 	@echo "  bind-status           Show BIND service status."
 	@echo "  bind-provision        Generate the BIND zone file from ENDPOINTS."
 	@echo "  bind-provision-dry    Print the generated zone file without writing."
+	@echo ""
+	@echo "AWX (k3d hybrid module):"
+	@echo "  awx-bootstrap         Generate/persist AWX bootstrap secrets and defaults in .env."
+	@echo "  awx-k3d-up            Create/ensure local k3d cluster for AWX."
+	@echo "  awx-k3d-down          Delete the local AWX k3d cluster."
+	@echo "  awx-up                Install/upgrade AWX Operator and apply AWX instance on k3d."
+	@echo "  awx-down              Delete the AWX instance (keeps the cluster)."
+	@echo "  awx-status            Show AWX/operator resources and pod status."
+	@echo "  awx-logs              Show AWX/operator logs (optional ROLE=operator|web|task)."
+	@echo "  awx-admin-password    Print the AWX admin password from the Kubernetes secret."
+	@echo "  test-awx             Run AWX static smoke tests (no k3d runtime required)."
 	@echo ""
 	@echo "Profiles:"
 	@echo "  Use COMPOSE_PROFILES=<profile_name> before make commands to activate profiles."

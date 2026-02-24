@@ -74,6 +74,7 @@ Detaljerade TLS-floden:
 - **Whoami**: `https://whoami.${DEV_DOMAIN}` (standardstack)
 - **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth; aktiverad som standard)
 - **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (profil `stepca`; aktiverad som standard)
+- **AWX**: `https://awx.${DEV_DOMAIN}` (hybridmodul `k3d` + AWX Operator; kraver `make awx-*`)
 
 <a id="services"></a>
 ## Tjanster
@@ -81,6 +82,7 @@ Detaljerade TLS-floden:
 - [Traefik](services/traefik/README.sv.md) - reverse proxy och routing-karnan.
 - [Whoami](services/whoami/README.sv.md) - demo-service for routingtester.
 - [DNS (BIND)](services/dns-bind/README.sv.md) - valfri profil `bind`.
+- [AWX](services/awx/README.sv.md) - hybridmodul (`k3d` + AWX Operator) bakom Traefik.
 - [Certbot](services/certbot/README.sv.md) - valfri profil `le`.
 - [Step-CA](services/step-ca/README.sv.md) - valfri profil `stepca`.
 
@@ -104,7 +106,16 @@ Vanliga kommandon:
 - `make certs-le-issue`, `make certs-le-renew` (profil `le`)
 - `make stepca-up`, `make stepca-bootstrap`, `make stepca-trust-install`
 - `make bind-up`, `make bind-status`, `make bind-restart`, `make bind-provision`
+- `make awx-bootstrap`, `make awx-k3d-up`, `make awx-up`, `make awx-status`, `make awx-admin-password`
 - `make hosts-generate`, `make hosts-apply`, `make hosts-status`
+
+AWX-forutsattningar (hybridmodul):
+- `docker`, `k3d`, `kubectl`, `helm`
+- Traefik maste vara igang (`make up` eller minst `traefik`) for `https://awx.${DEV_DOMAIN}`
+
+AWX hosts/TLS-noter:
+- Lagg till `awx` i `ENDPOINTS` (eller anvand hosts auto-discovery) sa att `awx.${DEV_DOMAIN}` resolvas lokalt.
+- AWX UI ska anvandas via Traefik och foljer samma TLS-lagen A/B/C som resten av stacken.
 
 Auth-filer:
 - `services/traefik/auth/traefik-dashboard.htpasswd.example`

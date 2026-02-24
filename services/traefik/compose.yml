@@ -10,6 +10,8 @@ services:
       - "443:443"
     networks:
       - proxy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       - TZ=UTC
       - DOCKER_API_VERSION=1.44

@@ -1,0 +1,15 @@
+# AWX Operator Helm values (minimal repo-managed defaults)
+# Version pinning is done via Make/scripts (chart version and AWX version vars in .env).
+
+AWX:
+  # Keep disabled: this repo applies the AWX custom resource explicitly via scripts/awx-up.sh.
+  enabled: false
+
+# Keep operator footprint modest for local labs by default; override if needed.
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 768Mi

@@ -38,6 +38,10 @@ This directory contains smoke tests that verify Traefik readiness, routing, TLS,
 | `tests/smoke/test_bind_file_permissions.sh` | Validate config/zone file permissions are not world-writable. | `stat`, generated zone file or `bind-provision`. | Template, zone dir, and zone file reject world-writable modes. |
 | `tests/smoke/test_bind_provisioning_validation.sh` | Validate `bind-provision` rejects invalid domain and endpoint labels. | `mktemp`, `scripts/bind-provision.sh`. | Invalid `BASE_DOMAIN` or endpoint labels fail with non-zero exit. |
 | `tests/smoke/test_bind_security_runtime.sh` | Validate runtime DNS security behavior (no recursion, AXFR denied, hidden CHAOS metadata, expected listener). | `dig`, `docker`, `make`, loopback test address. | Security checks pass and BIND responds only on the expected test bind address. |
+| `tests/smoke/test_awx_make_targets.sh` | Validate AWX Make targets exist (`awx-*`, `test-awx`). | `Makefile`, `grep`. | Required AWX lifecycle/test targets are present. |
+| `tests/smoke/test_awx_guardrails.sh` | Validate AWX/k3d env guardrails (`validate-awx-env.sh`) for secrets and NodePort ranges. | `.env.example`, `scripts/validate-awx-env.sh`, `mktemp`. | Placeholder secrets and invalid ports fail; valid values pass. |
+| `tests/smoke/test_awx_k8s_templates.sh` | Validate AWX namespace/operator/AWX CR templates exist and include key placeholders. | `services/awx/k8s/*`, `grep`. | Templates exist and AWX CR includes NodePort placeholders. |
+| `tests/smoke/test_awx_traefik_routing_config.sh` | Validate AWX Traefik route template and host-gateway wiring for Traefik -> k3d NodePort. | `services/traefik/*`, `scripts/traefik-render-dynamic.sh`, `grep`. | AWX route placeholders and `host.docker.internal`/`host-gateway` wiring exist. |
 
 ## Configuration
 
@@ -48,6 +52,7 @@ Smoke tests use environment variables loaded from `.env` via `scripts/healthchec
 - `BIND_BIND_ADDRESS` (default listener for BIND)
 - `BIND_ALLOW_NONLOCAL_BIND` (must be `true` to allow non-loopback bind)
 - `BIND_SECURITY_TEST_ADDRESS` (optional loopback override for runtime security smoke)
+- `AWX_*` / `K3D_*` (used by `test-awx` and AWX validation scripts when configured)
 
 Ensure `.env` exists (prefer `make bootstrap`) before running tests. Optional profiles
 are enabled by default via `COMPOSE_PROFILES` in `.env`; edit it if you want a smaller stack.
@@ -56,6 +61,8 @@ are enabled by default via `COMPOSE_PROFILES` in `.env`; edit it if you want a s
 
 - `make test` prints per-test results and exits with non-zero status on failure.
 - A successful run ends with `All smoke tests passed!`.
+- `make test-awx` runs AWX static smoke tests only (no k3d runtime required).
+- AWX runtime validation is manual (not part of `make test`): use the checklist in `services/awx/README*.md` and confirm Traefik route + AWX readiness.
 
 ## Common failures and fixes
 

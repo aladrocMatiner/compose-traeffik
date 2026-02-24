@@ -16,6 +16,7 @@ COMPOSE_PROFILES_ENV="${COMPOSE_PROFILES:-}"
 TRAEFIK_DASHBOARD_ENV="${TRAEFIK_DASHBOARD:-}"
 BIND_BIND_ADDRESS_ENV="${BIND_BIND_ADDRESS:-}"
 BIND_ALLOW_NONLOCAL_BIND_ENV="${BIND_ALLOW_NONLOCAL_BIND:-}"
+AWX_ENABLED_ENV="${AWX_ENABLED:-}"
 
 load_env
 
@@ -33,6 +34,9 @@ if [ -n "${BIND_BIND_ADDRESS_ENV}" ]; then
 fi
 if [ -n "${BIND_ALLOW_NONLOCAL_BIND_ENV}" ]; then
     BIND_ALLOW_NONLOCAL_BIND="${BIND_ALLOW_NONLOCAL_BIND_ENV}"
+fi
+if [ -n "${AWX_ENABLED_ENV}" ]; then
+    AWX_ENABLED="${AWX_ENABLED_ENV}"
 fi
 
 resolve_auth_path() {
@@ -160,4 +164,8 @@ if is_bind_profile_enabled; then
             log_error "BIND_BIND_ADDRESS must be loopback by default. Set BIND_ALLOW_NONLOCAL_BIND=true for intentional non-local exposure."
         fi
     fi
+fi
+
+if [ "${AWX_ENABLED:-false}" = "true" ]; then
+    "${SCRIPT_DIR}/validate-awx-env.sh" >/dev/null
 fi

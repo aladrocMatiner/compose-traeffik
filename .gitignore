@@ -36,6 +36,9 @@ services/dns-bind/zones/db.aladroc.io
 .env
 
 # --- Local development artifacts ---
+.local/
+services/awx/k8s/rendered/
+
 # macOS
 .DS_Store
 

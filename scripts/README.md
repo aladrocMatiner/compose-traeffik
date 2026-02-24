@@ -41,6 +41,15 @@ Preflight validation:
 | `scripts/ca-config-verify.sh` | Validate shared CA configuration | `./scripts/ca-config-verify.sh` | `DEV_DOMAIN`, `CA_*`, `LEAF_*` (or legacy `STEP_CA_*`) | Prints effective CA configuration |
 | `scripts/hosts-subdomains.sh` | Manage hosts block for loopback subdomains | `make hosts-apply` | `BASE_DOMAIN`, `LOOPBACK_X` | Modifies hosts file (with sudo) |
 | `scripts/bind-provision.sh` | Generate BIND zone file from ENDPOINTS | `make bind-provision` | `BASE_DOMAIN`, `LOOPBACK_X`, `ENDPOINTS` | Writes `services/dns-bind/zones` |
+| `scripts/awx-bootstrap.sh` | Generate/persist AWX bootstrap secrets and defaults | `make awx-bootstrap` | `AWX_*`, `K3D_*` | Writes `.env` values |
+| `scripts/awx-k3d-up.sh` | Create/ensure local k3d cluster for AWX | `make awx-k3d-up` | `AWX_K3D_CLUSTER_NAME`, `AWX_*`, `K3D_K3S_IMAGE` | Creates local k3d cluster, writes kubeconfig |
+| `scripts/awx-k3d-down.sh` | Delete local k3d cluster for AWX | `make awx-k3d-down` | `AWX_K3D_CLUSTER_NAME` | Deletes local k3d cluster |
+| `scripts/awx-up.sh` | Install/upgrade AWX Operator and apply AWX instance | `make awx-up` | `AWX_*`, `K3D_*`, `DEV_DOMAIN` | Applies Kubernetes resources, renders Traefik AWX route |
+| `scripts/awx-down.sh` | Delete AWX instance (keeps cluster) | `make awx-down` | `AWX_*` | Deletes AWX CR |
+| `scripts/awx-status.sh` | Show AWX/operator cluster status | `make awx-status` | `AWX_*` | Reads Kubernetes resources |
+| `scripts/awx-logs.sh` | List/follow AWX/operator logs | `make awx-logs [ROLE=...]` | `AWX_*` | Streams pod logs |
+| `scripts/awx-admin-password.sh` | Print AWX admin password from Kubernetes secret | `make awx-admin-password` | `AWX_*` | Reads secret value |
+| `scripts/validate-awx-env.sh` | Validate AWX/k3d env inputs before AWX lifecycle ops | `./scripts/validate-awx-env.sh` | `AWX_*`, `K3D_*` | Fails fast on invalid values |
 | `scripts/common.sh` | Shared helpers | sourced by other scripts | none | none |
 
 ## Workflows
@@ -63,6 +72,16 @@ make bind-status
 make bind-restart
 make bind-logs
 make bind-down
+```
+
+### AWX (k3d hybrid module)
+
+```bash
+make awx-bootstrap
+make awx-k3d-up
+make awx-up
+make awx-status
+make awx-admin-password
 ```
 
 ### Certificates
@@ -92,6 +111,7 @@ COMPOSE_PROFILES=stepca make up
 - Safe to rerun: `up.sh`, `down.sh`, `logs.sh`, `healthcheck.sh`, `hosts-subdomains.sh` (apply/remove).
 - Modifies system state: `stepca-trust-install.sh`, `stepca-trust-uninstall.sh`, `hosts-subdomains.sh` (when applied to `/etc/hosts`).
 - Scripts that write files: `certs-selfsigned-generate.sh`, `traefik-render-dynamic.sh`, `certbot-issue.sh`.
+- AWX scripts write local artifacts under `.local/` (gitignored) and repo-rendered manifests under `services/awx/k8s/rendered/`.
 
 ## Troubleshooting
 

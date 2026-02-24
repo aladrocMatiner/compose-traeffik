@@ -74,6 +74,7 @@ Guias de TLS:
 - **Whoami**: `https://whoami.${DEV_DOMAIN}` (stack por defecto)
 - **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth; habilitado por defecto)
 - **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (perfil `stepca`; habilitado por defecto)
+- **AWX**: `https://awx.${DEV_DOMAIN}` (modulo hibrido `k3d` + AWX Operator; requiere `make awx-*`)
 
 <a id="services"></a>
 ## Servicios
@@ -81,6 +82,7 @@ Guias de TLS:
 - [Traefik](services/traefik/README.es.md) - reverse proxy y nucleo de routing.
 - [Whoami](services/whoami/README.es.md) - servicio demo para pruebas de routing.
 - [DNS (BIND)](services/dns-bind/README.es.md) - perfil opcional `bind`.
+- [AWX](services/awx/README.es.md) - modulo hibrido (`k3d` + AWX Operator) detras de Traefik.
 - [Certbot](services/certbot/README.es.md) - perfil opcional `le`.
 - [Step-CA](services/step-ca/README.es.md) - perfil opcional `stepca`.
 
@@ -104,7 +106,16 @@ Comandos comunes:
 - `make certs-le-issue`, `make certs-le-renew` (perfil `le`)
 - `make stepca-up`, `make stepca-bootstrap`, `make stepca-trust-install`
 - `make bind-up`, `make bind-status`, `make bind-restart`, `make bind-provision`
+- `make awx-bootstrap`, `make awx-k3d-up`, `make awx-up`, `make awx-status`, `make awx-admin-password`
 - `make hosts-generate`, `make hosts-apply`, `make hosts-status`
+
+Prerequisitos AWX (modulo hibrido):
+- `docker`, `k3d`, `kubectl`, `helm`
+- Traefik en ejecucion (`make up` o al menos `traefik`) para acceso a `https://awx.${DEV_DOMAIN}`
+
+Notas AWX de hosts/TLS:
+- Anade `awx` a `ENDPOINTS` (o usa el flujo de auto-discovery de hosts) para resolver `awx.${DEV_DOMAIN}` en local.
+- La UI de AWX debe usarse via Traefik y sigue los mismos modos TLS A/B/C del stack.
 
 Archivos auth:
 - `services/traefik/auth/traefik-dashboard.htpasswd.example`

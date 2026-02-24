@@ -1,0 +1,19 @@
+# File: traefik/dynamic/awx.yml
+# AWX route to local k3d-backed AWX NodePort exposed on the host.
+
+http:
+  routers:
+    awx:
+      rule: "Host(`__AWX_HOSTNAME__.__DEV_DOMAIN__`)"
+      entryPoints:
+        - websecure
+      middlewares:
+        - security-headers
+      service: awx
+      tls: {}
+
+  services:
+    awx:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:__AWX_HOST_PORT_HTTP__"
