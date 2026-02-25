@@ -10,6 +10,10 @@ The system SHALL document all operational scripts in `scripts/README.md`, includ
 - **WHEN** a user opens `scripts/README.md`
 - **THEN** they can find every script listed with its purpose and how to run it
 
+#### Scenario: New service observability scripts or toggles documented
+- **WHEN** a new service introduces observability-specific scripts or bootstrap/toggle behavior
+- **THEN** `scripts/README.md` documents the relevant scripts or toggles, prerequisites, and side effects
+
 ### Requirement: README link to scripts
 The system SHALL link to `scripts/README.md` from the root README in a visible location.
 

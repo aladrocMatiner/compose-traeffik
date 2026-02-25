@@ -10,6 +10,10 @@ The system SHALL organize each service under `services/<service>/` with a per-se
 - **WHEN** a user inspects `services/<service>/`
 - **THEN** it contains `compose.yml` and a `README.md` describing that service
 
+#### Scenario: New service documents observability option
+- **WHEN** a new service module is added after the observability option policy is adopted
+- **THEN** the service README documents observability integration behavior (or an explicit no-telemetry rationale) and how it behaves when observability is disabled
+
 ### Requirement: Compose layering preserves workflows
 The system SHALL preserve existing Makefile workflows by composing the same services and profiles using a documented compose layering strategy.
 
