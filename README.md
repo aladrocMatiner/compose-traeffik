@@ -74,6 +74,8 @@ For detailed TLS workflows, see:
 - **Whoami**: `https://whoami.${DEV_DOMAIN}` (default stack; uses Traefik HTTPS)
 - **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth; enabled by default)
 - **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (profile `stepca`; enabled by default)
+- **GitLab UI/API**: `https://gitlab.${DEV_DOMAIN}` (profile `gitlab`; Traefik HTTPS)
+- **GitLab SSH**: `ssh://git@<host>:${GITLAB_SSH_HOST_PORT}` (profile `gitlab`; direct host port, not Traefik)
 
 <a id="services"></a>
 ## Services
@@ -81,6 +83,7 @@ For detailed TLS workflows, see:
 - [Traefik](services/traefik/README.md) - reverse proxy and routing core.
 - [Whoami](services/whoami/README.md) - demo service used for routing tests.
 - [DNS (BIND)](services/dns-bind/README.md) - optional profile `bind`.
+- [GitLab](services/gitlab/README.md) - optional profile `gitlab` (Omnibus + Traefik, optional OIDC/observability hooks).
 - [Certbot](services/certbot/README.md) - optional profile `le`.
 - [Step-CA](services/step-ca/README.md) - optional profile `stepca`.
 
@@ -104,6 +107,7 @@ Common commands:
 - `make certs-le-issue`, `make certs-le-renew` (profile `le`)
 - `make stepca-up`, `make stepca-bootstrap`, `make stepca-trust-install`
 - `make bind-up`, `make bind-status`, `make bind-restart`, `make bind-provision`
+- `make gitlab-bootstrap`, `make gitlab-up`, `make gitlab-status`, `make gitlab-logs`
 - `make hosts-generate`, `make hosts-apply`, `make hosts-status`
 
 Auth files:
@@ -121,6 +125,11 @@ DNS security defaults:
 - `BIND_BIND_ADDRESS` controls the bind interface.
 - Non-loopback exposure requires `BIND_ALLOW_NONLOCAL_BIND=true`.
 
+GitLab notes:
+- Add `gitlab` to `ENDPOINTS` (or use DNS/hosts entries) for local name resolution.
+- Git SSH uses a direct host port (`GITLAB_SSH_HOST_PORT`, default `2424`) and is not routed through Traefik in the MVP module.
+- Optional Keycloak OIDC and observability hooks are configured in `.env` and rendered into `services/gitlab/rendered/gitlab.rb` via `make gitlab-bootstrap`.
+
 <a id="testing"></a>
 ## Testing
 
@@ -130,6 +139,7 @@ make test
 ```
 See `tests/README.md` for details.
 Operational scripts: see `scripts/README.md`.
+Run the GitLab static smoke suite only with `make test-gitlab`.
 
 <a id="troubleshooting"></a>
 ## Troubleshooting

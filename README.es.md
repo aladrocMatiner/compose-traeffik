@@ -74,6 +74,8 @@ Guias de TLS:
 - **Whoami**: `https://whoami.${DEV_DOMAIN}` (stack por defecto)
 - **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth; habilitado por defecto)
 - **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (perfil `stepca`; habilitado por defecto)
+- **GitLab UI/API**: `https://gitlab.${DEV_DOMAIN}` (perfil `gitlab`; Traefik HTTPS)
+- **GitLab SSH**: `ssh://git@<host>:${GITLAB_SSH_HOST_PORT}` (perfil `gitlab`; puerto host directo, no Traefik)
 
 <a id="services"></a>
 ## Servicios
@@ -81,6 +83,7 @@ Guias de TLS:
 - [Traefik](services/traefik/README.es.md) - reverse proxy y nucleo de routing.
 - [Whoami](services/whoami/README.es.md) - servicio demo para pruebas de routing.
 - [DNS (BIND)](services/dns-bind/README.es.md) - perfil opcional `bind`.
+- [GitLab](services/gitlab/README.es.md) - perfil opcional `gitlab` (Omnibus + Traefik, hooks opcionales OIDC/observabilidad).
 - [Certbot](services/certbot/README.es.md) - perfil opcional `le`.
 - [Step-CA](services/step-ca/README.es.md) - perfil opcional `stepca`.
 
@@ -104,6 +107,7 @@ Comandos comunes:
 - `make certs-le-issue`, `make certs-le-renew` (perfil `le`)
 - `make stepca-up`, `make stepca-bootstrap`, `make stepca-trust-install`
 - `make bind-up`, `make bind-status`, `make bind-restart`, `make bind-provision`
+- `make gitlab-bootstrap`, `make gitlab-up`, `make gitlab-status`, `make gitlab-logs`
 - `make hosts-generate`, `make hosts-apply`, `make hosts-status`
 
 Archivos auth:
@@ -117,6 +121,11 @@ Defaults de seguridad DNS:
 - `BIND_BIND_ADDRESS` debe mantenerse en loopback por defecto.
 - Para exponer DNS fuera de loopback de forma intencional, usa `BIND_ALLOW_NONLOCAL_BIND=true`.
 
+Notas de GitLab:
+- Añade `gitlab` a `ENDPOINTS` (o usa DNS/hosts) para resolucion local.
+- Git SSH usa un puerto host directo (`GITLAB_SSH_HOST_PORT`, default `2424`) y no pasa por Traefik en el MVP.
+- OIDC Keycloak y hooks de observabilidad son opcionales y se renderizan en `services/gitlab/rendered/gitlab.rb` con `make gitlab-bootstrap`.
+
 <a id="testing"></a>
 ## Testing
 
@@ -126,6 +135,7 @@ make test
 ```
 Ve `tests/README.md` para detalles.
 Scripts operativos: ver `scripts/README.md`.
+Suite smoke estatica de GitLab: `make test-gitlab`.
 
 <a id="troubleshooting"></a>
 ## Troubleshooting

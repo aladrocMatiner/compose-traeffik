@@ -21,7 +21,8 @@ SHELL := /bin/bash # Ensure bash is used for shell commands
         stepca-up stepca-down stepca-bootstrap stepca-verify-cert \
         stepca-trust-install stepca-trust-uninstall stepca-trust-verify \
         hosts-generate hosts-apply hosts-remove hosts-status \
-        bind-up bind-down bind-restart bind-logs bind-status bind-provision bind-provision-dry
+        bind-up bind-down bind-restart bind-logs bind-status bind-provision bind-provision-dry \
+        gitlab-bootstrap gitlab-up gitlab-down gitlab-restart gitlab-logs gitlab-status test-gitlab
 
 # Include .env for environment variables if it exists.
 # This makes variables in .env available to the Makefile.
@@ -35,6 +36,7 @@ COMPOSE_FILES := \
   -f compose/base.yml \
   -f services/traefik/compose.yml \
   -f services/whoami/compose.yml \
+  -f services/gitlab/compose.yml \
   -f services/dns-bind/compose.yml \
   -f services/certbot/compose.yml \
   -f services/step-ca/compose.yml
@@ -176,6 +178,19 @@ test:
 	@echo "Running smoke tests..."
 	./scripts/healthcheck.sh
 
+test-gitlab:
+	@echo "Running GitLab smoke tests..."
+	@set -e; \
+	for t in \
+		tests/smoke/test_gitlab_make_targets.sh \
+		tests/smoke/test_gitlab_service_config.sh \
+		tests/smoke/test_gitlab_guardrails.sh \
+		tests/smoke/test_gitlab_oidc_wiring.sh \
+		tests/smoke/test_gitlab_observability_wiring.sh; do \
+		echo ">> $$t"; \
+		"$$t"; \
+	done
+
 # --- Documentation ---
 
 docs-check:
@@ -225,6 +240,30 @@ bind-provision:
 bind-provision-dry:
 	"$(SCRIPTS_DIR)/bind-provision.sh" $(BIND_ENV_ARGS) --dry-run
 
+# --- GitLab (Omnibus) ---
+
+gitlab-bootstrap:
+	"$(SCRIPTS_DIR)/gitlab-bootstrap.sh" $(if $(ENV_FILE),--env-file $(ENV_FILE),)
+
+gitlab-up: gitlab-bootstrap
+	@echo "Starting GitLab service (profile: gitlab)..."
+	COMPOSE_PROFILES=gitlab "$(SCRIPTS_DIR)/compose.sh" --profile gitlab $(COMPOSE_OPTS) up -d gitlab
+
+gitlab-down:
+	@echo "Stopping GitLab service..."
+	COMPOSE_PROFILES=gitlab "$(SCRIPTS_DIR)/compose.sh" --profile gitlab $(COMPOSE_OPTS) stop gitlab || true
+	COMPOSE_PROFILES=gitlab "$(SCRIPTS_DIR)/compose.sh" --profile gitlab $(COMPOSE_OPTS) rm -f gitlab || true
+
+gitlab-restart: gitlab-down gitlab-up
+
+gitlab-logs:
+	@echo "Showing GitLab service logs..."
+	COMPOSE_PROFILES=gitlab "$(SCRIPTS_DIR)/compose.sh" --profile gitlab $(COMPOSE_OPTS) logs -f gitlab
+
+gitlab-status:
+	@echo "GitLab service status:"
+	COMPOSE_PROFILES=gitlab "$(SCRIPTS_DIR)/compose.sh" --profile gitlab $(COMPOSE_OPTS) ps gitlab
+
 # --- Help ---
 
 help:
@@ -268,6 +307,7 @@ help:
 	@echo ""
 	@echo "Testing:"
 	@echo "  test                  Run all smoke tests for the current configuration."
+	@echo "  test-gitlab           Run GitLab smoke tests (config/wiring/guardrails; no full runtime flow)."
 	@echo ""
 	@echo "Docs:"
 	@echo "  docs-check            Validate multilingual README structure and links."
@@ -287,8 +327,16 @@ help:
 	@echo "  bind-provision        Generate the BIND zone file from ENDPOINTS."
 	@echo "  bind-provision-dry    Print the generated zone file without writing."
 	@echo ""
+	@echo "GitLab:"
+	@echo "  gitlab-bootstrap      Generate GitLab defaults/secrets in .env and render Omnibus config."
+	@echo "  gitlab-up             Start the GitLab service (profile: gitlab)."
+	@echo "  gitlab-down           Stop and remove the GitLab container."
+	@echo "  gitlab-restart        Restart GitLab (gitlab-down + gitlab-up)."
+	@echo "  gitlab-logs           Follow GitLab logs."
+	@echo "  gitlab-status         Show GitLab container status."
+	@echo ""
 	@echo "Profiles:"
 	@echo "  Use COMPOSE_PROFILES=<profile_name> before make commands to activate profiles."
-	@echo "  Available profiles: bind, le, stepca"
+	@echo "  Available profiles: bind, gitlab, le, stepca"
 	@echo "  Example: COMPOSE_PROFILES=le make up"
 	@echo ""

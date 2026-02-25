@@ -74,6 +74,8 @@ Detaljerade TLS-floden:
 - **Whoami**: `https://whoami.${DEV_DOMAIN}` (standardstack)
 - **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth; aktiverad som standard)
 - **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (profil `stepca`; aktiverad som standard)
+- **GitLab UI/API**: `https://gitlab.${DEV_DOMAIN}` (profil `gitlab`; Traefik HTTPS)
+- **GitLab SSH**: `ssh://git@<host>:${GITLAB_SSH_HOST_PORT}` (profil `gitlab`; direkt host-port, inte Traefik)
 
 <a id="services"></a>
 ## Tjanster
@@ -81,6 +83,7 @@ Detaljerade TLS-floden:
 - [Traefik](services/traefik/README.sv.md) - reverse proxy och routing-karnan.
 - [Whoami](services/whoami/README.sv.md) - demo-service for routingtester.
 - [DNS (BIND)](services/dns-bind/README.sv.md) - valfri profil `bind`.
+- [GitLab](services/gitlab/README.sv.md) - valfri profil `gitlab` (Omnibus + Traefik, valfria OIDC/observability-hooks).
 - [Certbot](services/certbot/README.sv.md) - valfri profil `le`.
 - [Step-CA](services/step-ca/README.sv.md) - valfri profil `stepca`.
 
@@ -104,6 +107,7 @@ Vanliga kommandon:
 - `make certs-le-issue`, `make certs-le-renew` (profil `le`)
 - `make stepca-up`, `make stepca-bootstrap`, `make stepca-trust-install`
 - `make bind-up`, `make bind-status`, `make bind-restart`, `make bind-provision`
+- `make gitlab-bootstrap`, `make gitlab-up`, `make gitlab-status`, `make gitlab-logs`
 - `make hosts-generate`, `make hosts-apply`, `make hosts-status`
 
 Auth-filer:
@@ -117,6 +121,11 @@ DNS-sakerhetsdefaults:
 - `BIND_BIND_ADDRESS` bor vara loopback som standard.
 - For avsiktlig exponering utanfor loopback, satt `BIND_ALLOW_NONLOCAL_BIND=true`.
 
+GitLab-noter:
+- Lagg till `gitlab` i `ENDPOINTS` (eller anvand DNS/hosts) for lokal namnupplosning.
+- Git SSH anvander en direkt host-port (`GITLAB_SSH_HOST_PORT`, default `2424`) och gar inte via Traefik i MVP-modulen.
+- Valfri Keycloak OIDC och observability-hooks renderas i `services/gitlab/rendered/gitlab.rb` via `make gitlab-bootstrap`.
+
 <a id="testing"></a>
 ## Tester
 
@@ -126,6 +135,7 @@ make test
 ```
 Se `tests/README.md` for detaljer.
 Operativa script: se `scripts/README.md`.
+Statisk GitLab smoke-suite: `make test-gitlab`.
 
 <a id="troubleshooting"></a>
 ## Felsokning

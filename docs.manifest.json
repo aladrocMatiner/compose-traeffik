@@ -70,6 +70,14 @@
         "sv": "DNS (BIND)",
         "es": "DNS (BIND)"
       }
+    },
+    {
+      "slug": "gitlab",
+      "title": {
+        "en": "GitLab",
+        "sv": "GitLab",
+        "es": "GitLab"
+      }
     }
   ]
 }

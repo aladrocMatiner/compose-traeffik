@@ -10,11 +10,13 @@ This directory contains helper scripts used to operate the stack. Prefer running
 Prerequisites:
 - bash
 - Docker + Docker Compose v2
+- python3 (required by docs tooling and GitLab config rendering)
 - `.env` file (copy from `.env.example`)
 
 Preflight validation:
 - `scripts/validate-env.sh` runs before `make up` and any `scripts/compose.sh` call.
 - It enforces safe defaults for admin UIs (Traefik dashboard) and validates profile syntax.
+- It also validates service-specific requirements for optional modules (for example GitLab rendered config, SSH port, and OIDC-required vars when enabled).
 - Create htpasswd files under `services/traefik/auth/`, for example:
   - `htpasswd -nbB admin 'change-me' > services/traefik/auth/traefik-dashboard.htpasswd`
 - Set the container paths in `.env`:
@@ -41,6 +43,8 @@ Preflight validation:
 | `scripts/ca-config-verify.sh` | Validate shared CA configuration | `./scripts/ca-config-verify.sh` | `DEV_DOMAIN`, `CA_*`, `LEAF_*` (or legacy `STEP_CA_*`) | Prints effective CA configuration |
 | `scripts/hosts-subdomains.sh` | Manage hosts block for loopback subdomains | `make hosts-apply` | `BASE_DOMAIN`, `LOOPBACK_X` | Modifies hosts file (with sudo) |
 | `scripts/bind-provision.sh` | Generate BIND zone file from ENDPOINTS | `make bind-provision` | `BASE_DOMAIN`, `LOOPBACK_X`, `ENDPOINTS` | Writes `services/dns-bind/zones` |
+| `scripts/gitlab-bootstrap.sh` | Generate GitLab defaults/secrets and render Omnibus config | `make gitlab-bootstrap` | `GITLAB_*`, `DEV_DOMAIN` | Updates `.env`, writes `services/gitlab/rendered/gitlab.rb` |
+| `scripts/gitlab-render-config.sh` | Render `gitlab.rb` from template and `.env` | `./scripts/gitlab-render-config.sh` | `DEV_DOMAIN`, `GITLAB_*` | Writes rendered GitLab Omnibus config |
 | `scripts/common.sh` | Shared helpers | sourced by other scripts | none | none |
 
 ## Workflows
@@ -63,6 +67,17 @@ make bind-status
 make bind-restart
 make bind-logs
 make bind-down
+```
+
+### GitLab lifecycle
+
+```bash
+make gitlab-bootstrap
+make gitlab-up
+make gitlab-status
+make gitlab-logs
+make test-gitlab
+make gitlab-down
 ```
 
 ### Certificates
@@ -100,6 +115,8 @@ COMPOSE_PROFILES=stepca make up
 - Permission denied (certs or trust store): re-run with `sudo` where required.
 - Profile not enabled: use `COMPOSE_PROFILES=<profile> make up` when needed.
 - BIND exposed on non-loopback: set `BIND_ALLOW_NONLOCAL_BIND=true` explicitly if this is intentional.
+- GitLab preflight fails on missing rendered config: run `make gitlab-bootstrap`.
+- GitLab OIDC preflight fails: verify `GITLAB_OIDC_ENABLED`, issuer URL (`https://...`), and client credentials in `.env`.
 
 Useful commands:
 ```bash
