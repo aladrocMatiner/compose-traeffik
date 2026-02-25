@@ -10,6 +10,12 @@ REPO_ROOT=$(cd "${SCRIPT_DIR}/.." && pwd)
 
 AWX_ENV_FILE="${REPO_ROOT}/.env"
 AWX_FORCE=false
+AWX_CONFIRM=false
+AWX_BACKUP_NAME=""
+AWX_BACKUP_SOURCE=""
+AWX_TARGET_DEPLOYMENT_NAME=""
+AWX_OPERATOR_CHART_VERSION_NEW=""
+AWX_AWX_VERSION_TARGET_NEW=""
 
 random_string_awx() {
     local length="${1:-48}"
@@ -43,6 +49,35 @@ awx_parse_common_args() {
             --force)
                 AWX_FORCE=true
                 shift
+                ;;
+            --confirm)
+                AWX_CONFIRM=true
+                shift
+                ;;
+            --backup-name)
+                [ -n "${2:-}" ] || log_error "Missing value for --backup-name"
+                AWX_BACKUP_NAME="$2"
+                shift 2
+                ;;
+            --from)
+                [ -n "${2:-}" ] || log_error "Missing value for --from"
+                AWX_BACKUP_SOURCE="$2"
+                shift 2
+                ;;
+            --target-name)
+                [ -n "${2:-}" ] || log_error "Missing value for --target-name"
+                AWX_TARGET_DEPLOYMENT_NAME="$2"
+                shift 2
+                ;;
+            --operator-chart-version)
+                [ -n "${2:-}" ] || log_error "Missing value for --operator-chart-version"
+                AWX_OPERATOR_CHART_VERSION_NEW="$2"
+                shift 2
+                ;;
+            --awx-version-target)
+                [ -n "${2:-}" ] || log_error "Missing value for --awx-version-target"
+                AWX_AWX_VERSION_TARGET_NEW="$2"
+                shift 2
                 ;;
             --)
                 shift
@@ -157,9 +192,20 @@ awx_defaults() {
     : "${AWX_ADMIN_PASSWORD_SECRET_NAME:=awx-admin-password}"
     : "${AWX_PROJECTS_PERSISTENCE:=false}"
     : "${AWX_ENABLED:=false}"
+    : "${AWX_BACKUP_LOCAL_DIR:=${REPO_ROOT}/.local/awx/backups}"
+    : "${AWX_DEBUG_LOCAL_DIR:=${REPO_ROOT}/.local/awx/debug}"
+    : "${AWX_DAY2_WAIT_TIMEOUT:=1800}"
     case "${AWX_KUBECONFIG_PATH}" in
         /*) ;;
         *) AWX_KUBECONFIG_PATH="${REPO_ROOT}/${AWX_KUBECONFIG_PATH}" ;;
+    esac
+    case "${AWX_BACKUP_LOCAL_DIR}" in
+        /*) ;;
+        *) AWX_BACKUP_LOCAL_DIR="${REPO_ROOT}/${AWX_BACKUP_LOCAL_DIR}" ;;
+    esac
+    case "${AWX_DEBUG_LOCAL_DIR}" in
+        /*) ;;
+        *) AWX_DEBUG_LOCAL_DIR="${REPO_ROOT}/${AWX_DEBUG_LOCAL_DIR}" ;;
     esac
 }
 
@@ -173,10 +219,9 @@ awx_validate_env() {
     [ "$AWX_OPERATOR_NAMESPACE" = "$AWX_NAMESPACE" ] || log_error "AWX_OPERATOR_NAMESPACE must equal AWX_NAMESPACE in the current Helm chart-based flow (operator watches only its release namespace)"
     awx_require_non_placeholder "AWX_ADMIN_PASSWORD" "${AWX_ADMIN_PASSWORD:-}"
     awx_require_non_placeholder "AWX_SECRET_KEY" "${AWX_SECRET_KEY:-}"
-    case "$AWX_KUBECONFIG_PATH" in
-        "${REPO_ROOT}/.local/"*) ;;
-        *) log_error "AWX_KUBECONFIG_PATH must default under ${REPO_ROOT}/.local/ (override only if intentional)" ;;
-    esac
+    awx_require_repo_local_path "AWX_KUBECONFIG_PATH" "$AWX_KUBECONFIG_PATH" "override only if intentional"
+    awx_require_repo_local_path "AWX_BACKUP_LOCAL_DIR" "$AWX_BACKUP_LOCAL_DIR" "gitignored local artifacts"
+    awx_require_repo_local_path "AWX_DEBUG_LOCAL_DIR" "$AWX_DEBUG_LOCAL_DIR" "gitignored local artifacts"
 }
 
 awx_kubectl() {
@@ -213,4 +258,76 @@ awx_render_templates() {
         "${REPO_ROOT}/services/awx/k8s/awx/awx.yaml.tmpl" > "${rendered_dir}/awx.yaml"
 
     cp "${REPO_ROOT}/services/awx/k8s/operator/values.yaml.tmpl" "${rendered_dir}/operator-values.yaml"
+}
+
+awx_now_utc() {
+    date -u +"%Y%m%dT%H%M%SZ"
+}
+
+awx_require_repo_local_path() {
+    local key="$1"
+    local path="$2"
+    local note="$3"
+    local repo_logical="${REPO_ROOT}/.local/"
+    local repo_real
+    repo_real="$(cd "${REPO_ROOT}" && pwd -P)/.local/"
+
+    case "$path" in
+        "${repo_logical}"*|"${repo_real}"*) return 0 ;;
+    esac
+
+    log_error "${key} must default under ${REPO_ROOT}/.local/ (${note})"
+}
+
+awx_require_confirm() {
+    local message="$1"
+    if [ "${AWX_CONFIRM}" != "true" ]; then
+        log_error "${message} Re-run with --confirm to proceed."
+    fi
+}
+
+awx_wait_timeout_seconds() {
+    local timeout="${AWX_DAY2_WAIT_TIMEOUT:-1800}"
+    [[ "$timeout" =~ ^[0-9]+$ ]] || log_error "AWX_DAY2_WAIT_TIMEOUT must be numeric seconds"
+    printf '%s' "$timeout"
+}
+
+awx_backup_wait_complete() {
+    local backup_name="$1"
+    local timeout
+    timeout=$(awx_wait_timeout_seconds)
+    local start now claim dir
+    start=$(date +%s)
+    while true; do
+        claim=$(awx_kubectl -n "$AWX_NAMESPACE" get awxbackup "$backup_name" -o jsonpath='{.status.backupClaim}' 2>/dev/null || true)
+        dir=$(awx_kubectl -n "$AWX_NAMESPACE" get awxbackup "$backup_name" -o jsonpath='{.status.backupDirectory}' 2>/dev/null || true)
+        if [ -n "$claim" ] && [ -n "$dir" ]; then
+            printf '%s;%s\n' "$claim" "$dir"
+            return 0
+        fi
+        now=$(date +%s)
+        if [ $((now - start)) -ge "$timeout" ]; then
+            log_error "Timed out waiting for AWXBackup/${backup_name} status.backupClaim and status.backupDirectory"
+        fi
+        sleep 5
+    done
+}
+
+awx_restore_wait_complete() {
+    local restore_name="$1"
+    local timeout
+    timeout=$(awx_wait_timeout_seconds)
+    local start now completed
+    start=$(date +%s)
+    while true; do
+        completed=$(awx_kubectl -n "$AWX_NAMESPACE" get awxrestore "$restore_name" -o jsonpath='{.status.restoreComplete}' 2>/dev/null || true)
+        if [ "$completed" = "true" ]; then
+            return 0
+        fi
+        now=$(date +%s)
+        if [ $((now - start)) -ge "$timeout" ]; then
+            log_error "Timed out waiting for AWXRestore/${restore_name} status.restoreComplete=true"
+        fi
+        sleep 5
+    done
 }

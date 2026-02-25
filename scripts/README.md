@@ -49,6 +49,10 @@ Preflight validation:
 | `scripts/awx-status.sh` | Show AWX/operator cluster status | `make awx-status` | `AWX_*` | Reads Kubernetes resources |
 | `scripts/awx-logs.sh` | List/follow AWX/operator logs | `make awx-logs [ROLE=...]` | `AWX_*` | Streams pod logs |
 | `scripts/awx-admin-password.sh` | Print AWX admin password from Kubernetes secret | `make awx-admin-password` | `AWX_*` | Reads secret value |
+| `scripts/awx-debug.sh` | Collect AWX operator/web/task snapshots and recent logs into a local bundle | `make awx-debug` | `AWX_*` | Writes `.local/awx/debug/...` |
+| `scripts/awx-backup.sh` | Create operator-managed `AWXBackup` CR and save local metadata bundle | `make awx-backup` | `AWX_*` | Creates `AWXBackup` CR, writes `.local/awx/backups/...` |
+| `scripts/awx-restore.sh` | Create `AWXRestore` CR from an existing backup (requires explicit confirmation) | `make awx-restore AWX_RESTORE_ARGS='--backup-name <name> --confirm'` | `AWX_*` | Creates `AWXRestore` CR, writes restore metadata bundle |
+| `scripts/awx-upgrade.sh` | Reapply/upgrade operator + AWX target pins (requires explicit confirmation) | `make awx-upgrade AWX_UPGRADE_ARGS='--confirm [--operator-chart-version ...] [--awx-version-target ...]'` | `AWX_*` | Updates `.env` pins and reapplies AWX |
 | `scripts/validate-awx-env.sh` | Validate AWX/k3d env inputs before AWX lifecycle ops | `./scripts/validate-awx-env.sh` | `AWX_*`, `K3D_*` | Fails fast on invalid values |
 | `scripts/common.sh` | Shared helpers | sourced by other scripts | none | none |
 
@@ -82,6 +86,11 @@ make awx-k3d-up
 make awx-up
 make awx-status
 make awx-admin-password
+make awx-debug
+make awx-backup
+# restore/upgrade require explicit confirmation flags:
+# make awx-restore AWX_RESTORE_ARGS="--backup-name awx-backup-... --confirm"
+# make awx-upgrade AWX_UPGRADE_ARGS="--confirm --operator-chart-version 3.2.0"
 ```
 
 ### Certificates
@@ -112,6 +121,8 @@ COMPOSE_PROFILES=stepca make up
 - Modifies system state: `stepca-trust-install.sh`, `stepca-trust-uninstall.sh`, `hosts-subdomains.sh` (when applied to `/etc/hosts`).
 - Scripts that write files: `certs-selfsigned-generate.sh`, `traefik-render-dynamic.sh`, `certbot-issue.sh`.
 - AWX scripts write local artifacts under `.local/` (gitignored) and repo-rendered manifests under `services/awx/k8s/rendered/`.
+- AWX day-2 scripts (`awx-restore`, `awx-upgrade`) require explicit `--confirm` to reduce accidental destructive operations.
+- `awx-backup` stores an operator-managed backup in-cluster (backup PVC) and writes a local metadata bundle with backup identifiers for restore workflows.
 
 ## Troubleshooting
 
@@ -120,6 +131,7 @@ COMPOSE_PROFILES=stepca make up
 - Permission denied (certs or trust store): re-run with `sudo` where required.
 - Profile not enabled: use `COMPOSE_PROFILES=<profile> make up` when needed.
 - BIND exposed on non-loopback: set `BIND_ALLOW_NONLOCAL_BIND=true` explicitly if this is intentional.
+- AWX restore/upgrade blocked: pass explicit `AWX_RESTORE_ARGS='... --confirm'` or `AWX_UPGRADE_ARGS='--confirm ...'` after reviewing the runbook.
 
 Useful commands:
 ```bash

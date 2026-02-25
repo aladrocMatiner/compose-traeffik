@@ -265,10 +265,26 @@ awx-admin-password:
 	@echo "AWX admin password from Kubernetes secret:"
 	"$(SCRIPTS_DIR)/awx-admin-password.sh" $(AWX_ENV_ARGS)
 
+awx-debug:
+	@echo "Collecting AWX debug bundle..."
+	"$(SCRIPTS_DIR)/awx-debug.sh" $(AWX_ENV_ARGS)
+
+awx-backup:
+	@echo "Creating AWX backup (operator-managed AWXBackup CR + local metadata bundle)..."
+	"$(SCRIPTS_DIR)/awx-backup.sh" $(AWX_ENV_ARGS)
+
+awx-restore:
+	@echo "Restoring AWX from an operator-managed backup (requires explicit confirmation)..."
+	"$(SCRIPTS_DIR)/awx-restore.sh" $(AWX_ENV_ARGS) $(AWX_RESTORE_ARGS)
+
+awx-upgrade:
+	@echo "Upgrading AWX/operator (requires explicit confirmation)..."
+	"$(SCRIPTS_DIR)/awx-upgrade.sh" $(AWX_ENV_ARGS) $(AWX_UPGRADE_ARGS)
+
 test-awx:
 	@echo "Running AWX static smoke tests..."
 	@set -euo pipefail; rc=0; \
-	for test_script in test_awx_make_targets.sh test_awx_guardrails.sh test_awx_k8s_templates.sh test_awx_traefik_routing_config.sh; do \
+	for test_script in test_awx_make_targets.sh test_awx_guardrails.sh test_awx_k8s_templates.sh test_awx_traefik_routing_config.sh test_awx_day2_make_targets.sh test_awx_day2_confirmation.sh; do \
 		echo "==> $$test_script"; \
 		if ! "./tests/smoke/$$test_script"; then rc=1; fi; \
 	done; \
@@ -345,6 +361,10 @@ help:
 	@echo "  awx-status            Show AWX/operator resources and pod status."
 	@echo "  awx-logs              Show AWX/operator logs (optional ROLE=operator|web|task)."
 	@echo "  awx-admin-password    Print the AWX admin password from the Kubernetes secret."
+	@echo "  awx-debug             Collect a local AWX debug bundle under .local/awx/debug/."
+	@echo "  awx-backup            Create AWXBackup CR and save local backup metadata bundle."
+	@echo "  awx-restore           Restore from backup (pass AWX_RESTORE_ARGS='--backup-name ... --confirm')."
+	@echo "  awx-upgrade           Upgrade/reapply AWX (pass AWX_UPGRADE_ARGS='--confirm ...')."
 	@echo "  test-awx             Run AWX static smoke tests (no k3d runtime required)."
 	@echo ""
 	@echo "Profiles:"

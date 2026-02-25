@@ -25,6 +25,15 @@ make awx-status
 make awx-admin-password
 ```
 
+Day-2-operationer (stateful underhall):
+
+```bash
+make awx-debug
+make awx-backup
+make awx-restore AWX_RESTORE_ARGS="--backup-name <awxbackup-cr> --confirm"
+make awx-upgrade AWX_UPGRADE_ARGS="--confirm [--operator-chart-version <ver>] [--awx-version-target <ver>]"
+```
+
 <a id="configuration"></a>
 ## Konfiguration
 
@@ -62,6 +71,8 @@ Nuvarande begransning (Helm-flodet har):
 - Prefer access via Traefik/TLS only.
 - AWX bootstrap secrets are generated into `.env` and should not be committed.
 - Keep `AWX_KUBECONFIG_PATH` under a gitignored local path (default `.local/`).
+- Hall `AWX_BACKUP_LOCAL_DIR` och `AWX_DEBUG_LOCAL_DIR` under `.local/` (gitignored).
+- `awx-restore` och `awx-upgrade` kravs `--confirm`.
 
 <a id="troubleshooting"></a>
 ## Felsokning
@@ -82,6 +93,20 @@ Nuvarande begransning (Helm-flodet har):
 - Kontrollera att Traefik kor (`make up` eller starta om `traefik` efter AWX-rendering)
 - Test via Traefik: `curl -skI --resolve awx.<DEV_DOMAIN>:443:127.0.0.1 https://awx.<DEV_DOMAIN>/`
 - Sakra lokal namnupplosning for `awx.<DEV_DOMAIN>` (lagg till `awx` i `ENDPOINTS` + hosts-flodet vid behov)
+
+<a id="day2-runbooks"></a>
+## Day-2-runbooks (backup / restore / upgrade / debug)
+
+- `make awx-backup`: skapar `AWXBackup` (operator) och sparar lokal metadata under `.local/awx/backups/` (CR/status + backupreferenser).
+- `make awx-restore AWX_RESTORE_ARGS="--backup-name <awxbackup-cr> --confirm"`: skapar `AWXRestore` och vantar pa `restoreComplete=true`.
+- `make awx-upgrade AWX_UPGRADE_ARGS="--confirm ..."`: uppdaterar pins i `.env` (operator/AWX target) och applicerar AWX igen.
+- `make awx-debug`: skapar lokal debug-bundle med snapshots/loggar.
+
+Manuell checklista efter restore/upgrade:
+- `make awx-status`
+- `awx-web` / `awx-task` pods i `Running`
+- UI/API via Traefik ar tillganglig
+- inloggning + enkel funktionskontroll
 
 <a id="related"></a>
 ## Relaterade sidor

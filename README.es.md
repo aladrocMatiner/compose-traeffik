@@ -107,6 +107,9 @@ Comandos comunes:
 - `make stepca-up`, `make stepca-bootstrap`, `make stepca-trust-install`
 - `make bind-up`, `make bind-status`, `make bind-restart`, `make bind-provision`
 - `make awx-bootstrap`, `make awx-k3d-up`, `make awx-up`, `make awx-status`, `make awx-admin-password`
+- `make awx-debug`, `make awx-backup`
+- `make awx-restore AWX_RESTORE_ARGS="--backup-name <name> --confirm"` (puede ser destructivo; requiere confirmacion explicita)
+- `make awx-upgrade AWX_UPGRADE_ARGS="--confirm ..."` (mantenimiento stateful; requiere confirmacion explicita)
 - `make hosts-generate`, `make hosts-apply`, `make hosts-status`
 
 Prerequisitos AWX (modulo hibrido):
