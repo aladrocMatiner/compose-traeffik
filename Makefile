@@ -42,6 +42,7 @@ COMPOSE_FILES := \
   -f compose/base.yml \
   -f services/traefik/compose.yml \
   -f services/whoami/compose.yml \
+  -f services/keycloak/compose.yml \
   -f services/dns-bind/compose.yml \
   -f services/certbot/compose.yml \
   -f services/step-ca/compose.yml \

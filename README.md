@@ -89,6 +89,7 @@ For detailed TLS workflows, see:
 - [Traefik](services/traefik/README.md) - reverse proxy and routing core.
 - [Whoami](services/whoami/README.md) - demo service used for routing tests.
 - [DNS (BIND)](services/dns-bind/README.md) - optional profile `bind`.
+- [Keycloak](services/keycloak/README.md) - optional profile `keycloak` (Traefik + PostgreSQL, reverse-proxy aware).
 - [Certbot](services/certbot/README.md) - optional profile `le`.
 - [Step-CA](services/step-ca/README.md) - optional profile `stepca`.
 - [CTFd](services/ctfd/README.md) - optional profile `ctfd` (CTF platform + DB + Redis).

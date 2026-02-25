@@ -165,3 +165,8 @@ are enabled by default via `COMPOSE_PROFILES` in `.env`; edit it if you want a s
   - Symptom: `test_bind_provisioning_validation.sh` fails.
   - Diagnose: inspect `BASE_DOMAIN` format and endpoint labels in `ENDPOINTS`.
   - Fix: use lowercase DNS labels only (`a-z`, `0-9`, internal `-`) and valid dot-separated domain format.
+
+- **Keycloak guardrails fail**
+  - Symptom: `test_keycloak_guardrails.sh` or `keycloak-up` fails preflight validation.
+  - Diagnose: inspect `KEYCLOAK_HOSTNAME`, `KEYCLOAK_ADMIN_PASSWORD`, `KEYCLOAK_DB_PASSWORD`, `KEYCLOAK_PROXY_HEADERS`, and `KEYCLOAK_OBSERVABILITY_PUBLIC_METRICS`.
+  - Fix: run `make keycloak-bootstrap`, keep `KEYCLOAK_PROXY_HEADERS=xforwarded`, and leave `KEYCLOAK_OBSERVABILITY_PUBLIC_METRICS=false`.

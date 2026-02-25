@@ -309,6 +309,13 @@ is_profile_enabled() {
     esac
 }
 
+is_keycloak_profile_enabled() {
+    case " ${COMPOSE_PROFILES_NORMALIZED:-} " in
+        *" keycloak "*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
 is_ipv4_loopback() {
     local value="$1"
     if [[ ! "$value" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then

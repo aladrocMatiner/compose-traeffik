@@ -89,6 +89,7 @@ Guias de TLS:
 - [Traefik](services/traefik/README.es.md) - reverse proxy y nucleo de routing.
 - [Whoami](services/whoami/README.es.md) - servicio demo para pruebas de routing.
 - [DNS (BIND)](services/dns-bind/README.es.md) - perfil opcional `bind`.
+- [Keycloak](services/keycloak/README.es.md) - perfil opcional `keycloak` (Traefik + PostgreSQL).
 - [Certbot](services/certbot/README.es.md) - perfil opcional `le`.
 - [Step-CA](services/step-ca/README.es.md) - perfil opcional `stepca`.
 - [CTFd](services/ctfd/README.es.md) - perfil opcional `ctfd` (plataforma CTF + DB + Redis).

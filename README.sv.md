@@ -89,6 +89,7 @@ Detaljerade TLS-floden:
 - [Traefik](services/traefik/README.sv.md) - reverse proxy och routing-karnan.
 - [Whoami](services/whoami/README.sv.md) - demo-service for routingtester.
 - [DNS (BIND)](services/dns-bind/README.sv.md) - valfri profil `bind`.
+- [Keycloak](services/keycloak/README.sv.md) - valfri profil `keycloak` (Traefik + PostgreSQL).
 - [Certbot](services/certbot/README.sv.md) - valfri profil `le`.
 - [Step-CA](services/step-ca/README.sv.md) - valfri profil `stepca`.
 - [CTFd](services/ctfd/README.sv.md) - valfri profil `ctfd` (CTF-plattform + DB + Redis).
