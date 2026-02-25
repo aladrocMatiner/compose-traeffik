@@ -583,6 +583,51 @@ else
     TEST_RESULTS=1
 fi
 
+# --- Test 13: Semaphore UI Make Targets (no sudo) ---
+log_info "Running test_semaphoreui_make_targets.sh..."
+if "$TEST_DIR/test_semaphoreui_make_targets.sh"; then
+    log_success "Test: Semaphore UI Make Target Wiring"
+else
+    log_warn "Test failed: Semaphore UI Make Target Wiring"
+    TEST_RESULTS=1
+fi
+
+# --- Test 14: Semaphore UI Service Config (no sudo) ---
+log_info "Running test_semaphoreui_service_config.sh..."
+if "$TEST_DIR/test_semaphoreui_service_config.sh"; then
+    log_success "Test: Semaphore UI Service Config"
+else
+    log_warn "Test failed: Semaphore UI Service Config"
+    TEST_RESULTS=1
+fi
+
+# --- Test 15: Semaphore UI Guardrails (no sudo) ---
+log_info "Running test_semaphoreui_guardrails.sh..."
+if "$TEST_DIR/test_semaphoreui_guardrails.sh"; then
+    log_success "Test: Semaphore UI Guardrails"
+else
+    log_warn "Test failed: Semaphore UI Guardrails"
+    TEST_RESULTS=1
+fi
+
+# --- Test 16: Semaphore UI OIDC Wiring (no sudo) ---
+log_info "Running test_semaphoreui_oidc_wiring.sh..."
+if "$TEST_DIR/test_semaphoreui_oidc_wiring.sh"; then
+    log_success "Test: Semaphore UI OIDC Wiring"
+else
+    log_warn "Test failed: Semaphore UI OIDC Wiring"
+    TEST_RESULTS=1
+fi
+
+# --- Test 17: Semaphore UI Observability Wiring (no sudo) ---
+log_info "Running test_semaphoreui_observability_wiring.sh..."
+if "$TEST_DIR/test_semaphoreui_observability_wiring.sh"; then
+    log_success "Test: Semaphore UI Observability Wiring"
+else
+    log_warn "Test failed: Semaphore UI Observability Wiring"
+    TEST_RESULTS=1
+fi
+
 if [ "$TEST_RESULTS" -eq 0 ]; then
     log_success "All smoke tests passed!"
 else

@@ -42,6 +42,11 @@ make test-webui
    ```
    Note: `make test` is recommended because it loads `.env` and checks prerequisites.
 
+4. **Run Semaphore UI static smoke tests only**
+   ```bash
+   make test-semaphoreui
+   ```
+
 ## Test inventory
 
 | Script | Purpose | Prerequisites | Expected signal |
@@ -166,6 +171,16 @@ are enabled by default via `COMPOSE_PROFILES` in `.env`; edit it if you want a s
   - Symptom: `test_bind_security_runtime.sh` fails.
   - Diagnose: check `make bind-logs` and inspect recursion/AXFR/CHAOS behavior with `dig`.
   - Fix: verify `named.conf.template` hardening directives and BIND compose command validation steps.
+
+- **Semaphore UI guardrails fail**
+  - Symptom: `test_semaphoreui_guardrails.sh` fails.
+  - Diagnose: inspect `SEMAPHOREUI_*` values in `.env` (secrets, hostname, OIDC toggles).
+  - Fix: run `make semaphoreui-bootstrap`, then re-run tests. If OIDC is enabled, set provider URL/client credentials and rerun bootstrap.
+
+- **Semaphore UI runtime/OIDC issues**
+  - Symptom: UI loads but OIDC login button/redirect is broken.
+  - Diagnose: verify `SEMAPHOREUI_WEB_ROOT`, `SEMAPHOREUI_OIDC_PROVIDER_URL`, Keycloak client redirect URI, and Traefik hostname.
+  - Fix: align HTTPS hostname and client redirect URI (`https://semaphore.<DEV_DOMAIN>/api/auth/oidc/<provider>/redirect`), rerun `make semaphoreui-bootstrap`.
 
 - **BIND provisioning validation fails**
   - Symptom: `test_bind_provisioning_validation.sh` fails.
