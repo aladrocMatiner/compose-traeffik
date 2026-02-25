@@ -108,6 +108,7 @@ Vanliga kommandon:
 - `make bind-up`, `make bind-status`, `make bind-restart`, `make bind-provision`
 - `make awx-bootstrap`, `make awx-k3d-up`, `make awx-up`, `make awx-status`, `make awx-admin-password`
 - `make awx-debug`, `make awx-backup`
+- AWX-not: `make awx-backup` skapar operator-hanterad backup och en lokal metadata-bundle; den exporterar inte automatiskt den faktiska backup-payloaden ur klustret.
 - `make awx-restore AWX_RESTORE_ARGS="--backup-name <name> --confirm"` (kan vara destruktivt; krav pa explicit bekräftelse)
 - `make awx-upgrade AWX_UPGRADE_ARGS="--confirm ..."` (stateful underhall; krav pa explicit bekräftelse)
 - `make hosts-generate`, `make hosts-apply`, `make hosts-status`

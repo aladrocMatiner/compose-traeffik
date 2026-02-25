@@ -5,7 +5,7 @@
 <a id="overview"></a>
 ## Oversikt
 
-AWX runs in a local `k3d` Kubernetes cluster via AWX Operator. Traefik from this repository provides the HTTPS edge route at `https://awx.<DEV_DOMAIN>`.
+AWX kors i ett lokalt `k3d` Kubernetes-kluster via AWX Operator. Traefik i detta repo ger HTTPS-routen pa `https://awx.<DEV_DOMAIN>`.
 
 <a id="location"></a>
 ## Plats
@@ -37,7 +37,7 @@ make awx-upgrade AWX_UPGRADE_ARGS="--confirm [--operator-chart-version <ver>] [-
 <a id="configuration"></a>
 ## Konfiguration
 
-Relevant variables in `.env.example`:
+Relevanta variabler i `.env.example`:
 - `AWX_ENABLED`
 - `AWX_HOSTNAME`
 - `AWX_NAMESPACE`
@@ -58,9 +58,9 @@ Nuvarande begransning (Helm-flodet har):
 <a id="ports"></a>
 ## Portar, natverk, volymer
 
-- Public endpoint: `https://awx.<DEV_DOMAIN>` via Traefik
+- Publik endpoint: `https://awx.<DEV_DOMAIN>` via Traefik
 - Backend bridge: `host.docker.internal:<AWX_HOST_PORT_HTTP>` -> k3d node `NodePort` (`AWX_NODEPORT_HTTP`)
-- No `services/awx/compose.yml` runtime file (hybrid module, Kubernetes-managed runtime)
+- Ingen `services/awx/compose.yml` for runtime (hybridmodul, runtime hanteras av Kubernetes)
 - Traefik-upstream: `host.docker.internal:<AWX_HOST_PORT_HTTP>` pekar pa host-porten som mappar till AWX `NodePort` i k3d.
 - Hall `AWX_HOST_PORT_HTTP` och `AWX_NODEPORT_HTTP` synkade om du inte medvetet separerar dem.
 - Standard-timeouts i Traefik anvands initialt; justera Traefik om AWX login/API senare behovar langre timeouts.
@@ -68,19 +68,19 @@ Nuvarande begransning (Helm-flodet har):
 <a id="security"></a>
 ## Sakerhetsnoter
 
-- Prefer access via Traefik/TLS only.
-- AWX bootstrap secrets are generated into `.env` and should not be committed.
-- Keep `AWX_KUBECONFIG_PATH` under a gitignored local path (default `.local/`).
+- Anvand helst endast access via Traefik/TLS.
+- AWX bootstrap-hemligheter genereras i `.env` och ska inte committas.
+- Hall `AWX_KUBECONFIG_PATH` under en gitignored lokal sokvag (standard `.local/`).
 - Hall `AWX_BACKUP_LOCAL_DIR` och `AWX_DEBUG_LOCAL_DIR` under `.local/` (gitignored).
 - `awx-restore` och `awx-upgrade` kravs `--confirm`.
 
 <a id="troubleshooting"></a>
 ## Felsokning
 
-- Validate tooling exists: `docker`, `k3d`, `kubectl`, `helm`
-- Validate env: `./scripts/validate-awx-env.sh`
-- Check cluster and pods: `make awx-status`
-- Re-render Traefik dynamic config: `AWX_ENABLED=true ./scripts/traefik-render-dynamic.sh`
+- Validera att verktyg finns: `docker`, `k3d`, `kubectl`, `helm`
+- Validera env: `./scripts/validate-awx-env.sh`
+- Kontrollera kluster och pods: `make awx-status`
+- Rendera om Traefik dynamisk konfig: `AWX_ENABLED=true ./scripts/traefik-render-dynamic.sh`
 
 <a id="runtime-checklist"></a>
 ## Runtime-checklista
@@ -98,6 +98,7 @@ Nuvarande begransning (Helm-flodet har):
 ## Day-2-runbooks (backup / restore / upgrade / debug)
 
 - `make awx-backup`: skapar `AWXBackup` (operator) och sparar lokal metadata under `.local/awx/backups/` (CR/status + backupreferenser).
+- Själva backup-payloaden ligger kvar i operatorns backup-PVC; scriptet exporterar inte payloaden ur klustret automatiskt.
 - `make awx-restore AWX_RESTORE_ARGS="--backup-name <awxbackup-cr> --confirm"`: skapar `AWXRestore` och vantar pa `restoreComplete=true`.
 - `make awx-upgrade AWX_UPGRADE_ARGS="--confirm ..."`: uppdaterar pins i `.env` (operator/AWX target) och applicerar AWX igen.
 - `make awx-debug`: skapar lokal debug-bundle med snapshots/loggar.
@@ -105,7 +106,7 @@ Nuvarande begransning (Helm-flodet har):
 Manuell checklista efter restore/upgrade:
 - `make awx-status`
 - `awx-web` / `awx-task` pods i `Running`
-- UI/API via Traefik ar tillganglig
+- UI/API via Traefik ar tillganglig (obs: restore till alternativ instans som `awxrestore` far inte automatiskt routen `awx.<DEV_DOMAIN>`)
 - inloggning + enkel funktionskontroll
 
 <a id="related"></a>

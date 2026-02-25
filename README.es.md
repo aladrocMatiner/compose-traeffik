@@ -108,6 +108,7 @@ Comandos comunes:
 - `make bind-up`, `make bind-status`, `make bind-restart`, `make bind-provision`
 - `make awx-bootstrap`, `make awx-k3d-up`, `make awx-up`, `make awx-status`, `make awx-admin-password`
 - `make awx-debug`, `make awx-backup`
+- Nota AWX: `make awx-backup` crea un backup gestionado por el operator y un bundle local de metadata; no exporta automaticamente el payload real fuera del cluster.
 - `make awx-restore AWX_RESTORE_ARGS="--backup-name <name> --confirm"` (puede ser destructivo; requiere confirmacion explicita)
 - `make awx-upgrade AWX_UPGRADE_ARGS="--confirm ..."` (mantenimiento stateful; requiere confirmacion explicita)
 - `make hosts-generate`, `make hosts-apply`, `make hosts-status`
