@@ -538,6 +538,51 @@ else
     log_warn "Skipping OpenWebUI smoke suite (service 'openwebui' not running)."
 fi
 
+# --- Test 13: GitLab Make Target Wiring (no sudo) ---
+log_info "Running test_gitlab_make_targets.sh..."
+if "$TEST_DIR/test_gitlab_make_targets.sh"; then
+    log_success "Test: GitLab Make Target Wiring"
+else
+    log_warn "Test failed: GitLab Make Target Wiring"
+    TEST_RESULTS=1
+fi
+
+# --- Test 14: GitLab Service Config (no sudo) ---
+log_info "Running test_gitlab_service_config.sh..."
+if "$TEST_DIR/test_gitlab_service_config.sh"; then
+    log_success "Test: GitLab Service Config"
+else
+    log_warn "Test failed: GitLab Service Config"
+    TEST_RESULTS=1
+fi
+
+# --- Test 15: GitLab Guardrails (no sudo) ---
+log_info "Running test_gitlab_guardrails.sh..."
+if "$TEST_DIR/test_gitlab_guardrails.sh"; then
+    log_success "Test: GitLab Guardrails"
+else
+    log_warn "Test failed: GitLab Guardrails"
+    TEST_RESULTS=1
+fi
+
+# --- Test 16: GitLab OIDC Wiring (no sudo) ---
+log_info "Running test_gitlab_oidc_wiring.sh..."
+if "$TEST_DIR/test_gitlab_oidc_wiring.sh"; then
+    log_success "Test: GitLab OIDC Wiring"
+else
+    log_warn "Test failed: GitLab OIDC Wiring"
+    TEST_RESULTS=1
+fi
+
+# --- Test 17: GitLab Observability Wiring (no sudo) ---
+log_info "Running test_gitlab_observability_wiring.sh..."
+if "$TEST_DIR/test_gitlab_observability_wiring.sh"; then
+    log_success "Test: GitLab Observability Wiring"
+else
+    log_warn "Test failed: GitLab Observability Wiring"
+    TEST_RESULTS=1
+fi
+
 if [ "$TEST_RESULTS" -eq 0 ]; then
     log_success "All smoke tests passed!"
 else

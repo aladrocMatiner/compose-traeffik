@@ -1,8 +1,5 @@
-# tests-suite Specification
+## MODIFIED Requirements
 
-## Purpose
-TBD - created by archiving change document-make-test-suite-table. Update Purpose after archive.
-## Requirements
 ### Requirement: Smoke test inventory is presented as a standard table
 The documentation for `make test` SHALL include a table that lists each smoke test script executed by `scripts/healthcheck.sh` and describes its purpose, prerequisites, and expected signal. The table SHALL cover all current scripts in `tests/smoke/` and include observability wiring tests for new services when those tests exist.
 

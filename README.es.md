@@ -162,6 +162,7 @@ make test
 ```
 Ve `tests/README.md` para detalles.
 Scripts operativos: ver `scripts/README.md`.
+Suite smoke estatica de GitLab: `make test-gitlab`.
 
 <a id="troubleshooting"></a>
 ## Troubleshooting

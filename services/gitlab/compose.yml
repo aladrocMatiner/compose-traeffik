@@ -1,0 +1,47 @@
+services:
+  gitlab:
+    image: ${GITLAB_IMAGE:-gitlab/gitlab-ee}:${GITLAB_VERSION:-18.8.2-ee.0}
+    container_name: gitlab
+    hostname: ${GITLAB_HOSTNAME:-gitlab}.${DEV_DOMAIN}
+    profiles:
+      - gitlab
+    restart: unless-stopped
+    shm_size: ${GITLAB_SHM_SIZE:-256m}
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - proxy
+    ports:
+      - "${GITLAB_SSH_BIND_ADDRESS:-0.0.0.0}:${GITLAB_SSH_HOST_PORT:-2424}:22"
+    environment:
+      - TZ=UTC
+      - GITLAB_ROOT_EMAIL=${GITLAB_ROOT_EMAIL:-}
+      - GITLAB_ROOT_PASSWORD=${GITLAB_ROOT_PASSWORD:-}
+    volumes:
+      - ./services/gitlab/rendered:/etc/gitlab
+      - gitlab-logs:/var/log/gitlab
+      - gitlab-data:/var/opt/gitlab
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-proxy"
+      - "traefik.http.routers.gitlab-web.rule=Host(`${GITLAB_HOSTNAME:-gitlab}.${DEV_DOMAIN}`)"
+      - "traefik.http.routers.gitlab-web.entrypoints=web"
+      - "traefik.http.routers.gitlab-web.middlewares=${HTTP_TO_HTTPS_MIDDLEWARE:-redirect-to-https@file}"
+      - "traefik.http.routers.gitlab-websecure.rule=Host(`${GITLAB_HOSTNAME:-gitlab}.${DEV_DOMAIN}`)"
+      - "traefik.http.routers.gitlab-websecure.entrypoints=websecure"
+      - "traefik.http.routers.gitlab-websecure.service=gitlab-service"
+      - "traefik.http.routers.gitlab-websecure.tls=true"
+      - "traefik.http.routers.gitlab-websecure.tls.certresolver=${TLS_CERT_RESOLVER:-}"
+      - "traefik.http.routers.gitlab-websecure.middlewares=${GITLAB_TRAEFIK_MIDDLEWARES:-security-headers@file}"
+      - "traefik.http.services.gitlab-service.loadbalancer.server.port=80"
+      - "com.compose-traeffik.observability.service=gitlab"
+      - "com.compose-traeffik.observability.enabled=${GITLAB_OBSERVABILITY_ENABLED:-false}"
+      - "com.compose-traeffik.observability.logs=true"
+      - "com.compose-traeffik.observability.health=/-/health"
+      - "com.compose-traeffik.observability.metrics=internal-only"
+
+volumes:
+  gitlab-logs:
+    name: gitlab-logs
+  gitlab-data:
+    name: gitlab-data

@@ -10,6 +10,7 @@ This directory contains helper scripts used to operate the stack. Prefer running
 Prerequisites:
 - bash
 - Docker + Docker Compose v2
+- python3 (required by docs tooling and GitLab config rendering)
 - `.env` file (copy from `.env.example`)
 
 Preflight validation:

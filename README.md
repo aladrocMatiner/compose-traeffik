@@ -166,6 +166,7 @@ make test
 ```
 See `tests/README.md` for details.
 Operational scripts: see `scripts/README.md`.
+Run the GitLab static smoke suite only with `make test-gitlab`.
 
 <a id="troubleshooting"></a>
 ## Troubleshooting

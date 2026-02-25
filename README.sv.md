@@ -162,6 +162,7 @@ make test
 ```
 Se `tests/README.md` for detaljer.
 Operativa script: se `scripts/README.md`.
+Statisk GitLab smoke-suite: `make test-gitlab`.
 
 <a id="troubleshooting"></a>
 ## Felsokning

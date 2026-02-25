@@ -30,6 +30,11 @@ make test-freeipa
 make test-webui
 ```
 
+   GitLab-only static smoke suite:
+   ```bash
+   make test-gitlab
+   ```
+
 3. **Run a single test**
    ```bash
    ./tests/smoke/test_routing.sh
