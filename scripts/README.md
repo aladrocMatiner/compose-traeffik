@@ -41,6 +41,7 @@ Preflight validation:
 | `scripts/ca-config-verify.sh` | Validate shared CA configuration | `./scripts/ca-config-verify.sh` | `DEV_DOMAIN`, `CA_*`, `LEAF_*` (or legacy `STEP_CA_*`) | Prints effective CA configuration |
 | `scripts/hosts-subdomains.sh` | Manage hosts block for loopback subdomains | `make hosts-apply` | `BASE_DOMAIN`, `LOOPBACK_X` | Modifies hosts file (with sudo) |
 | `scripts/bind-provision.sh` | Generate BIND zone file from ENDPOINTS | `make bind-provision` | `BASE_DOMAIN`, `LOOPBACK_X`, `ENDPOINTS` | Writes `services/dns-bind/zones` |
+| `scripts/keycloak-bootstrap.sh` | Generate/persist Keycloak admin and DB credentials | `make keycloak-bootstrap` | `KEYCLOAK_*` | Writes `.env` values |
 | `scripts/common.sh` | Shared helpers | sourced by other scripts | none | none |
 
 ## Workflows
@@ -63,6 +64,17 @@ make bind-status
 make bind-restart
 make bind-logs
 make bind-down
+```
+
+### Keycloak lifecycle
+
+```bash
+make keycloak-bootstrap
+make keycloak-up
+make keycloak-status
+make keycloak-logs
+make test-keycloak
+make keycloak-down
 ```
 
 ### Certificates
@@ -92,6 +104,7 @@ COMPOSE_PROFILES=stepca make up
 - Safe to rerun: `up.sh`, `down.sh`, `logs.sh`, `healthcheck.sh`, `hosts-subdomains.sh` (apply/remove).
 - Modifies system state: `stepca-trust-install.sh`, `stepca-trust-uninstall.sh`, `hosts-subdomains.sh` (when applied to `/etc/hosts`).
 - Scripts that write files: `certs-selfsigned-generate.sh`, `traefik-render-dynamic.sh`, `certbot-issue.sh`.
+- `keycloak-bootstrap.sh` writes credentials into `.env` (idempotent by default; use `--force` to rotate).
 
 ## Troubleshooting
 
@@ -100,6 +113,7 @@ COMPOSE_PROFILES=stepca make up
 - Permission denied (certs or trust store): re-run with `sudo` where required.
 - Profile not enabled: use `COMPOSE_PROFILES=<profile> make up` when needed.
 - BIND exposed on non-loopback: set `BIND_ALLOW_NONLOCAL_BIND=true` explicitly if this is intentional.
+- Keycloak fails behind Traefik: verify `KEYCLOAK_PROXY_HEADERS=xforwarded` and that `keycloak.<DEV_DOMAIN>` resolves to your Traefik host.
 
 Useful commands:
 ```bash

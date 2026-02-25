@@ -16,6 +16,12 @@ COMPOSE_PROFILES_ENV="${COMPOSE_PROFILES:-}"
 TRAEFIK_DASHBOARD_ENV="${TRAEFIK_DASHBOARD:-}"
 BIND_BIND_ADDRESS_ENV="${BIND_BIND_ADDRESS:-}"
 BIND_ALLOW_NONLOCAL_BIND_ENV="${BIND_ALLOW_NONLOCAL_BIND:-}"
+KEYCLOAK_HOSTNAME_ENV="${KEYCLOAK_HOSTNAME:-}"
+KEYCLOAK_ADMIN_PASSWORD_ENV="${KEYCLOAK_ADMIN_PASSWORD:-}"
+KEYCLOAK_DB_PASSWORD_ENV="${KEYCLOAK_DB_PASSWORD:-}"
+KEYCLOAK_PROXY_HEADERS_ENV="${KEYCLOAK_PROXY_HEADERS:-}"
+KEYCLOAK_OBSERVABILITY_ENABLED_ENV="${KEYCLOAK_OBSERVABILITY_ENABLED:-}"
+KEYCLOAK_OBSERVABILITY_PUBLIC_METRICS_ENV="${KEYCLOAK_OBSERVABILITY_PUBLIC_METRICS:-}"
 
 load_env
 
@@ -33,6 +39,24 @@ if [ -n "${BIND_BIND_ADDRESS_ENV}" ]; then
 fi
 if [ -n "${BIND_ALLOW_NONLOCAL_BIND_ENV}" ]; then
     BIND_ALLOW_NONLOCAL_BIND="${BIND_ALLOW_NONLOCAL_BIND_ENV}"
+fi
+if [ -n "${KEYCLOAK_HOSTNAME_ENV}" ]; then
+    KEYCLOAK_HOSTNAME="${KEYCLOAK_HOSTNAME_ENV}"
+fi
+if [ -n "${KEYCLOAK_ADMIN_PASSWORD_ENV}" ]; then
+    KEYCLOAK_ADMIN_PASSWORD="${KEYCLOAK_ADMIN_PASSWORD_ENV}"
+fi
+if [ -n "${KEYCLOAK_DB_PASSWORD_ENV}" ]; then
+    KEYCLOAK_DB_PASSWORD="${KEYCLOAK_DB_PASSWORD_ENV}"
+fi
+if [ -n "${KEYCLOAK_PROXY_HEADERS_ENV}" ]; then
+    KEYCLOAK_PROXY_HEADERS="${KEYCLOAK_PROXY_HEADERS_ENV}"
+fi
+if [ -n "${KEYCLOAK_OBSERVABILITY_ENABLED_ENV}" ]; then
+    KEYCLOAK_OBSERVABILITY_ENABLED="${KEYCLOAK_OBSERVABILITY_ENABLED_ENV}"
+fi
+if [ -n "${KEYCLOAK_OBSERVABILITY_PUBLIC_METRICS_ENV}" ]; then
+    KEYCLOAK_OBSERVABILITY_PUBLIC_METRICS="${KEYCLOAK_OBSERVABILITY_PUBLIC_METRICS_ENV}"
 fi
 
 resolve_auth_path() {
@@ -104,6 +128,13 @@ is_bind_profile_enabled() {
     esac
 }
 
+is_keycloak_profile_enabled() {
+    case " ${COMPOSE_PROFILES_NORMALIZED:-} " in
+        *" keycloak "*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
 is_ipv4_loopback() {
     local value="$1"
     if [[ ! "$value" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
@@ -144,6 +175,31 @@ validate_domain_name() {
     done
 }
 
+validate_hostname_label() {
+    local label="$1"
+    if [ -z "$label" ]; then
+        log_error "Hostname label is required."
+    fi
+    if [[ ! "$label" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]]; then
+        log_error "Invalid hostname label: ${label}"
+    fi
+}
+
+require_non_placeholder_secret() {
+    local key="$1"
+    local value="$2"
+    local v
+    v=$(trim "$value")
+    if [ -z "$v" ]; then
+        log_error "${key} is required."
+    fi
+    case "$v" in
+        changeme|change-me|example|example123|replace-me|REPLACE_ME)
+            log_error "${key} appears to be a placeholder."
+            ;;
+    esac
+}
+
 if [ "${TRAEFIK_DASHBOARD:-false}" = "true" ]; then
     require_auth_file "Traefik dashboard" "${TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH:-}"
 fi
@@ -160,4 +216,25 @@ if is_bind_profile_enabled; then
             log_error "BIND_BIND_ADDRESS must be loopback by default. Set BIND_ALLOW_NONLOCAL_BIND=true for intentional non-local exposure."
         fi
     fi
+fi
+
+if is_keycloak_profile_enabled; then
+    validate_hostname_label "${KEYCLOAK_HOSTNAME:-}"
+    require_non_placeholder_secret "KEYCLOAK_ADMIN_PASSWORD" "${KEYCLOAK_ADMIN_PASSWORD:-}"
+    require_non_placeholder_secret "KEYCLOAK_DB_PASSWORD" "${KEYCLOAK_DB_PASSWORD:-}"
+    case "${KEYCLOAK_PROXY_HEADERS:-xforwarded}" in
+        xforwarded|forwarded) ;;
+        *) log_error "KEYCLOAK_PROXY_HEADERS must be 'xforwarded' or 'forwarded'." ;;
+    esac
+    case "${KEYCLOAK_OBSERVABILITY_ENABLED:-false}" in
+        true|false) ;;
+        *) log_error "KEYCLOAK_OBSERVABILITY_ENABLED must be true or false." ;;
+    esac
+    case "${KEYCLOAK_OBSERVABILITY_PUBLIC_METRICS:-false}" in
+        true)
+            log_error "Public Keycloak metrics exposure is not allowed by default. Keep KEYCLOAK_OBSERVABILITY_PUBLIC_METRICS=false."
+            ;;
+        false) ;;
+        *) log_error "KEYCLOAK_OBSERVABILITY_PUBLIC_METRICS must be true or false." ;;
+    esac
 fi

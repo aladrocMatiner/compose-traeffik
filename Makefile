@@ -21,7 +21,8 @@ SHELL := /bin/bash # Ensure bash is used for shell commands
         stepca-up stepca-down stepca-bootstrap stepca-verify-cert \
         stepca-trust-install stepca-trust-uninstall stepca-trust-verify \
         hosts-generate hosts-apply hosts-remove hosts-status \
-        bind-up bind-down bind-restart bind-logs bind-status bind-provision bind-provision-dry
+        bind-up bind-down bind-restart bind-logs bind-status bind-provision bind-provision-dry \
+        keycloak-bootstrap keycloak-up keycloak-down keycloak-restart keycloak-logs keycloak-status test-keycloak
 
 # Include .env for environment variables if it exists.
 # This makes variables in .env available to the Makefile.
@@ -35,6 +36,7 @@ COMPOSE_FILES := \
   -f compose/base.yml \
   -f services/traefik/compose.yml \
   -f services/whoami/compose.yml \
+  -f services/keycloak/compose.yml \
   -f services/dns-bind/compose.yml \
   -f services/certbot/compose.yml \
   -f services/step-ca/compose.yml
@@ -68,6 +70,11 @@ endif
 BIND_ENV_ARGS :=
 ifneq ($(ENV_FILE),)
 BIND_ENV_ARGS += --env-file $(ENV_FILE)
+endif
+
+KEYCLOAK_ENV_ARGS :=
+ifneq ($(ENV_FILE),)
+KEYCLOAK_ENV_ARGS += --env-file $(ENV_FILE)
 endif
 
 # Start the stack
@@ -225,6 +232,39 @@ bind-provision:
 bind-provision-dry:
 	"$(SCRIPTS_DIR)/bind-provision.sh" $(BIND_ENV_ARGS) --dry-run
 
+# --- Keycloak (Traefik + Postgres) ---
+
+keycloak-bootstrap:
+	"$(SCRIPTS_DIR)/keycloak-bootstrap.sh" $(KEYCLOAK_ENV_ARGS)
+
+keycloak-up:
+	@echo "Starting Keycloak service (profile: keycloak)..."
+	COMPOSE_PROFILES=keycloak "$(SCRIPTS_DIR)/compose.sh" --profile keycloak $(COMPOSE_OPTS) up -d keycloak-db keycloak
+
+keycloak-down:
+	@echo "Stopping Keycloak service..."
+	COMPOSE_PROFILES=keycloak "$(SCRIPTS_DIR)/compose.sh" --profile keycloak $(COMPOSE_OPTS) stop keycloak keycloak-db || true
+	COMPOSE_PROFILES=keycloak "$(SCRIPTS_DIR)/compose.sh" --profile keycloak $(COMPOSE_OPTS) rm -f keycloak keycloak-db || true
+
+keycloak-restart: keycloak-down keycloak-up
+
+keycloak-logs:
+	@echo "Showing Keycloak service logs..."
+	COMPOSE_PROFILES=keycloak "$(SCRIPTS_DIR)/compose.sh" --profile keycloak $(COMPOSE_OPTS) logs -f keycloak keycloak-db
+
+keycloak-status:
+	@echo "Keycloak service status:"
+	COMPOSE_PROFILES=keycloak "$(SCRIPTS_DIR)/compose.sh" --profile keycloak $(COMPOSE_OPTS) ps keycloak keycloak-db
+
+test-keycloak:
+	@echo "Running Keycloak static smoke tests..."
+	@set -euo pipefail; rc=0; \
+	for test_script in test_keycloak_make_targets.sh test_keycloak_service_config.sh test_keycloak_guardrails.sh test_keycloak_observability_wiring.sh; do \
+		echo "==> $$test_script"; \
+		if ! "./tests/smoke/$$test_script"; then rc=1; fi; \
+	done; \
+	exit $$rc
+
 # --- Help ---
 
 help:
@@ -287,8 +327,17 @@ help:
 	@echo "  bind-provision        Generate the BIND zone file from ENDPOINTS."
 	@echo "  bind-provision-dry    Print the generated zone file without writing."
 	@echo ""
+	@echo "Keycloak:"
+	@echo "  keycloak-bootstrap    Generate/persist Keycloak admin and DB secrets in .env."
+	@echo "  keycloak-up           Start Keycloak + Postgres (profile: keycloak)."
+	@echo "  keycloak-down         Stop and remove Keycloak + Postgres."
+	@echo "  keycloak-restart      Restart Keycloak (keycloak-down + keycloak-up)."
+	@echo "  keycloak-logs         Follow Keycloak + Postgres logs."
+	@echo "  keycloak-status       Show Keycloak + Postgres status."
+	@echo "  test-keycloak         Run Keycloak static smoke tests."
+	@echo ""
 	@echo "Profiles:"
 	@echo "  Use COMPOSE_PROFILES=<profile_name> before make commands to activate profiles."
-	@echo "  Available profiles: bind, le, stepca"
+	@echo "  Available profiles: bind, keycloak, le, stepca"
 	@echo "  Example: COMPOSE_PROFILES=le make up"
 	@echo ""

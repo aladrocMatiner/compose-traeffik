@@ -74,6 +74,7 @@ For detailed TLS workflows, see:
 - **Whoami**: `https://whoami.${DEV_DOMAIN}` (default stack; uses Traefik HTTPS)
 - **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth; enabled by default)
 - **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (profile `stepca`; enabled by default)
+- **Keycloak**: `https://keycloak.${DEV_DOMAIN}` (profile `keycloak`; optional service behind Traefik)
 
 <a id="services"></a>
 ## Services
@@ -81,6 +82,7 @@ For detailed TLS workflows, see:
 - [Traefik](services/traefik/README.md) - reverse proxy and routing core.
 - [Whoami](services/whoami/README.md) - demo service used for routing tests.
 - [DNS (BIND)](services/dns-bind/README.md) - optional profile `bind`.
+- [Keycloak](services/keycloak/README.md) - optional profile `keycloak` (Traefik + PostgreSQL, reverse-proxy aware).
 - [Certbot](services/certbot/README.md) - optional profile `le`.
 - [Step-CA](services/step-ca/README.md) - optional profile `stepca`.
 
@@ -104,7 +106,14 @@ Common commands:
 - `make certs-le-issue`, `make certs-le-renew` (profile `le`)
 - `make stepca-up`, `make stepca-bootstrap`, `make stepca-trust-install`
 - `make bind-up`, `make bind-status`, `make bind-restart`, `make bind-provision`
+- `make keycloak-bootstrap`, `make keycloak-up`, `make keycloak-status`, `make keycloak-logs`
+- `make test-keycloak` (static Keycloak smoke tests)
 - `make hosts-generate`, `make hosts-apply`, `make hosts-status`
+
+Keycloak notes:
+- Add `keycloak` to `ENDPOINTS` (or your DNS/hosts mapping) for local name resolution.
+- Keycloak runs behind Traefik/TLS and relies on reverse-proxy headers (`KEYCLOAK_PROXY_HEADERS`).
+- If `KEYCLOAK_OBSERVABILITY_ENABLED=true`, metrics remain internal-only by default (no public Traefik metrics router).
 
 Auth files:
 - `services/traefik/auth/traefik-dashboard.htpasswd.example` (Traefik dashboard BasicAuth)

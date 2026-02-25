@@ -38,6 +38,10 @@ This directory contains smoke tests that verify Traefik readiness, routing, TLS,
 | `tests/smoke/test_bind_file_permissions.sh` | Validate config/zone file permissions are not world-writable. | `stat`, generated zone file or `bind-provision`. | Template, zone dir, and zone file reject world-writable modes. |
 | `tests/smoke/test_bind_provisioning_validation.sh` | Validate `bind-provision` rejects invalid domain and endpoint labels. | `mktemp`, `scripts/bind-provision.sh`. | Invalid `BASE_DOMAIN` or endpoint labels fail with non-zero exit. |
 | `tests/smoke/test_bind_security_runtime.sh` | Validate runtime DNS security behavior (no recursion, AXFR denied, hidden CHAOS metadata, expected listener). | `dig`, `docker`, `make`, loopback test address. | Security checks pass and BIND responds only on the expected test bind address. |
+| `tests/smoke/test_keycloak_make_targets.sh` | Validate Keycloak Make lifecycle/test target wiring. | `Makefile`, `awk`, `grep`. | Required Keycloak targets exist and lifecycle uses `scripts/compose.sh --profile keycloak`. |
+| `tests/smoke/test_keycloak_service_config.sh` | Validate Keycloak compose fragment (Traefik labels, DB wiring, no host ports). | `services/keycloak/compose.yml`, `grep`. | Keycloak + Postgres config is present and safe-by-default. |
+| `tests/smoke/test_keycloak_guardrails.sh` | Validate Keycloak preflight guardrails for secrets/proxy/metrics safety. | `scripts/validate-env.sh`. | Placeholder/unsafe values fail, valid values pass. |
+| `tests/smoke/test_keycloak_observability_wiring.sh` | Validate Keycloak optional observability hooks (metrics/log labels, no public metrics router). | `services/keycloak/compose.yml`, `grep`. | Observability wiring markers exist and public metrics route is absent by default. |
 
 ## Configuration
 
@@ -48,6 +52,7 @@ Smoke tests use environment variables loaded from `.env` via `scripts/healthchec
 - `BIND_BIND_ADDRESS` (default listener for BIND)
 - `BIND_ALLOW_NONLOCAL_BIND` (must be `true` to allow non-loopback bind)
 - `BIND_SECURITY_TEST_ADDRESS` (optional loopback override for runtime security smoke)
+- `KEYCLOAK_*` (used by `make test-keycloak` and Keycloak guardrail checks when configured)
 
 Ensure `.env` exists (prefer `make bootstrap`) before running tests. Optional profiles
 are enabled by default via `COMPOSE_PROFILES` in `.env`; edit it if you want a smaller stack.
@@ -56,6 +61,7 @@ are enabled by default via `COMPOSE_PROFILES` in `.env`; edit it if you want a s
 
 - `make test` prints per-test results and exits with non-zero status on failure.
 - A successful run ends with `All smoke tests passed!`.
+- `make test-keycloak` runs Keycloak static smoke tests only (no Keycloak runtime required).
 
 ## Common failures and fixes
 
@@ -103,3 +109,8 @@ are enabled by default via `COMPOSE_PROFILES` in `.env`; edit it if you want a s
   - Symptom: `test_bind_provisioning_validation.sh` fails.
   - Diagnose: inspect `BASE_DOMAIN` format and endpoint labels in `ENDPOINTS`.
   - Fix: use lowercase DNS labels only (`a-z`, `0-9`, internal `-`) and valid dot-separated domain format.
+
+- **Keycloak guardrails fail**
+  - Symptom: `test_keycloak_guardrails.sh` or `keycloak-up` fails preflight validation.
+  - Diagnose: inspect `KEYCLOAK_HOSTNAME`, `KEYCLOAK_ADMIN_PASSWORD`, `KEYCLOAK_DB_PASSWORD`, `KEYCLOAK_PROXY_HEADERS`, and `KEYCLOAK_OBSERVABILITY_PUBLIC_METRICS`.
+  - Fix: run `make keycloak-bootstrap`, keep `KEYCLOAK_PROXY_HEADERS=xforwarded`, and leave `KEYCLOAK_OBSERVABILITY_PUBLIC_METRICS=false`.
