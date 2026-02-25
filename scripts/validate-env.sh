@@ -16,6 +16,20 @@ COMPOSE_PROFILES_ENV="${COMPOSE_PROFILES:-}"
 TRAEFIK_DASHBOARD_ENV="${TRAEFIK_DASHBOARD:-}"
 BIND_BIND_ADDRESS_ENV="${BIND_BIND_ADDRESS:-}"
 BIND_ALLOW_NONLOCAL_BIND_ENV="${BIND_ALLOW_NONLOCAL_BIND:-}"
+SEMAPHOREUI_HOSTNAME_ENV="${SEMAPHOREUI_HOSTNAME:-}"
+SEMAPHOREUI_ADMIN_PASSWORD_ENV="${SEMAPHOREUI_ADMIN_PASSWORD:-}"
+SEMAPHOREUI_DB_PASSWORD_ENV="${SEMAPHOREUI_DB_PASSWORD:-}"
+SEMAPHOREUI_COOKIE_HASH_ENV="${SEMAPHOREUI_COOKIE_HASH:-}"
+SEMAPHOREUI_COOKIE_ENCRYPTION_ENV="${SEMAPHOREUI_COOKIE_ENCRYPTION:-}"
+SEMAPHOREUI_ACCESS_KEY_ENCRYPTION_ENV="${SEMAPHOREUI_ACCESS_KEY_ENCRYPTION:-}"
+SEMAPHOREUI_OIDC_ENABLED_ENV="${SEMAPHOREUI_OIDC_ENABLED:-}"
+SEMAPHOREUI_OIDC_PROVIDER_URL_ENV="${SEMAPHOREUI_OIDC_PROVIDER_URL:-}"
+SEMAPHOREUI_OIDC_CLIENT_ID_ENV="${SEMAPHOREUI_OIDC_CLIENT_ID:-}"
+SEMAPHOREUI_OIDC_CLIENT_SECRET_ENV="${SEMAPHOREUI_OIDC_CLIENT_SECRET:-}"
+SEMAPHOREUI_PASSWORD_LOGIN_DISABLED_ENV="${SEMAPHOREUI_PASSWORD_LOGIN_DISABLED:-}"
+SEMAPHOREUI_OBSERVABILITY_ENABLED_ENV="${SEMAPHOREUI_OBSERVABILITY_ENABLED:-}"
+SEMAPHOREUI_OBSERVABILITY_DISCOVERY_ENV="${SEMAPHOREUI_OBSERVABILITY_DISCOVERY:-}"
+SEMAPHOREUI_OBSERVABILITY_PUBLIC_METRICS_ENV="${SEMAPHOREUI_OBSERVABILITY_PUBLIC_METRICS:-}"
 
 load_env
 
@@ -34,6 +48,26 @@ fi
 if [ -n "${BIND_ALLOW_NONLOCAL_BIND_ENV}" ]; then
     BIND_ALLOW_NONLOCAL_BIND="${BIND_ALLOW_NONLOCAL_BIND_ENV}"
 fi
+for var_name in \
+    SEMAPHOREUI_HOSTNAME \
+    SEMAPHOREUI_ADMIN_PASSWORD \
+    SEMAPHOREUI_DB_PASSWORD \
+    SEMAPHOREUI_COOKIE_HASH \
+    SEMAPHOREUI_COOKIE_ENCRYPTION \
+    SEMAPHOREUI_ACCESS_KEY_ENCRYPTION \
+    SEMAPHOREUI_OIDC_ENABLED \
+    SEMAPHOREUI_OIDC_PROVIDER_URL \
+    SEMAPHOREUI_OIDC_CLIENT_ID \
+    SEMAPHOREUI_OIDC_CLIENT_SECRET \
+    SEMAPHOREUI_PASSWORD_LOGIN_DISABLED \
+    SEMAPHOREUI_OBSERVABILITY_ENABLED \
+    SEMAPHOREUI_OBSERVABILITY_DISCOVERY \
+    SEMAPHOREUI_OBSERVABILITY_PUBLIC_METRICS; do
+    env_shadow="${var_name}_ENV"
+    if [ -n "${!env_shadow:-}" ]; then
+        printf -v "$var_name" '%s' "${!env_shadow}"
+    fi
+done
 
 resolve_auth_path() {
     local path="$1"
@@ -104,6 +138,13 @@ is_bind_profile_enabled() {
     esac
 }
 
+is_semaphoreui_profile_enabled() {
+    case " ${COMPOSE_PROFILES_NORMALIZED:-} " in
+        *" semaphoreui "*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
 is_ipv4_loopback() {
     local value="$1"
     if [[ ! "$value" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
@@ -144,6 +185,37 @@ validate_domain_name() {
     done
 }
 
+validate_hostname_label() {
+    local label="$1"
+    local var_name="$2"
+    if [ -z "$label" ]; then
+        log_error "${var_name} is required when semaphoreui profile is enabled."
+    fi
+    if [[ ! "$label" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]]; then
+        log_error "${var_name} must be a valid DNS label: ${label}"
+    fi
+}
+
+is_true_or_false() {
+    case "$1" in
+        true|false) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+require_non_placeholder_secret() {
+    local var_name="$1"
+    local value="$2"
+    if [ -z "$value" ]; then
+        log_error "${var_name} is required when semaphoreui profile is enabled."
+    fi
+    case "$value" in
+        changeme|change-me|replace-me|example|example-password)
+            log_error "${var_name} uses a placeholder value."
+            ;;
+    esac
+}
+
 if [ "${TRAEFIK_DASHBOARD:-false}" = "true" ]; then
     require_auth_file "Traefik dashboard" "${TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH:-}"
 fi
@@ -159,5 +231,41 @@ if is_bind_profile_enabled; then
         if [ "${BIND_ALLOW_NONLOCAL_BIND_VALUE}" != "true" ]; then
             log_error "BIND_BIND_ADDRESS must be loopback by default. Set BIND_ALLOW_NONLOCAL_BIND=true for intentional non-local exposure."
         fi
+    fi
+fi
+
+if is_semaphoreui_profile_enabled; then
+    validate_hostname_label "${SEMAPHOREUI_HOSTNAME:-}" "SEMAPHOREUI_HOSTNAME"
+
+    require_non_placeholder_secret "SEMAPHOREUI_ADMIN_PASSWORD" "${SEMAPHOREUI_ADMIN_PASSWORD:-}"
+    require_non_placeholder_secret "SEMAPHOREUI_DB_PASSWORD" "${SEMAPHOREUI_DB_PASSWORD:-}"
+    require_non_placeholder_secret "SEMAPHOREUI_COOKIE_HASH" "${SEMAPHOREUI_COOKIE_HASH:-}"
+    require_non_placeholder_secret "SEMAPHOREUI_COOKIE_ENCRYPTION" "${SEMAPHOREUI_COOKIE_ENCRYPTION:-}"
+    require_non_placeholder_secret "SEMAPHOREUI_ACCESS_KEY_ENCRYPTION" "${SEMAPHOREUI_ACCESS_KEY_ENCRYPTION:-}"
+
+    for bool_var in SEMAPHOREUI_OIDC_ENABLED SEMAPHOREUI_PASSWORD_LOGIN_DISABLED SEMAPHOREUI_OBSERVABILITY_ENABLED SEMAPHOREUI_OBSERVABILITY_PUBLIC_METRICS; do
+        if ! is_true_or_false "${!bool_var:-false}"; then
+            log_error "${bool_var} must be 'true' or 'false'."
+        fi
+    done
+
+    case "${SEMAPHOREUI_OBSERVABILITY_DISCOVERY:-labels}" in
+        labels|names) ;;
+        *) log_error "SEMAPHOREUI_OBSERVABILITY_DISCOVERY must be 'labels' or 'names'." ;;
+    esac
+
+    if [ "${SEMAPHOREUI_OBSERVABILITY_PUBLIC_METRICS:-false}" = "true" ]; then
+        log_error "SEMAPHOREUI_OBSERVABILITY_PUBLIC_METRICS=true is not supported by default. Keep telemetry internal-only."
+    fi
+
+    if [ "${SEMAPHOREUI_OIDC_ENABLED:-false}" = "true" ]; then
+        if [ -z "${SEMAPHOREUI_OIDC_PROVIDER_URL:-}" ]; then
+            log_error "SEMAPHOREUI_OIDC_PROVIDER_URL is required when SEMAPHOREUI_OIDC_ENABLED=true."
+        fi
+        if [[ ! "${SEMAPHOREUI_OIDC_PROVIDER_URL}" =~ ^https?:// ]]; then
+            log_error "SEMAPHOREUI_OIDC_PROVIDER_URL must be an http(s) URL."
+        fi
+        require_non_placeholder_secret "SEMAPHOREUI_OIDC_CLIENT_ID" "${SEMAPHOREUI_OIDC_CLIENT_ID:-}"
+        require_non_placeholder_secret "SEMAPHOREUI_OIDC_CLIENT_SECRET" "${SEMAPHOREUI_OIDC_CLIENT_SECRET:-}"
     fi
 fi

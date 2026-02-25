@@ -21,7 +21,8 @@ SHELL := /bin/bash # Ensure bash is used for shell commands
         stepca-up stepca-down stepca-bootstrap stepca-verify-cert \
         stepca-trust-install stepca-trust-uninstall stepca-trust-verify \
         hosts-generate hosts-apply hosts-remove hosts-status \
-        bind-up bind-down bind-restart bind-logs bind-status bind-provision bind-provision-dry
+        bind-up bind-down bind-restart bind-logs bind-status bind-provision bind-provision-dry \
+        semaphoreui-bootstrap semaphoreui-up semaphoreui-down semaphoreui-restart semaphoreui-logs semaphoreui-status test-semaphoreui
 
 # Include .env for environment variables if it exists.
 # This makes variables in .env available to the Makefile.
@@ -35,6 +36,7 @@ COMPOSE_FILES := \
   -f compose/base.yml \
   -f services/traefik/compose.yml \
   -f services/whoami/compose.yml \
+  -f services/semaphoreui/compose.yml \
   -f services/dns-bind/compose.yml \
   -f services/certbot/compose.yml \
   -f services/step-ca/compose.yml
@@ -68,6 +70,11 @@ endif
 BIND_ENV_ARGS :=
 ifneq ($(ENV_FILE),)
 BIND_ENV_ARGS += --env-file $(ENV_FILE)
+endif
+
+SEMAPHOREUI_ENV_ARGS :=
+ifneq ($(ENV_FILE),)
+SEMAPHOREUI_ENV_ARGS += --env-file $(ENV_FILE)
 endif
 
 # Start the stack
@@ -176,6 +183,18 @@ test:
 	@echo "Running smoke tests..."
 	./scripts/healthcheck.sh
 
+test-semaphoreui:
+	@echo "Running Semaphore UI static smoke tests..."
+	@for test_script in \
+		tests/smoke/test_semaphoreui_make_targets.sh \
+		tests/smoke/test_semaphoreui_service_config.sh \
+		tests/smoke/test_semaphoreui_guardrails.sh \
+		tests/smoke/test_semaphoreui_oidc_wiring.sh \
+		tests/smoke/test_semaphoreui_observability_wiring.sh; do \
+		echo "==> $$(basename $$test_script)"; \
+		$$test_script || exit $$?; \
+	done
+
 # --- Documentation ---
 
 docs-check:
@@ -225,6 +244,30 @@ bind-provision:
 bind-provision-dry:
 	"$(SCRIPTS_DIR)/bind-provision.sh" $(BIND_ENV_ARGS) --dry-run
 
+# --- Semaphore UI ---
+
+semaphoreui-bootstrap:
+	"$(SCRIPTS_DIR)/semaphoreui-bootstrap.sh" $(SEMAPHOREUI_ENV_ARGS)
+
+semaphoreui-up:
+	@echo "Starting Semaphore UI service (profile: semaphoreui)..."
+	COMPOSE_PROFILES=semaphoreui "$(SCRIPTS_DIR)/compose.sh" --profile semaphoreui $(COMPOSE_OPTS) up -d semaphoreui semaphoreui-db
+
+semaphoreui-down:
+	@echo "Stopping Semaphore UI service..."
+	COMPOSE_PROFILES=semaphoreui "$(SCRIPTS_DIR)/compose.sh" --profile semaphoreui $(COMPOSE_OPTS) stop semaphoreui semaphoreui-db || true
+	COMPOSE_PROFILES=semaphoreui "$(SCRIPTS_DIR)/compose.sh" --profile semaphoreui $(COMPOSE_OPTS) rm -f semaphoreui semaphoreui-db || true
+
+semaphoreui-restart: semaphoreui-down semaphoreui-up
+
+semaphoreui-logs:
+	@echo "Showing Semaphore UI service logs..."
+	COMPOSE_PROFILES=semaphoreui "$(SCRIPTS_DIR)/compose.sh" --profile semaphoreui $(COMPOSE_OPTS) logs -f semaphoreui semaphoreui-db
+
+semaphoreui-status:
+	@echo "Semaphore UI service status:"
+	COMPOSE_PROFILES=semaphoreui "$(SCRIPTS_DIR)/compose.sh" --profile semaphoreui $(COMPOSE_OPTS) ps semaphoreui semaphoreui-db
+
 # --- Help ---
 
 help:
@@ -268,6 +311,7 @@ help:
 	@echo ""
 	@echo "Testing:"
 	@echo "  test                  Run all smoke tests for the current configuration."
+	@echo "  test-semaphoreui      Run Semaphore UI static smoke tests."
 	@echo ""
 	@echo "Docs:"
 	@echo "  docs-check            Validate multilingual README structure and links."
@@ -287,8 +331,16 @@ help:
 	@echo "  bind-provision        Generate the BIND zone file from ENDPOINTS."
 	@echo "  bind-provision-dry    Print the generated zone file without writing."
 	@echo ""
+	@echo "Semaphore UI:"
+	@echo "  semaphoreui-bootstrap Generate Semaphore UI defaults and secrets in .env."
+	@echo "  semaphoreui-up        Start Semaphore UI + internal PostgreSQL (profile: semaphoreui)."
+	@echo "  semaphoreui-down      Stop and remove Semaphore UI containers."
+	@echo "  semaphoreui-restart   Restart Semaphore UI (down + up)."
+	@echo "  semaphoreui-logs      Follow Semaphore UI and DB logs."
+	@echo "  semaphoreui-status    Show Semaphore UI service status."
+	@echo ""
 	@echo "Profiles:"
 	@echo "  Use COMPOSE_PROFILES=<profile_name> before make commands to activate profiles."
-	@echo "  Available profiles: bind, le, stepca"
+	@echo "  Available profiles: bind, le, semaphoreui, stepca"
 	@echo "  Example: COMPOSE_PROFILES=le make up"
 	@echo ""

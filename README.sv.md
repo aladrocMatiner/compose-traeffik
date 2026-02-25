@@ -74,6 +74,7 @@ Detaljerade TLS-floden:
 - **Whoami**: `https://whoami.${DEV_DOMAIN}` (standardstack)
 - **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth; aktiverad som standard)
 - **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (profil `stepca`; aktiverad som standard)
+- **Semaphore UI**: `https://semaphore.${DEV_DOMAIN}` (profil `semaphoreui`; HTTPS via Traefik, lokal inloggning eller valfri OIDC)
 
 <a id="services"></a>
 ## Tjanster
@@ -83,6 +84,7 @@ Detaljerade TLS-floden:
 - [DNS (BIND)](services/dns-bind/README.sv.md) - valfri profil `bind`.
 - [Certbot](services/certbot/README.sv.md) - valfri profil `le`.
 - [Step-CA](services/step-ca/README.sv.md) - valfri profil `stepca`.
+- [Semaphore UI](services/semaphoreui/README.sv.md) - valfri profil `semaphoreui` (Traefik + PostgreSQL, valfri Keycloak OIDC).
 
 <a id="docs-map"></a>
 ## Dokumentkarta
@@ -104,6 +106,7 @@ Vanliga kommandon:
 - `make certs-le-issue`, `make certs-le-renew` (profil `le`)
 - `make stepca-up`, `make stepca-bootstrap`, `make stepca-trust-install`
 - `make bind-up`, `make bind-status`, `make bind-restart`, `make bind-provision`
+- `make semaphoreui-bootstrap`, `make semaphoreui-up`, `make semaphoreui-status`, `make test-semaphoreui`
 - `make hosts-generate`, `make hosts-apply`, `make hosts-status`
 
 Auth-filer:
@@ -116,6 +119,11 @@ DNS-sakerhetsdefaults:
 - BIND kor som auktoritativ lokal DNS med recursion avstangt och AXFR blockerat.
 - `BIND_BIND_ADDRESS` bor vara loopback som standard.
 - For avsiktlig exponering utanfor loopback, satt `BIND_ALLOW_NONLOCAL_BIND=true`.
+
+Semaphore UI-noter:
+- Lagg till `semaphore` i `ENDPOINTS` (eller i din DNS/hosts) om du vill ha lokal hostname-mappning via `make hosts-*`.
+- OIDC/Keycloak ar valfritt och avstangt som standard.
+- Observability-hooks ar valfria och avstangda som standard; publik telemetri exponeras inte som standard.
 
 <a id="testing"></a>
 ## Tester

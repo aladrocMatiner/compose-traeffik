@@ -41,6 +41,7 @@ Preflight validation:
 | `scripts/ca-config-verify.sh` | Validate shared CA configuration | `./scripts/ca-config-verify.sh` | `DEV_DOMAIN`, `CA_*`, `LEAF_*` (or legacy `STEP_CA_*`) | Prints effective CA configuration |
 | `scripts/hosts-subdomains.sh` | Manage hosts block for loopback subdomains | `make hosts-apply` | `BASE_DOMAIN`, `LOOPBACK_X` | Modifies hosts file (with sudo) |
 | `scripts/bind-provision.sh` | Generate BIND zone file from ENDPOINTS | `make bind-provision` | `BASE_DOMAIN`, `LOOPBACK_X`, `ENDPOINTS` | Writes `services/dns-bind/zones` |
+| `scripts/semaphoreui-bootstrap.sh` | Generate Semaphore UI defaults/secrets and optional OIDC JSON | `make semaphoreui-bootstrap` | `SEMAPHOREUI_*`, `DEV_DOMAIN` (for web root/OIDC redirect) | Updates `.env` |
 | `scripts/common.sh` | Shared helpers | sourced by other scripts | none | none |
 
 ## Workflows
@@ -64,6 +65,21 @@ make bind-restart
 make bind-logs
 make bind-down
 ```
+
+### Semaphore UI lifecycle
+
+```bash
+make semaphoreui-bootstrap
+make semaphoreui-up
+make semaphoreui-status
+make semaphoreui-logs
+make test-semaphoreui
+make semaphoreui-down
+```
+
+OIDC/Keycloak option:
+- Leave `SEMAPHOREUI_OIDC_ENABLED=false` for local admin login only.
+- When enabling OIDC, set `SEMAPHOREUI_OIDC_PROVIDER_URL`, `SEMAPHOREUI_OIDC_CLIENT_ID`, and `SEMAPHOREUI_OIDC_CLIENT_SECRET`, then rerun `make semaphoreui-bootstrap` to regenerate `SEMAPHOREUI_OIDC_PROVIDERS_JSON`.
 
 ### Certificates
 

@@ -22,6 +22,11 @@ This directory contains smoke tests that verify Traefik readiness, routing, TLS,
    ```
    Note: `make test` is recommended because it loads `.env` and checks prerequisites.
 
+4. **Run Semaphore UI static smoke tests only**
+   ```bash
+   make test-semaphoreui
+   ```
+
 ## Test inventory
 
 | Script | Purpose | Prerequisites | Expected signal |
@@ -38,6 +43,11 @@ This directory contains smoke tests that verify Traefik readiness, routing, TLS,
 | `tests/smoke/test_bind_file_permissions.sh` | Validate config/zone file permissions are not world-writable. | `stat`, generated zone file or `bind-provision`. | Template, zone dir, and zone file reject world-writable modes. |
 | `tests/smoke/test_bind_provisioning_validation.sh` | Validate `bind-provision` rejects invalid domain and endpoint labels. | `mktemp`, `scripts/bind-provision.sh`. | Invalid `BASE_DOMAIN` or endpoint labels fail with non-zero exit. |
 | `tests/smoke/test_bind_security_runtime.sh` | Validate runtime DNS security behavior (no recursion, AXFR denied, hidden CHAOS metadata, expected listener). | `dig`, `docker`, `make`, loopback test address. | Security checks pass and BIND responds only on the expected test bind address. |
+| `tests/smoke/test_semaphoreui_make_targets.sh` | Validate Semaphore UI Make lifecycle/test targets and compose wrapper profile wiring. | `Makefile`, `awk`, `grep`. | Targets exist and lifecycle uses `scripts/compose.sh --profile semaphoreui`. |
+| `tests/smoke/test_semaphoreui_service_config.sh` | Validate Semaphore UI compose fragment (Traefik routing, DB wiring, no host ports). | `services/semaphoreui/compose.yml`. | Static assertions pass for profile, labels, env wiring, internal DB, no public ports. |
+| `tests/smoke/test_semaphoreui_guardrails.sh` | Validate preflight guardrails for Semaphore UI secrets, hostname, OIDC, and observability safety. | `scripts/validate-env.sh`, `mktemp`. | Invalid/placeholder config fails; valid config passes. |
+| `tests/smoke/test_semaphoreui_oidc_wiring.sh` | Validate OIDC config wiring and bootstrap JSON generation path (static). | Semaphore UI compose + bootstrap script. | OIDC env mappings and bootstrap variables are present. |
+| `tests/smoke/test_semaphoreui_observability_wiring.sh` | Validate observability labels/hooks and no public telemetry router by default (static). | Semaphore UI compose fragment. | Observability labels exist and no public telemetry route is defined. |
 
 ## Configuration
 
@@ -48,6 +58,7 @@ Smoke tests use environment variables loaded from `.env` via `scripts/healthchec
 - `BIND_BIND_ADDRESS` (default listener for BIND)
 - `BIND_ALLOW_NONLOCAL_BIND` (must be `true` to allow non-loopback bind)
 - `BIND_SECURITY_TEST_ADDRESS` (optional loopback override for runtime security smoke)
+- `SEMAPHOREUI_*` values when running Semaphore UI guardrails/runtime checks (especially bootstrap-generated secrets and optional OIDC settings)
 
 Ensure `.env` exists (prefer `make bootstrap`) before running tests. Optional profiles
 are enabled by default via `COMPOSE_PROFILES` in `.env`; edit it if you want a smaller stack.
@@ -98,6 +109,16 @@ are enabled by default via `COMPOSE_PROFILES` in `.env`; edit it if you want a s
   - Symptom: `test_bind_security_runtime.sh` fails.
   - Diagnose: check `make bind-logs` and inspect recursion/AXFR/CHAOS behavior with `dig`.
   - Fix: verify `named.conf.template` hardening directives and BIND compose command validation steps.
+
+- **Semaphore UI guardrails fail**
+  - Symptom: `test_semaphoreui_guardrails.sh` fails.
+  - Diagnose: inspect `SEMAPHOREUI_*` values in `.env` (secrets, hostname, OIDC toggles).
+  - Fix: run `make semaphoreui-bootstrap`, then re-run tests. If OIDC is enabled, set provider URL/client credentials and rerun bootstrap.
+
+- **Semaphore UI runtime/OIDC issues**
+  - Symptom: UI loads but OIDC login button/redirect is broken.
+  - Diagnose: verify `SEMAPHOREUI_WEB_ROOT`, `SEMAPHOREUI_OIDC_PROVIDER_URL`, Keycloak client redirect URI, and Traefik hostname.
+  - Fix: align HTTPS hostname and client redirect URI (`https://semaphore.<DEV_DOMAIN>/api/auth/oidc/<provider>/redirect`), rerun `make semaphoreui-bootstrap`.
 
 - **BIND provisioning validation fails**
   - Symptom: `test_bind_provisioning_validation.sh` fails.

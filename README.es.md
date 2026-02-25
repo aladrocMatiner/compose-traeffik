@@ -74,6 +74,7 @@ Guias de TLS:
 - **Whoami**: `https://whoami.${DEV_DOMAIN}` (stack por defecto)
 - **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth; habilitado por defecto)
 - **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (perfil `stepca`; habilitado por defecto)
+- **Semaphore UI**: `https://semaphore.${DEV_DOMAIN}` (perfil `semaphoreui`; HTTPS por Traefik, login local u OIDC opcional)
 
 <a id="services"></a>
 ## Servicios
@@ -83,6 +84,7 @@ Guias de TLS:
 - [DNS (BIND)](services/dns-bind/README.es.md) - perfil opcional `bind`.
 - [Certbot](services/certbot/README.es.md) - perfil opcional `le`.
 - [Step-CA](services/step-ca/README.es.md) - perfil opcional `stepca`.
+- [Semaphore UI](services/semaphoreui/README.es.md) - perfil opcional `semaphoreui` (Traefik + PostgreSQL, OIDC Keycloak opcional).
 
 <a id="docs-map"></a>
 ## Mapa de documentos
@@ -104,6 +106,7 @@ Comandos comunes:
 - `make certs-le-issue`, `make certs-le-renew` (perfil `le`)
 - `make stepca-up`, `make stepca-bootstrap`, `make stepca-trust-install`
 - `make bind-up`, `make bind-status`, `make bind-restart`, `make bind-provision`
+- `make semaphoreui-bootstrap`, `make semaphoreui-up`, `make semaphoreui-status`, `make test-semaphoreui`
 - `make hosts-generate`, `make hosts-apply`, `make hosts-status`
 
 Archivos auth:
@@ -116,6 +119,11 @@ Defaults de seguridad DNS:
 - BIND corre como DNS autoritativo local con recursion desactivada y AXFR bloqueado.
 - `BIND_BIND_ADDRESS` debe mantenerse en loopback por defecto.
 - Para exponer DNS fuera de loopback de forma intencional, usa `BIND_ALLOW_NONLOCAL_BIND=true`.
+
+Notas de Semaphore UI:
+- Agrega `semaphore` a `ENDPOINTS` (o a tu DNS/hosts) si quieres mapping local con `make hosts-*`.
+- La integracion OIDC/Keycloak es opcional y desactivada por defecto.
+- Los hooks de observabilidad son opcionales y desactivados por defecto; la telemetria publica no se expone por defecto.
 
 <a id="testing"></a>
 ## Testing
