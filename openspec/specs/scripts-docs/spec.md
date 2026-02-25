@@ -17,3 +17,17 @@ The system SHALL link to `scripts/README.md` from the root README in a visible l
 - **WHEN** a user reads the root README
 - **THEN** they can navigate to the scripts documentation
 
+### Requirement: Semaphore UI script documentation
+The system SHALL document Semaphore UI operational scripts (including bootstrap) in `scripts/README.md`.
+
+#### Scenario: Semaphore UI script discoverability
+- **WHEN** a user reads `scripts/README.md`
+- **THEN** they can find the Semaphore UI scripts, required inputs, and common usage flows
+
+### Requirement: Scripts docs include observability-related service scripts and toggles
+The system SHALL document observability-related service scripts or bootstrap toggles in `scripts/README.md` when a service introduces them.
+
+#### Scenario: Observability bootstrap or render helper added
+- **WHEN** a service adds scripts or documented workflows related to observability wiring
+- **THEN** `scripts/README.md` describes the scripts and the relevant toggles/side effects
+

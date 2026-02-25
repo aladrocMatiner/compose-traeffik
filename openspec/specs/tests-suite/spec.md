@@ -11,3 +11,17 @@ The documentation for `make test` SHALL include a table that lists each smoke te
 - **THEN** they see a table enumerating each smoke test script with its purpose, prerequisites, and expected output
 - **AND** the list matches the scripts invoked by `scripts/healthcheck.sh`
 
+### Requirement: Semaphore UI tests are included in the documented smoke test inventory
+The system SHALL document Semaphore UI smoke test scripts in the standard `tests/README.md` inventory/table used by the repository.
+
+#### Scenario: Semaphore UI inventory entry
+- **WHEN** a contributor scans the smoke test inventory
+- **THEN** Semaphore UI-specific smoke tests appear with purpose and prerequisites
+
+### Requirement: Smoke test inventory covers service observability wiring checks
+The standard smoke test inventory SHALL include observability wiring smoke tests for services that introduce observability toggles or labels.
+
+#### Scenario: Contributor reviews service observability tests
+- **WHEN** a contributor scans the smoke test inventory table
+- **THEN** they can see which scripts validate observability wiring for each applicable service
+
