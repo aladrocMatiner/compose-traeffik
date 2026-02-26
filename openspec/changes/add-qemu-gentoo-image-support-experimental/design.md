@@ -17,6 +17,7 @@ Por ello, el diseño se centra primero en **calificacion** y **aislamiento**.
 ### Goals
 
 - Definir una ruta de adopcion segura para `Gentoo (Experimental)` en `target=qemu` (`libvirt`).
+- Definir una estrategia dual de variantes de init para Gentoo (`OpenRC` default + `systemd` explicito) sin romper el contrato comun de provisionamiento.
 - Separar explicitamente la calificacion de imagen/provisionamiento del bootstrap Docker.
 - Establecer gates de madurez y evidencia objetiva antes de promover cualquier nivel de soporte.
 - Aislar artefactos, scripts y notas de Gentoo en `experiments/gentoo-qemu/` para minimizar acoplamiento con el flujo estable.
@@ -27,14 +28,14 @@ Por ello, el diseño se centra primero en **calificacion** y **aislamiento**.
 - No implementar soporte `proxmox` para Gentoo en este cambio.
 - No prometer `deployment-ready` con Docker/Compose como resultado directo de esta propuesta.
 - No modificar el contrato base de `vm-provisioning` para otros OS estables.
-- No introducir una matriz completa de variantes Gentoo desde el inicio (se prioriza una baseline calificada).
+- No introducir una matriz completa de variantes Gentoo desde el inicio mas alla de las dos variantes de init planificadas (`OpenRC` y `systemd`).
 
 ## Key Constraints and Assumptions
 
 - `qemu` target usa `libvirt` y debe seguir reutilizando el root Terraform existente para el flujo estable, salvo artefactos de exploracion que queden en `experiments/gentoo-qemu/`.
 - La compatibilidad con `cloud-init` es requisito de entrada para integrar Gentoo en el flujo principal.
 - El soporte se marca como **Experimental** hasta completar evidencia minima definida en este documento.
-- El baseline calificado inicial para `Gentoo (Experimental)` DEBE usar `OpenRC`; variantes `systemd` pueden soportarse como override explicito (`init=systemd`) para provisionamiento experimental si tienen manifest calificado, pero no cambian que el objetivo principal de integracion/promocion sea `OpenRC`.
+- El baseline calificado inicial para `Gentoo (Experimental)` DEBE usar `OpenRC`; la variante `systemd` se planifica como segunda configuracion posible via override explicito (`init=systemd`) con manifest/evidencia propios, pero no cambia que el objetivo principal de integracion/promocion y el default del flujo sean `OpenRC`.
 - El flujo de operador para Gentoo debe permitir seleccionar `init=openrc|systemd`, con `openrc` como valor por defecto cuando `os=gentoo`.
 
 ## Isolation Strategy (Future Repo/Submodule Ready)
@@ -62,6 +63,8 @@ Planned layout (initial):
 - Las referencias a rutas del repo principal deben limitarse a una capa de adaptacion/documentacion para facilitar futura extraccion.
 
 ## Maturity Gates (Required Before Promoting Support)
+
+Los gates se evaluan por variante de init. `OpenRC` define el baseline/default; `systemd` puede alcanzar los mismos gates (o un subconjunto explicitamente documentado) con evidencia separada y metadata de compatibilidad por variante.
 
 ### Gate 0: `discovery-complete`
 
@@ -226,14 +229,15 @@ Si `network-config` v2 falla de forma estructural, decidir entre:
 
 ### Why this matters
 
-Los scripts existentes asumen `systemctl` (Ubuntu). En Gentoo queremos baseline `OpenRC`, pero el operador podra seleccionar `init=systemd` como override experimental. Esto impacta SSH, guest-agent y potencialmente Docker, y exige separar claramente baseline (`OpenRC`) de variante override (`systemd`).
+Los scripts existentes asumen `systemctl` (Ubuntu). En Gentoo queremos baseline `OpenRC`, pero el operador tambien podra seleccionar `init=systemd` como segunda configuracion posible (no-default) cuando este calificada. Esto impacta SSH, guest-agent y potencialmente Docker, y exige separar claramente baseline (`OpenRC`) de variante `systemd` con evidencia por variante.
 
 ### Plan
 
 - Registrar init system real en manifest de imagen.
 - Exigir `OpenRC` para la candidata baseline que aspire a cumplir Gates 1-3 y ser el default del flujo.
-- Permitir imagenes `systemd` como comparativa/fallback de discovery y como variante seleccionable via `init=systemd` cuando exista manifest compatible.
-- Postergar la paridad funcional completa (`OpenRC` + `systemd` en todos los pasos, especialmente bootstrap Docker) hasta despues de integrar un baseline `OpenRC` calificado.
+- Planificar una ruta de calificacion para imagenes `systemd` como variante seleccionable via `init=systemd`, con manifests y evidencia separados de `OpenRC`.
+- Definir por gate el nivel de soporte esperado para `systemd` (minimo `qemu-provisionable`; opcional `ansible-ready` en esta propuesta) y documentar si algun gate queda pendiente.
+- Postergar la paridad funcional completa (`OpenRC` + `systemd` en todos los pasos, especialmente bootstrap Docker) hasta despues de integrar y validar el baseline `OpenRC`.
 
 ### Output
 
@@ -284,7 +288,8 @@ Los scripts existentes asumen `systemctl` (Ubuntu). En Gentoo queremos baseline 
 
 - Introducir selector `os=gentoo` (o equivalente interno `DEPLOYMENT_OS=gentoo`) con `init=openrc|systemd` solo para Gentoo y default `openrc`.
 - Resolver la variante Gentoo mediante manifest metadata por init system (`openrc`/`systemd`) y validar compatibilidad antes de provisionar.
-- Mantener `OpenRC` como baseline promocionable aunque exista soporte de override `systemd`.
+- Mantener `OpenRC` como baseline promocionable y default aunque exista soporte de variante `systemd`.
+- Exponer claramente el nivel de soporte por variante (`openrc`, `systemd`) en mensajes de operador y metadata de readiness.
 - Reutilizar `infra/terraform/targets/libvirt` y cloud-init base solo cuando el delta sea minimo y probado.
 - Mantener scripts de experimentacion en `experiments/gentoo-qemu/` incluso despues de integrar el path principal.
 - No activar `deployment-ready` para Gentoo hasta tener decision explicita de Docker parity.
@@ -293,9 +298,10 @@ Los scripts existentes asumen `systemctl` (Ubuntu). En Gentoo queremos baseline 
 
 1. `deployment-plan` soporta `gentoo` con metadata validada.
 2. `deployment` soporta `gentoo` con `init=openrc` por defecto y alcanza Gate 2 en baseline OpenRC.
-3. `deployment` opcionalmente acepta `init=systemd` si hay manifest calificado para esa variante (experimental/override).
+3. `deployment` opcionalmente acepta `init=systemd` si hay manifest calificado para esa variante (experimental/no-default).
 4. `deployment-wait` soporta `gentoo` y confirma Gate 3 en baseline OpenRC.
-5. `deployment-bootstrap` sigue deshabilitado o experimental hasta follow-up.
+5. `deployment-wait` y checks minimos se habilitan tambien para `init=systemd` cuando la variante alcance el gate declarado.
+6. `deployment-bootstrap` sigue deshabilitado o experimental hasta follow-up.
 
 ## Validation and Evidence Plan
 
@@ -333,6 +339,7 @@ Cada ejecucion de calificacion debe generar (o copiar) evidencia en `experiments
 - Si se habilita password temporal para debugging, debe ser opt-in, con flag explicito y documentado como inseguro.
 - Checksums/firmas de imagen son obligatorios para cualquier perfil promocionado fuera de `discovery`.
 - La seleccion `init=systemd` debe requerir intencion explicita del operador; el default permanece `openrc`.
+- La metadata/errores deben evitar sugerir paridad total entre variantes si una de ellas aun no alcanza el mismo gate.
 
 ## Extraction Readiness Criteria (Future Repo/Submodule)
 
@@ -347,7 +354,7 @@ El directorio `experiments/gentoo-qemu/` se considerara listo para extraerse cua
 ## Open Questions (To Resolve During Stage A/B)
 
 - Fuente exacta de imagen Gentoo (oficial vs imagen preparada por el proyecto) y su politica de snapshots.
-- Si la variante `systemd` quedara limitada a provisioning basico (`deployment`/`deployment-wait`) o tambien se calificara para `ansible-ready`/otros pasos.
+- Si la variante `systemd` se planifica para alcanzar `ansible-ready` en esta misma propuesta o se deja limitada inicialmente a `qemu-provisionable` con follow-up.
 - Nivel minimo de soporte deseado para `python3` (preinstalado vs instalacion documentada post-boot).
 - Si se acepta que `qemu-guest-agent` sea opcional/ausente en Gentoo experimental.
 - Si Docker parity merece cambio separado incluso tras Gate 3.

@@ -3,7 +3,8 @@
 - [ ] 1.1 Confirm that `Gentoo` remains scoped as `Experimental` until all qualification gates are met.
 - [ ] 1.2 Confirm acceptance criteria for this proposal (plan quality + isolated workspace + spec delta clarity).
 - [ ] 1.3 Approve the maturity-gate model (`discovery-complete` -> `image-qualified` -> `qemu-provisionable` -> `ansible-ready` -> `docker-feasibility-assessed`).
-- [x] 1.4 Confirm `OpenRC` as the default/primary qualification target and baseline; allow `systemd` only via explicit `init=systemd` override (experimental) when supported by a qualified manifest.
+- [x] 1.4 Confirm `OpenRC` as the default/primary qualification target and baseline; allow `systemd` as an explicit non-default variant via `init=systemd` (experimental) when supported by a qualified manifest.
+- [ ] 1.5 Confirm target support level for the `systemd` variant in this proposal (`qemu-provisionable` minimum, `ansible-ready` optional) and document it as a gate expectation.
 
 ## 2. Isolated Workspace Scaffolding (`experiments/gentoo-qemu/`)
 
@@ -23,7 +24,7 @@
 - [ ] 3.5 Determine init system (`OpenRC` or `systemd`) for each candidate and mark whether it is eligible for the `OpenRC` baseline.
 - [ ] 3.6 Define pinned image metadata format (URL, version/date, checksum, checksum source, variant, init system).
 - [ ] 3.7 Document checksum/signature verification procedure.
-- [ ] 3.8 Select an `OpenRC` primary candidate and at least one fallback candidate (preferably `OpenRC`; `systemd` fallback allowed as explicit `init=systemd` experimental override candidate).
+- [ ] 3.8 Select an `OpenRC` primary candidate and a `systemd` candidate (or document why `systemd` remains pending) with manifests mapped to `init=openrc|systemd`.
 - [ ] 3.9 Record discovery outcomes and risks in `docs/qualification-matrix.md`.
 
 ## 4. Stage B - Boot and cloud-init Baseline (`image-qualified`)
@@ -36,6 +37,8 @@
 - [ ] 4.6 Capture init system evidence and `OpenRC` service-management commands used by the baseline candidate.
 - [ ] 4.7 Document any cloud-init module gaps or required Gentoo-specific template adjustments.
 - [ ] 4.8 Decide whether the `OpenRC` baseline candidate meets `image-qualified` gate or fallback is required.
+- [ ] 4.9 If a `systemd` candidate is in scope, run the same boot + cloud-init hostname/SSH checks and record evidence separately.
+- [ ] 4.10 Record whether the `systemd` candidate reaches `image-qualified` or remains discovery-only.
 
 ## 5. Stage C - Static Networking on libvirt (`qemu-provisionable`)
 
@@ -47,6 +50,8 @@
 - [ ] 5.6 Run negative test with invalid/incomplete manifest to confirm clear failure behavior.
 - [ ] 5.7 Document any need for Gentoo-specific `network-config` template or fallback strategy.
 - [ ] 5.8 Decide if `qemu-provisionable` gate is met for the selected baseline variant.
+- [ ] 5.9 If `systemd` variant is in scope, validate fixed IP + SSH on libvirt and record a separate pass/fail decision for `qemu-provisionable`.
+- [ ] 5.10 Document any variant-specific networking differences (`OpenRC` vs `systemd`) and required template branching.
 
 ## 6. Stage D - Ansible-Ready Baseline (`ansible-ready`)
 
@@ -55,6 +60,8 @@
 - [ ] 6.3 Document service-check command parity with `OpenRC` (`rc-service`, `rc-update`) and any comparison notes against `systemctl`.
 - [ ] 6.4 Define a Gentoo-specific readiness check command set (without Docker).
 - [ ] 6.5 Capture evidence for `ansible-ready` gate and unresolved caveats.
+- [ ] 6.6 Decide whether `systemd` is targeted for `ansible-ready` in this proposal iteration.
+- [ ] 6.7 If yes, validate `python3`, SSH/sudo, and readiness checks for `init=systemd` and record evidence separately.
 
 ## 7. Stage E - Docker/Compose Feasibility Assessment (Decision Input)
 
@@ -73,6 +80,8 @@
 - [ ] 8.4 Define cloud-init template branching strategy (shared template vs Gentoo-specific override).
 - [ ] 8.5 Define guardrails so `deployment-bootstrap` remains disabled or experimental until Docker parity is approved.
 - [ ] 8.6 Define operator-facing error messages for invalid `init` values, use of `init` with non-Gentoo OS, unsupported Gentoo variants, or unqualified manifests.
+- [ ] 8.7 Define how operator-facing messages expose per-variant support level (`OpenRC` vs `systemd`) without implying parity.
+- [ ] 8.8 Define readiness metadata fields (or manifest flags) needed to represent gate status per init variant.
 
 ## 9. Evidence and Documentation
 
@@ -81,6 +90,7 @@
 - [ ] 9.3 Capture per-run artifacts under `artifacts/runs/<timestamp>/` (logs, outputs, notes).
 - [ ] 9.4 Record at least one failed candidate or negative test (if encountered) to preserve learning.
 - [ ] 9.5 Document extraction-readiness status for the isolated workspace.
+- [ ] 9.6 Maintain an init-variant evidence matrix (`OpenRC` / `systemd`) with gate status per variant.
 
 ## 10. OpenSpec Validation and Review
 

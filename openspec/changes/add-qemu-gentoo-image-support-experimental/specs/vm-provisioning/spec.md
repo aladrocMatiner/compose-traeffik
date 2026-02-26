@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: QEMU target supports qualified Gentoo (Experimental) image profiles with init selection
-The `vm-provisioning` workflow SHALL support selecting a `gentoo` OS profile for `target=qemu` (local `libvirt`) with an init-system selector `init=<openrc|systemd>`, where `openrc` is the default when `init` is omitted, and provisioning is allowed only when the selected Gentoo experimental image profile variant is qualified with documented image metadata (including pinning and integrity information) and `cloud-init`-compatible provisioning defaults for the shared contract (hostname, fixed IP, SSH access).
+The `vm-provisioning` workflow SHALL support selecting a `gentoo` OS profile for `target=qemu` (local `libvirt`) with an init-system selector `init=<openrc|systemd>`, where `openrc` is the default when `init` is omitted. Provisioning is allowed only when the selected Gentoo experimental image profile variant is qualified with documented image metadata (including pinning and integrity information) and `cloud-init`-compatible provisioning defaults for the shared contract (hostname, fixed IP, SSH access). Qualification and support level MUST be tracked per init variant so `openrc` and `systemd` can progress independently without changing the Gentoo default.
 
 #### Scenario: Operator provisions Gentoo on qemu without specifying init
 - **WHEN** an operator runs the qemu provisioning workflow with `os=gentoo`, valid networking/SSH inputs, and no explicit `init` value
@@ -11,8 +11,14 @@ The `vm-provisioning` workflow SHALL support selecting a `gentoo` OS profile for
 
 #### Scenario: Operator provisions Gentoo with explicit systemd init override
 - **WHEN** an operator runs the qemu provisioning workflow with `os=gentoo` and `init=systemd`
-- **THEN** the workflow attempts to use the qualified Gentoo `systemd` image profile manifest for qemu provisioning
+- **THEN** the workflow uses the qualified Gentoo `systemd` image profile manifest for qemu provisioning
+- **AND** the workflow applies the same shared provisioning contract (hostname, fixed IP, SSH access) when the `systemd` variant is qualified for that workflow step
 - **AND** the workflow clearly indicates that `openrc` remains the default Gentoo baseline when relevant to readiness or support level messaging
+
+#### Scenario: Operator selects systemd variant before it reaches the requested gate
+- **WHEN** an operator runs the qemu provisioning workflow with `os=gentoo` and `init=systemd` but the `systemd` profile metadata does not declare support for the requested workflow step/gate
+- **THEN** the workflow fails before claiming readiness
+- **AND** the error message identifies that the `systemd` variant exists but is not yet qualified for that specific gate
 
 #### Scenario: Gentoo image profile variant is not yet qualified
 - **WHEN** an operator selects `os=gentoo` with an init variant whose required Gentoo image profile metadata is missing, invalid, or marked unqualified for qemu provisioning
