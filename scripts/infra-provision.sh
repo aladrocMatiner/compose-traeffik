@@ -147,9 +147,9 @@ resolve_base_image_config() {
       ;;
     gentoo)
       if [[ "${INIT_SYSTEM}" == "systemd" ]]; then
-        BASE_IMAGE_LABEL="Gentoo (systemd cloud-init)"
-        BASE_IMAGE_URL="${DEPLOYMENT_GENTOO_SYSTEMD_IMAGE_URL:-https://distfiles.gentoo.org/releases/amd64/autobuilds/20260222T170100Z/di-amd64-cloudinit-20260222T170100Z.qcow2}"
-        BASE_IMAGE_PATH="${DEPLOYMENT_GENTOO_SYSTEMD_IMAGE_PATH:-${REPO_ROOT}/infra/images/gentoo/systemd/di-amd64-cloudinit-20260222T170100Z.qcow2}"
+        BASE_IMAGE_LABEL="Gentoo (systemd cloud-init, experimental)"
+        BASE_IMAGE_URL="${DEPLOYMENT_GENTOO_SYSTEMD_IMAGE_URL:-}"
+        BASE_IMAGE_PATH="${DEPLOYMENT_GENTOO_SYSTEMD_IMAGE_PATH:-${REPO_ROOT}/infra/images/gentoo/systemd/gentoo-systemd-cloudinit-hostkernel.qcow2}"
       else
         BASE_IMAGE_LABEL="Gentoo (openrc cloud-init, experimental)"
         BASE_IMAGE_URL="${DEPLOYMENT_GENTOO_OPENRC_IMAGE_URL:-}"
@@ -173,6 +173,23 @@ ensure_gentoo_openrc_image_built() {
 
   [[ -x "${builder_path}" ]] || die "Gentoo OpenRC image builder not found or not executable: ${builder_path}"
   log "Building Gentoo OpenRC cloud-init image (experimental) at ${BASE_IMAGE_PATH}"
+  "${builder_path}" --output "${BASE_IMAGE_PATH}"
+}
+
+ensure_gentoo_systemd_image_built() {
+  local builder_path="${REPO_ROOT}/experiments/gentoo-qemu/scripts/build-systemd-cloud-image.sh"
+  local auto_build="${DEPLOYMENT_GENTOO_SYSTEMD_AUTO_BUILD:-true}"
+
+  if [[ -f "${BASE_IMAGE_PATH}" ]]; then
+    return 0
+  fi
+
+  if [[ "${auto_build}" != "true" ]]; then
+    die "Gentoo systemd image missing and auto-build disabled (DEPLOYMENT_GENTOO_SYSTEMD_AUTO_BUILD=${auto_build}): ${BASE_IMAGE_PATH}"
+  fi
+
+  [[ -x "${builder_path}" ]] || die "Gentoo systemd image builder not found or not executable: ${builder_path}"
+  log "Building Gentoo systemd cloud-init image (experimental) at ${BASE_IMAGE_PATH}"
   "${builder_path}" --output "${BASE_IMAGE_PATH}"
 }
 
@@ -283,14 +300,6 @@ DEPLOYMENT_UBUNTU_IMAGE_PATH="${DEPLOYMENT_UBUNTU_IMAGE_PATH:-${REPO_ROOT}/infra
 
 resolve_base_image_config
 
-if [[ "${OS_FAMILY}" == "gentoo" && "${INIT_SYSTEM}" == "systemd" ]]; then
-  # Gentoo official cloud-init qcow2 boots reliably with UEFI/q35 on this host.
-  DEPLOYMENT_LIBVIRT_FIRMWARE="${DEPLOYMENT_LIBVIRT_FIRMWARE:-/usr/share/OVMF/OVMF_CODE_4M.fd}"
-  DEPLOYMENT_LIBVIRT_MACHINE="${DEPLOYMENT_LIBVIRT_MACHINE:-q35}"
-  DEPLOYMENT_LIBVIRT_ATTACH_CLOUDINIT_AS_SCSI="true"
-  DEPLOYMENT_LIBVIRT_REMOVE_IDE_CONTROLLER="true"
-fi
-
 if [[ -z "${DEPLOYMENT_VM_MAC:-}" ]]; then
   DEPLOYMENT_VM_MAC="$(derive_mac_from_ip "${DEPLOYMENT_VM_IP}")" || die "Unable to derive MAC from DEPLOYMENT_VM_IP=${DEPLOYMENT_VM_IP}"
 fi
@@ -310,6 +319,8 @@ fi
 if [[ ("${ACTION}" == "apply" || "${ACTION}" == "plan") && "${SKIP_IMAGE_FETCH}" != "true" ]]; then
   if [[ "${OS_FAMILY}" == "gentoo" && "${INIT_SYSTEM}" == "openrc" ]]; then
     ensure_gentoo_openrc_image_built
+  elif [[ "${OS_FAMILY}" == "gentoo" && "${INIT_SYSTEM}" == "systemd" ]]; then
+    ensure_gentoo_systemd_image_built
   fi
   mkdir -p "$(dirname "${BASE_IMAGE_PATH}")"
   if [[ ! -f "${BASE_IMAGE_PATH}" ]]; then

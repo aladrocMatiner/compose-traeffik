@@ -39,9 +39,40 @@ runcmd:
 %{ endif ~}
 
 %{ if os_family == "gentoo" && init_system == "systemd" ~}
+write_files:
+  - path: /usr/local/sbin/compose-traeffik-gentoo-systemd-net.sh
+    permissions: "0755"
+    owner: root:root
+    content: |
+      #!/bin/sh
+      set -eu
+      iface="$(ip -o link show | awk -F': ' '$2 != "lo" {print $2; exit}')"
+      iface="$${iface%%@*}"
+      [ -n "$${iface}" ] || exit 1
+      mkdir -p /etc/systemd/network
+      rm -f /etc/systemd/network/20-wired-dhcp.network
+      cat >/etc/systemd/network/10-compose-traeffik-static.network <<NETEOF
+      [Match]
+      Name=$${iface}
+
+      [Network]
+      Address=${vm_ip}/${vm_cidr_prefix}
+      Gateway=${vm_gateway}
+%{ for dns in dns_servers ~}
+      DNS=${dns}
+%{ endfor ~}
+      NETEOF
+      ip -4 addr flush dev "$${iface}" scope global || true
+      systemctl enable --now systemd-networkd systemd-resolved || true
+      ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf || true
+      systemctl restart systemd-networkd || true
+      systemctl restart sshd || systemctl restart ssh || true
+
 runcmd:
-  # Gentoo cloud-init images already include cloud-init/SSH; keep bootstrap minimal.
+  # Gentoo systemd path: image boots with DHCP (networkd), then cloud-init applies static network.
+  - [ sh, -c, "/usr/local/sbin/compose-traeffik-gentoo-systemd-net.sh" ]
   - [ sh, -c, "systemctl enable --now sshd || systemctl enable --now ssh || true" ]
+  - [ sh, -c, "systemctl enable --now qemu-guest-agent || true" ]
 %{ endif ~}
 
 %{ if os_family == "gentoo" && init_system == "openrc" ~}

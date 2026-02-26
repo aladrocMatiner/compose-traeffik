@@ -5,8 +5,8 @@ ethernets:
       macaddress: "${vm_mac}"
     set-name: ${guest_interface_name}
 %{ if os_family == "gentoo" && init_system == "systemd" ~}
-    # Gentoo cloud-init QCOW2 (official) currently validates more reliably with DHCP first boot.
-    # Static addressing for Gentoo is tracked separately once the guest is reachable for inspection.
+    # Gentoo systemd path uses a baked DHCP networkd profile for first boot and
+    # applies the static address in cloud-init runcmd (systemd-networkd config).
     dhcp4: true
 %{ else ~}
     dhcp4: false
