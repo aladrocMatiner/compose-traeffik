@@ -13,6 +13,10 @@ users:
     sudo: ALL=(ALL) NOPASSWD:ALL
     groups: [adm, sudo]
 %{ endif ~}
+%{ if os_family == "debian" ~}
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    groups: [sudo]
+%{ endif ~}
 %{ if os_family == "gentoo" ~}
     sudo: ALL=(ALL) NOPASSWD:ALL
     groups: [wheel]
@@ -22,14 +26,16 @@ users:
     ssh_authorized_keys:
       - ${ssh_public_key}
 
-%{ if os_family == "ubuntu" ~}
+%{ if os_family == "ubuntu" || os_family == "debian" ~}
 package_update: true
 package_upgrade: false
 packages:
   - openssh-server
   - qemu-guest-agent
   - python3
+%{ if os_family == "ubuntu" || os_family == "debian" ~}
   - python3-apt
+%{ endif ~}
   - curl
   - ca-certificates
 

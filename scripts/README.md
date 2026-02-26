@@ -41,10 +41,10 @@ Preflight validation:
 | `scripts/ca-config-verify.sh` | Validate shared CA configuration | `./scripts/ca-config-verify.sh` | `DEV_DOMAIN`, `CA_*`, `LEAF_*` (or legacy `STEP_CA_*`) | Prints effective CA configuration |
 | `scripts/hosts-subdomains.sh` | Manage hosts block for loopback subdomains | `make hosts-apply` | `BASE_DOMAIN`, `LOOPBACK_X` | Modifies hosts file (with sudo) |
 | `scripts/bind-provision.sh` | Generate BIND zone file from ENDPOINTS | `make bind-provision` | `BASE_DOMAIN`, `LOOPBACK_X`, `ENDPOINTS` | Writes `services/dns-bind/zones` |
-| `scripts/infra-provision.sh` | Provision/destroy local deployment VMs (interface: `os=ubuntu|debian|gentoo`, Gentoo `init=openrc|systemd`; v1 implementation: libvirt + Ubuntu) with Terraform + cloud-init | `make deployment`, `make deployment-destroy` | `DEPLOYMENT_*` overrides (optional) | Creates/destroys libvirt VM resources, downloads Ubuntu image |
+| `scripts/infra-provision.sh` | Provision/destroy local deployment VMs (interface: `os=ubuntu|debian13|gentoo`, Gentoo `init=openrc|systemd`; `debian` alias -> `debian13`) with Terraform + cloud-init | `make deployment`, `make deployment-destroy` | `DEPLOYMENT_*` overrides (optional) | Creates/destroys libvirt VM resources, downloads/verifies cloud images |
 | `scripts/host-wait-ssh.sh` | Wait for SSH reachability and cloud-init completion on a provisioned VM | `make deployment-wait` | Terraform state (default) or host/user args | Waits/polls remote host |
-| `scripts/host-bootstrap.sh` | Install Docker Engine + Compose plugin over SSH on a provisioned Ubuntu VM | `make deployment-bootstrap` | Terraform state (default) or host/user args | Modifies remote host packages and Docker config |
-| `scripts/host-bootstrap-check.sh` | Verify SSH/Python/Docker readiness on a provisioned Ubuntu VM | `make deployment-bootstrap-check` | Terraform state (default) or host/user args | Reads remote host state |
+| `scripts/host-bootstrap.sh` | Install Docker Engine + Compose plugin over SSH on a provisioned Ubuntu/Debian 13 VM | `make deployment-bootstrap` | Terraform state (default) or host/user args | Modifies remote host packages and Docker config |
+| `scripts/host-bootstrap-check.sh` | Verify SSH/Python/Docker readiness on a provisioned Ubuntu/Debian 13 VM | `make deployment-bootstrap-check` | Terraform state (default) or host/user args | Reads remote host state |
 | `scripts/common.sh` | Shared helpers | sourced by other scripts | none | none |
 
 ## Workflows
@@ -72,11 +72,12 @@ make bind-down
 ### VM provisioning and host bootstrap (Phase 1)
 
 ```bash
-make deployment                # provision Ubuntu VM (libvirt target)
+make deployment                # provision Ubuntu VM (libvirt target, default)
 make deployment os=ubuntu      # explicit selector syntax (implemented)
-make deployment os=debian      # parsed, fails fast (not implemented yet)
-make deployment os=gentoo      # parsed as init=openrc by default, fails fast (not implemented yet)
-make deployment os=gentoo init=systemd  # explicit experimental variant selection (parsed, not implemented yet)
+make deployment os=debian13    # Debian 13 qemu/libvirt (implemented)
+make deployment os=debian      # alias of debian13
+make deployment os=gentoo      # Gentoo qemu/libvirt experimental (default init=openrc)
+make deployment os=gentoo init=systemd  # explicit experimental variant selection
 make deployment-wait           # wait for SSH + cloud-init
 make deployment-output         # inspect outputs (IP, SSH user, metadata)
 make deployment-ssh            # connect to the VM
@@ -87,7 +88,8 @@ make deployment-ready          # end-to-end provisioning + Docker-ready host
 
 Notes:
 - `init=` is only valid with `os=gentoo`.
-- Docker bootstrap/check scripts remain Ubuntu-only in the current implementation.
+- Docker bootstrap/check scripts currently support `ubuntu` and `debian13`.
+- Gentoo provisioning is experimental; Docker bootstrap/check for Gentoo are not implemented in these scripts.
 
 ### Certificates
 

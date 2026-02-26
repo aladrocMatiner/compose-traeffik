@@ -24,7 +24,7 @@ SHELL := /bin/bash # Ensure bash is used for shell commands
         bind-up bind-down bind-restart bind-logs bind-status bind-provision bind-provision-dry bind-port-check \
         deployment deployment-ubuntu deployment-plan deployment-destroy deployment-output deployment-ssh \
         deployment-wait deployment-bootstrap deployment-bootstrap-check deployment-ready \
-        ubuntu debian gentoo libvirt
+        ubuntu debian debian13 gentoo libvirt
 
 # Include .env for environment variables if it exists.
 # This makes variables in .env available to the Makefile.
@@ -73,7 +73,7 @@ ifneq ($(ENV_FILE),)
 BIND_ENV_ARGS += --env-file $(ENV_FILE)
 endif
 
-# Deployment provisioning options (interface supports os=/init=; implementation remains Ubuntu-first)
+# Deployment provisioning options (qemu/libvirt provisioning supports ubuntu, debian13, gentoo)
 DEPLOYMENT_TARGET ?= libvirt
 DEPLOYMENT_OS ?= ubuntu
 DEPLOYMENT_INIT ?=
@@ -100,8 +100,12 @@ DEPLOYMENT_OS := ubuntu
 $(eval ubuntu:;@:)
 endif
 ifneq (,$(filter debian,$(MAKECMDGOALS)))
-DEPLOYMENT_OS := debian
+DEPLOYMENT_OS := debian13
 $(eval debian:;@:)
+endif
+ifneq (,$(filter debian13,$(MAKECMDGOALS)))
+DEPLOYMENT_OS := debian13
+$(eval debian13:;@:)
 endif
 ifneq (,$(filter gentoo,$(MAKECMDGOALS)))
 DEPLOYMENT_OS := gentoo
@@ -372,22 +376,23 @@ help:
 	@echo "  bind-provision-dry    Print the generated zone file without writing."
 	@echo "  bind-port-check       Validate host port 53 is free before starting BIND."
 	@echo ""
-	@echo "VM Deployment Provisioning (Phase 1, libvirt target; Ubuntu implemented, Debian/Gentoo interface scaffolded):"
+	@echo "VM Deployment Provisioning (Phase 1, libvirt target; Ubuntu + Debian13 + Gentoo experimental):"
 	@echo "  deployment            Provision a VM on local libvirt (defaults to os=ubuntu)."
 	@echo "  deployment-plan       Run terraform plan for the deployment VM."
 	@echo "  deployment-output     Print terraform outputs (JSON) for the provisioned VM."
 	@echo "  deployment-ssh        SSH into the provisioned VM using terraform outputs."
 	@echo "  deployment-wait       Wait for SSH and cloud-init completion on the provisioned VM."
-	@echo "  deployment-bootstrap  Install Docker Engine + Compose plugin on the provisioned Ubuntu VM."
+	@echo "  deployment-bootstrap  Install Docker Engine + Compose plugin on the provisioned Ubuntu/Debian13 VM."
 	@echo "  deployment-bootstrap-check  Verify SSH, Python, Docker and Compose on the provisioned VM."
 	@echo "  deployment-ready      End-to-end: provision + wait + Docker bootstrap + readiness check."
 	@echo "  deployment-destroy    Destroy the provisioned VM and related resources."
 	@echo "  deployment-ubuntu     Alias for 'make deployment DEPLOYMENT_TARGET=libvirt DEPLOYMENT_OS=ubuntu'."
 	@echo "                       You can also run: make deployment ubuntu"
 	@echo "                       (GNU Make does not support custom flags like '--ubuntu')."
-	@echo "  New selector syntax:  make deployment os=<ubuntu|debian|gentoo> [init=<openrc|systemd>]"
+	@echo "  New selector syntax:  make deployment os=<ubuntu|debian13|gentoo> [init=<openrc|systemd>]"
+	@echo "                       'debian' is accepted as an alias of 'debian13'."
 	@echo "                       'init' is only valid for os=gentoo and defaults to openrc."
-	@echo "                       Current provisioning implementation is Ubuntu-only; Debian/Gentoo fail fast with clear errors."
+	@echo "                       Docker bootstrap/checks currently support ubuntu and debian13; gentoo remains separate/experimental."
 	@echo "  Common overrides: DEPLOYMENT_VM_NAME, DEPLOYMENT_VM_IP, DEPLOYMENT_VM_GATEWAY,"
 	@echo "                    DEPLOYMENT_DNS_SERVERS, DEPLOYMENT_SSH_USER, DEPLOYMENT_SSH_PUBKEY_PATH"
 	@echo ""

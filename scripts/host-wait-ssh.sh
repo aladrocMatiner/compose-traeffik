@@ -8,7 +8,7 @@ usage() {
   cat <<'EOF'
 Usage:
   scripts/host-wait-ssh.sh [--host IP] [--user USER] [--port PORT] [--identity PATH]
-                           [--target libvirt] [--os <ubuntu|debian|gentoo>]
+                           [--target libvirt] [--os <ubuntu|debian|debian13|gentoo>]
                            [--init <openrc|systemd>] [--terraform-dir DIR]
                            [--timeout SECONDS] [--interval SECONDS] [--skip-cloud-init-wait]
 
@@ -44,9 +44,13 @@ validate_target_os_init() {
 
   [[ "${TARGET}" == "libvirt" ]] || die "Unsupported --target '${TARGET}'. Supported values: libvirt"
   case "${OS_FAMILY}" in
-    ubuntu|debian|gentoo) ;;
-    *) die "Unsupported --os '${OS_FAMILY}'. Supported values: ubuntu, debian, gentoo" ;;
+    ubuntu|debian|debian13|gentoo) ;;
+    *) die "Unsupported --os '${OS_FAMILY}'. Supported values: ubuntu, debian, debian13, gentoo" ;;
   esac
+
+  if [[ "${OS_FAMILY}" == "debian" ]]; then
+    OS_FAMILY="debian13"
+  fi
 
   if [[ "${OS_FAMILY}" == "gentoo" ]]; then
     if [[ -z "${INIT_SYSTEM}" ]]; then

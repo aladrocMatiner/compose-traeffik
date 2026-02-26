@@ -8,7 +8,7 @@ usage() {
   cat <<'EOF'
 Usage:
   scripts/host-bootstrap.sh [--host IP] [--user USER] [--port PORT] [--identity PATH]
-                           [--target libvirt] [--os <ubuntu|debian|gentoo>]
+                           [--target libvirt] [--os <ubuntu|debian|debian13|gentoo>]
                            [--init <openrc|systemd>] [--terraform-dir DIR]
 
 Defaults:
@@ -16,7 +16,7 @@ Defaults:
   - Uses current SSH agent / default SSH keys unless --identity is provided
 
 This script installs Docker Engine and Docker Compose plugin on a provisioned host.
-Current implementation supports Ubuntu only.
+Current implementation supports Ubuntu and Debian 13 (Docker CE repo).
 EOF
 }
 
@@ -52,9 +52,13 @@ validate_target_os_init() {
 
   [[ "${TARGET}" == "libvirt" ]] || die "Unsupported --target '${TARGET}'. Supported values: libvirt"
   case "${OS_FAMILY}" in
-    ubuntu|debian|gentoo) ;;
-    *) die "Unsupported --os '${OS_FAMILY}'. Supported values: ubuntu, debian, gentoo" ;;
+    ubuntu|debian|debian13|gentoo) ;;
+    *) die "Unsupported --os '${OS_FAMILY}'. Supported values: ubuntu, debian, debian13, gentoo" ;;
   esac
+
+  if [[ "${OS_FAMILY}" == "debian" ]]; then
+    OS_FAMILY="debian13"
+  fi
 
   if [[ "${OS_FAMILY}" == "gentoo" ]]; then
     if [[ -z "${INIT_SYSTEM}" ]]; then
@@ -141,11 +145,11 @@ while [[ $# -gt 0 ]]; do
 done
 
 validate_target_os_init
-if [[ "${OS_FAMILY}" != "ubuntu" ]]; then
+if [[ "${OS_FAMILY}" != "ubuntu" && "${OS_FAMILY}" != "debian13" ]]; then
   if [[ "${OS_FAMILY}" == "gentoo" ]]; then
-    die "Docker bootstrap is not implemented for --os gentoo --init ${INIT_SYSTEM} in v1 (current implementation: ubuntu only)"
+    die "Docker bootstrap is not implemented for --os gentoo --init ${INIT_SYSTEM} in v1 (current implementation: ubuntu/debian13 only)"
   fi
-  die "Docker bootstrap is not implemented for --os ${OS_FAMILY} in v1 (current implementation: ubuntu only)"
+  die "Docker bootstrap is not implemented for --os ${OS_FAMILY} in v1 (current implementation: ubuntu/debian13 only)"
 fi
 
 check_cmd ssh
@@ -193,8 +197,8 @@ run_root() {
 
 arch="$(dpkg --print-architecture)"
 . /etc/os-release
-if [ "${ID:-}" != "ubuntu" ]; then
-  echo "[remote] ERROR: unsupported distro '${ID:-unknown}', expected ubuntu" >&2
+if [ "${ID:-}" != "ubuntu" ] && [ "${ID:-}" != "debian" ]; then
+  echo "[remote] ERROR: unsupported distro '${ID:-unknown}', expected ubuntu or debian" >&2
   exit 1
 fi
 
@@ -209,7 +213,8 @@ if [ ! -f /etc/apt/keyrings/docker.asc ]; then
   run_root chmod a+r /etc/apt/keyrings/docker.asc
 fi
 
-repo_line="deb [arch=${arch} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu ${VERSION_CODENAME} stable"
+docker_repo_os="${ID}"
+repo_line="deb [arch=${arch} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/${docker_repo_os} ${VERSION_CODENAME} stable"
 if [ ! -f /etc/apt/sources.list.d/docker.list ] || ! grep -Fxq "${repo_line}" /etc/apt/sources.list.d/docker.list; then
   printf '%s\n' "${repo_line}" | run_root tee /etc/apt/sources.list.d/docker.list >/dev/null
 fi

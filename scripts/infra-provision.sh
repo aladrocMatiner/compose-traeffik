@@ -8,7 +8,7 @@ usage() {
   cat <<'EOF'
 Usage:
   scripts/infra-provision.sh <apply|plan|destroy|output|ssh> [--target libvirt]
-                            [--os <ubuntu|debian|gentoo>] [--init <openrc|systemd>]
+                            [--os <ubuntu|debian|debian13|gentoo>] [--init <openrc|systemd>]
 
 Environment overrides (selected):
   DEPLOYMENT_VM_NAME
@@ -22,6 +22,10 @@ Environment overrides (selected):
   DEPLOYMENT_INIT
   DEPLOYMENT_UBUNTU_IMAGE_URL
   DEPLOYMENT_UBUNTU_IMAGE_PATH
+  DEPLOYMENT_DEBIAN13_IMAGE_URL
+  DEPLOYMENT_DEBIAN13_IMAGE_PATH
+  DEPLOYMENT_DEBIAN13_IMAGE_SHA512
+  DEPLOYMENT_DEBIAN13_SHA512SUMS_URL
   DEPLOYMENT_GENTOO_SYSTEMD_IMAGE_URL
   DEPLOYMENT_GENTOO_SYSTEMD_IMAGE_PATH
   DEPLOYMENT_GENTOO_OPENRC_IMAGE_URL
@@ -37,9 +41,10 @@ Environment overrides (selected):
   DEPLOYMENT_LIBVIRT_REMOVE_IDE_CONTROLLER
 
 Notes:
-  - Interface supports --os ubuntu|debian|gentoo.
+  - Interface supports --os ubuntu|debian|debian13|gentoo.
+  - --os debian is treated as an alias of debian13 (current Debian profile).
   - --init is only valid with --os gentoo and defaults to openrc.
-  - Gentoo/openrc uses a project-built experimental qcow2 image (built on demand if missing).
+  - Gentoo/openrc and Gentoo/systemd use project-built experimental qcow2 images (built on demand if missing).
   - The wrapper auto-detects a local SSH public key if DEPLOYMENT_SSH_PUBKEY_PATH is not set.
 EOF
 }
@@ -105,6 +110,20 @@ derive_mac_from_ip() {
   printf '52:54:%02x:%02x:%02x:%02x\n' "${a}" "${b}" "${c}" "${d}"
 }
 
+sha512_file() {
+  local file_path="$1"
+  sha512sum "${file_path}" | awk '{print $1}'
+}
+
+fetch_debian_sha512_from_sums() {
+  local sums_url="$1"
+  local image_name="$2"
+  local line
+  line="$(curl -fsSL "${sums_url}" | awk -v f="${image_name}" '$2 == f { print; exit }')"
+  [[ -n "${line}" ]] || return 1
+  printf '%s\n' "${line%% *}"
+}
+
 validate_target_os_init() {
   TARGET="${TARGET,,}"
   OS_FAMILY="${OS_FAMILY,,}"
@@ -114,9 +133,14 @@ validate_target_os_init() {
 
   [[ "${TARGET}" == "libvirt" ]] || die "Unsupported --target '${TARGET}'. Supported values: libvirt"
   case "${OS_FAMILY}" in
-    ubuntu|debian|gentoo) ;;
-    *) die "Unsupported --os '${OS_FAMILY}'. Supported values: ubuntu, debian, gentoo" ;;
+    ubuntu|debian|debian13|gentoo) ;;
+    *) die "Unsupported --os '${OS_FAMILY}'. Supported values: ubuntu, debian, debian13, gentoo" ;;
   esac
+
+  if [[ "${OS_FAMILY}" == "debian" ]]; then
+    warn "--os debian is currently an alias for --os debian13"
+    OS_FAMILY="debian13"
+  fi
 
   if [[ "${OS_FAMILY}" == "gentoo" ]]; then
     if [[ -z "${INIT_SYSTEM}" ]]; then
@@ -135,6 +159,10 @@ resolve_base_image_config() {
   BASE_IMAGE_LABEL=""
   BASE_IMAGE_URL=""
   BASE_IMAGE_PATH=""
+  BASE_IMAGE_SHA512=""
+  BASE_IMAGE_SHA512SUMS_URL=""
+  BASE_IMAGE_EXPECTED_NAME=""
+  TEMPLATE_OS_FAMILY="${OS_FAMILY}"
 
   case "${OS_FAMILY}" in
     ubuntu)
@@ -142,8 +170,14 @@ resolve_base_image_config() {
       BASE_IMAGE_URL="${DEPLOYMENT_UBUNTU_IMAGE_URL:-https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img}"
       BASE_IMAGE_PATH="${DEPLOYMENT_UBUNTU_IMAGE_PATH:-${REPO_ROOT}/infra/images/ubuntu/noble-server-cloudimg-amd64.img}"
       ;;
-    debian)
-      die "Debian provisioning is not implemented yet in v1 (interface is available, image profile pending)"
+    debian13)
+      BASE_IMAGE_LABEL="Debian 13 (genericcloud, pinned)"
+      BASE_IMAGE_URL="${DEPLOYMENT_DEBIAN13_IMAGE_URL:-https://cloud.debian.org/images/cloud/trixie/20260220-2394/debian-13-genericcloud-amd64-20260220-2394.qcow2}"
+      BASE_IMAGE_PATH="${DEPLOYMENT_DEBIAN13_IMAGE_PATH:-${REPO_ROOT}/infra/images/debian/debian-13-genericcloud-amd64-20260220-2394.qcow2}"
+      BASE_IMAGE_SHA512="${DEPLOYMENT_DEBIAN13_IMAGE_SHA512:-6da628d0f44ddcc8641d5ed1c7a1b4841ccf6608810a8f7aae860db51e9975e76b3c230728560337b615f8b610a34a760cf9d18e8ddb55c48608a06724ea0892}"
+      BASE_IMAGE_SHA512SUMS_URL="${DEPLOYMENT_DEBIAN13_SHA512SUMS_URL:-https://cloud.debian.org/images/cloud/trixie/20260220-2394/SHA512SUMS}"
+      BASE_IMAGE_EXPECTED_NAME="$(basename "${BASE_IMAGE_URL}")"
+      TEMPLATE_OS_FAMILY="debian"
       ;;
     gentoo)
       if [[ "${INIT_SYSTEM}" == "systemd" ]]; then
@@ -157,6 +191,29 @@ resolve_base_image_config() {
       fi
       ;;
   esac
+}
+
+verify_base_image_integrity() {
+  [[ -f "${BASE_IMAGE_PATH}" ]] || die "${BASE_IMAGE_LABEL} image file not found: ${BASE_IMAGE_PATH}"
+
+  if [[ -n "${BASE_IMAGE_SHA512SUMS_URL}" && -n "${BASE_IMAGE_EXPECTED_NAME}" ]]; then
+    local sums_sha512
+    sums_sha512="$(fetch_debian_sha512_from_sums "${BASE_IMAGE_SHA512SUMS_URL}" "${BASE_IMAGE_EXPECTED_NAME}")" || \
+      die "Failed to resolve SHA512 for ${BASE_IMAGE_EXPECTED_NAME} from ${BASE_IMAGE_SHA512SUMS_URL}"
+    if [[ -n "${BASE_IMAGE_SHA512}" && "${BASE_IMAGE_SHA512}" != "${sums_sha512}" ]]; then
+      die "Configured SHA512 for ${BASE_IMAGE_EXPECTED_NAME} does not match upstream sums file (${BASE_IMAGE_SHA512SUMS_URL})"
+    fi
+    BASE_IMAGE_SHA512="${sums_sha512}"
+  fi
+
+  if [[ -n "${BASE_IMAGE_SHA512}" ]]; then
+    check_cmd sha512sum
+    local actual_sha512
+    actual_sha512="$(sha512_file "${BASE_IMAGE_PATH}")"
+    [[ "${actual_sha512}" == "${BASE_IMAGE_SHA512}" ]] || \
+      die "${BASE_IMAGE_LABEL} checksum mismatch for ${BASE_IMAGE_PATH}: expected ${BASE_IMAGE_SHA512}, got ${actual_sha512}"
+    log "Verified ${BASE_IMAGE_LABEL} SHA512 (${actual_sha512})"
+  fi
 }
 
 ensure_gentoo_openrc_image_built() {
@@ -259,7 +316,7 @@ fi
 if [[ -z "${DEPLOYMENT_VM_NAME:-}" ]]; then
   case "${OS_FAMILY}" in
     ubuntu) DEPLOYMENT_VM_NAME="compose-traeffik-ubuntu" ;;
-    debian) DEPLOYMENT_VM_NAME="compose-traeffik-debian" ;;
+    debian13) DEPLOYMENT_VM_NAME="compose-traeffik-debian13" ;;
     gentoo)
       if [[ "${INIT_SYSTEM}" == "systemd" ]]; then
         DEPLOYMENT_VM_NAME="compose-traeffik-gentoo-systemd"
@@ -277,7 +334,7 @@ DEPLOYMENT_DNS_SERVERS="${DEPLOYMENT_DNS_SERVERS:-1.1.1.1,8.8.8.8}"
 if [[ -z "${DEPLOYMENT_SSH_USER:-}" ]]; then
   case "${OS_FAMILY}" in
     ubuntu) DEPLOYMENT_SSH_USER="ubuntu" ;;
-    debian) DEPLOYMENT_SSH_USER="debian" ;;
+    debian13) DEPLOYMENT_SSH_USER="debian" ;;
     gentoo) DEPLOYMENT_SSH_USER="gentoo" ;;
   esac
 fi
@@ -330,10 +387,11 @@ if [[ ("${ACTION}" == "apply" || "${ACTION}" == "plan") && "${SKIP_IMAGE_FETCH}"
   else
     log "Using existing ${BASE_IMAGE_LABEL} image: ${BASE_IMAGE_PATH}"
   fi
+  verify_base_image_integrity
 fi
 
 if [[ "${ACTION}" == "apply" || "${ACTION}" == "plan" ]]; then
-  [[ -f "${BASE_IMAGE_PATH}" ]] || die "${BASE_IMAGE_LABEL} image file not found: ${BASE_IMAGE_PATH}"
+  verify_base_image_integrity
 fi
 
 terraform -chdir="${TF_DIR}" init -upgrade=false >/dev/null
@@ -353,7 +411,7 @@ TF_VARS=(
   "-var=guest_interface_name=${DEPLOYMENT_GUEST_INTERFACE}"
   "-var=ssh_user=${DEPLOYMENT_SSH_USER}"
   "-var=ssh_public_key=${SSH_PUBKEY_CONTENT}"
-  "-var=os_family=${OS_FAMILY}"
+  "-var=os_family=${TEMPLATE_OS_FAMILY}"
   "-var=init_system=${INIT_SYSTEM}"
   "-var=ubuntu_image_path=${BASE_IMAGE_PATH}"
   "-var=vm_cpu=${DEPLOYMENT_VM_CPU}"

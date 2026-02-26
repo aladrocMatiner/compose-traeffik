@@ -8,11 +8,11 @@ usage() {
   cat <<'EOF'
 Usage:
   scripts/host-bootstrap-check.sh [--host IP] [--user USER] [--port PORT] [--identity PATH]
-                                 [--target libvirt] [--os <ubuntu|debian|gentoo>]
+                                 [--target libvirt] [--os <ubuntu|debian|debian13|gentoo>]
                                  [--init <openrc|systemd>] [--terraform-dir DIR]
 
 Checks SSH reachability and Docker readiness on a provisioned host.
-Current implementation supports Ubuntu Docker checks only.
+Current implementation supports Ubuntu and Debian 13 Docker checks.
 EOF
 }
 
@@ -44,9 +44,13 @@ validate_target_os_init() {
 
   [[ "${TARGET}" == "libvirt" ]] || die "Unsupported --target '${TARGET}'. Supported values: libvirt"
   case "${OS_FAMILY}" in
-    ubuntu|debian|gentoo) ;;
-    *) die "Unsupported --os '${OS_FAMILY}'. Supported values: ubuntu, debian, gentoo" ;;
+    ubuntu|debian|debian13|gentoo) ;;
+    *) die "Unsupported --os '${OS_FAMILY}'. Supported values: ubuntu, debian, debian13, gentoo" ;;
   esac
+
+  if [[ "${OS_FAMILY}" == "debian" ]]; then
+    OS_FAMILY="debian13"
+  fi
 
   if [[ "${OS_FAMILY}" == "gentoo" ]]; then
     if [[ -z "${INIT_SYSTEM}" ]]; then
@@ -133,11 +137,11 @@ while [[ $# -gt 0 ]]; do
 done
 
 validate_target_os_init
-if [[ "${OS_FAMILY}" != "ubuntu" ]]; then
+if [[ "${OS_FAMILY}" != "ubuntu" && "${OS_FAMILY}" != "debian13" ]]; then
   if [[ "${OS_FAMILY}" == "gentoo" ]]; then
-    die "Docker readiness checks are not implemented for --os gentoo --init ${INIT_SYSTEM} in v1 (current implementation: ubuntu only)"
+    die "Docker readiness checks are not implemented for --os gentoo --init ${INIT_SYSTEM} in v1 (current implementation: ubuntu/debian13 only)"
   fi
-  die "Docker readiness checks are not implemented for --os ${OS_FAMILY} in v1 (current implementation: ubuntu only)"
+  die "Docker readiness checks are not implemented for --os ${OS_FAMILY} in v1 (current implementation: ubuntu/debian13 only)"
 fi
 
 check_cmd ssh
