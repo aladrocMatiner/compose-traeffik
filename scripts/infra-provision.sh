@@ -58,6 +58,12 @@ die() {
 }
 
 check_cmd() {
+  if [[ "$1" == "terraform" ]] && ! command -v terraform >/dev/null 2>&1; then
+    local tf_local="${REPO_ROOT}/.tools/bin/terraform"
+    if [[ -x "${tf_local}" ]]; then
+      PATH="${REPO_ROOT}/.tools/bin:${PATH}"
+    fi
+  fi
   command -v "$1" >/dev/null 2>&1 || die "Missing required command: $1"
 }
 
