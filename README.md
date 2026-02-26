@@ -72,6 +72,7 @@ For detailed TLS workflows, see:
 ## Endpoints
 
 - **Whoami**: `https://whoami.${DEV_DOMAIN}` (default stack; uses Traefik HTTPS)
+- **n8n**: `https://n8n.${DEV_DOMAIN}` (profile `n8n`; optional)
 - **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth; enabled by default)
 - **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (profile `stepca`; enabled by default)
 - **CTFd**: `https://ctfd.${DEV_DOMAIN}` (profile `ctfd`; optional)
@@ -88,6 +89,7 @@ For detailed TLS workflows, see:
 
 - [Traefik](services/traefik/README.md) - reverse proxy and routing core.
 - [Whoami](services/whoami/README.md) - demo service used for routing tests.
+- [n8n](services/n8n/README.md) - optional profile `n8n` (workflow automation).
 - [DNS (BIND)](services/dns-bind/README.md) - optional profile `bind`.
 - [Keycloak](services/keycloak/README.md) - optional profile `keycloak` (Traefik + PostgreSQL, reverse-proxy aware).
 - [Certbot](services/certbot/README.md) - optional profile `le`.

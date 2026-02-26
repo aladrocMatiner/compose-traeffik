@@ -35,6 +35,10 @@ services/gitlab/rendered/
 services/dns/
 services/dns-bind/zones/db.aladroc.io
 
+# n8n rendered artifacts and local data
+services/n8n/rendered/
+services/n8n/config/*.local
+
 # --- Environment files ---
 .env
 

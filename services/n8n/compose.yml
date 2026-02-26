@@ -1,0 +1,65 @@
+services:
+  n8n:
+    image: ${N8N_IMAGE:-docker.n8n.io/n8nio/n8n:stable}
+    container_name: n8n
+    profiles:
+      - n8n
+    restart: unless-stopped
+    depends_on:
+      n8n-db:
+        condition: service_healthy
+    env_file:
+      - ./services/n8n/config/n8n.env.example
+      - ./services/n8n/rendered/n8n.env
+    environment:
+      TZ: ${TZ:-UTC}
+    networks:
+      - proxy
+      - n8n-internal
+    volumes:
+      - n8n-data:/home/node/.n8n
+      - ./services/n8n/rendered/stepca-root-ca.crt:/home/node/.n8n/certs/stepca-root-ca.crt:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.n8n-web.rule=Host(`${N8N_HOSTNAME:-n8n}.${DEV_DOMAIN}`)"
+      - "traefik.http.routers.n8n-web.entrypoints=web"
+      - "traefik.http.routers.n8n-web.middlewares=${HTTP_TO_HTTPS_MIDDLEWARE:-redirect-to-https@file}"
+      - "traefik.http.routers.n8n-websecure.rule=Host(`${N8N_HOSTNAME:-n8n}.${DEV_DOMAIN}`)"
+      - "traefik.http.routers.n8n-websecure.entrypoints=websecure"
+      - "traefik.http.routers.n8n-websecure.service=n8n-service"
+      - "traefik.http.routers.n8n-websecure.tls=true"
+      - "traefik.http.routers.n8n-websecure.tls.certresolver=${TLS_CERT_RESOLVER:-}"
+      - "traefik.http.routers.n8n-websecure.middlewares=security-headers@file"
+      - "traefik.http.services.n8n-service.loadbalancer.server.port=${N8N_PORT:-5678}"
+
+  n8n-db:
+    image: ${N8N_POSTGRES_IMAGE:-postgres:15-alpine}
+    container_name: n8n-db
+    profiles:
+      - n8n
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${N8N_DB_NAME:-n8n}
+      POSTGRES_USER: ${N8N_DB_USER:-n8n}
+      POSTGRES_PASSWORD: ${N8N_DB_PASSWORD:-changeme}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - n8n-internal
+    volumes:
+      - n8n-db-data:/var/lib/postgresql/data
+
+networks:
+  n8n-internal:
+    name: n8n-internal
+    internal: true
+
+volumes:
+  n8n-data:
+    name: n8n-data
+  n8n-db-data:
+    name: n8n-db-data

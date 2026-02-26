@@ -1,6 +1,7 @@
 # Smoke Tests for Traefik Edge Stack
 
 This directory contains smoke tests that verify Traefik readiness, routing, TLS, and auxiliary tooling (hosts scripts). The tests are designed to be fast and provide immediate feedback on the stack state.
+It also contains static smoke tests for optional service modules (for example BIND and n8n) that validate wiring, guardrails, and render scripts without requiring runtime startup.
 
 ## How to run
 

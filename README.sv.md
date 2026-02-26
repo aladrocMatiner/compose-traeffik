@@ -72,6 +72,7 @@ Detaljerade TLS-floden:
 ## Endpoints
 
 - **Whoami**: `https://whoami.${DEV_DOMAIN}` (standardstack)
+- **n8n**: `https://n8n.${DEV_DOMAIN}` (profil `n8n`; valfri)
 - **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth; aktiverad som standard)
 - **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (profil `stepca`; aktiverad som standard)
 - **CTFd**: `https://ctfd.${DEV_DOMAIN}` (profil `ctfd`; valfri)
@@ -88,6 +89,7 @@ Detaljerade TLS-floden:
 
 - [Traefik](services/traefik/README.sv.md) - reverse proxy och routing-karnan.
 - [Whoami](services/whoami/README.sv.md) - demo-service for routingtester.
+- [n8n](services/n8n/README.sv.md) - valfri profil `n8n` (workflow-automation).
 - [DNS (BIND)](services/dns-bind/README.sv.md) - valfri profil `bind`.
 - [Keycloak](services/keycloak/README.sv.md) - valfri profil `keycloak` (Traefik + PostgreSQL).
 - [Certbot](services/certbot/README.sv.md) - valfri profil `le`.

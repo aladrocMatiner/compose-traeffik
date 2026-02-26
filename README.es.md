@@ -72,6 +72,7 @@ Guias de TLS:
 ## Endpoints
 
 - **Whoami**: `https://whoami.${DEV_DOMAIN}` (stack por defecto)
+- **n8n**: `https://n8n.${DEV_DOMAIN}` (perfil `n8n`; opcional)
 - **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth; habilitado por defecto)
 - **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (perfil `stepca`; habilitado por defecto)
 - **CTFd**: `https://ctfd.${DEV_DOMAIN}` (perfil `ctfd`; opcional)
@@ -88,6 +89,7 @@ Guias de TLS:
 
 - [Traefik](services/traefik/README.es.md) - reverse proxy y nucleo de routing.
 - [Whoami](services/whoami/README.es.md) - servicio demo para pruebas de routing.
+- [n8n](services/n8n/README.es.md) - perfil opcional `n8n` (automatizacion de workflows).
 - [DNS (BIND)](services/dns-bind/README.es.md) - perfil opcional `bind`.
 - [Keycloak](services/keycloak/README.es.md) - perfil opcional `keycloak` (Traefik + PostgreSQL).
 - [Certbot](services/certbot/README.es.md) - perfil opcional `le`.
