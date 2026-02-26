@@ -1,8 +1,8 @@
 ## 1. Upstream Verification (Gate Before Coding)
 
 - [x] 1.1 Verify official Wiki.js Docker deployment guidance and recommended database backend/version for the pinned module version.
-- [ ] 1.2 Verify reverse proxy requirements for Wiki.js behind Traefik (forwarded headers, WebSocket support, upload/body size considerations) and capture the exact Traefik/Wiki.js settings required.
-- [ ] 1.3 Verify the supported Keycloak integration path in Wiki.js (OIDC/OpenID Connect vs generic OAuth/SAML) and callback URL requirements.
+- [x] 1.2 Verify reverse proxy requirements for Wiki.js behind Traefik (forwarded headers, WebSocket support, upload/body size considerations) and capture the exact Traefik/Wiki.js settings required.
+- [x] 1.3 Verify the supported Keycloak integration path in Wiki.js (OIDC/OpenID Connect vs generic OAuth/SAML) and callback URL requirements.
 - [x] 1.4 Verify Wiki.js observability capabilities (telemetry, health endpoints, metrics endpoints if any) and document the chosen scope; implement the full upstream-documented path if one exists.
 - [x] 1.5 Verify the recommended approach for trusting an internal Keycloak issuer certificate signed by step-ca (e.g., Node extra CA certs) if Keycloak is enabled with internal PKI.
 
@@ -36,6 +36,6 @@
 ## 6. Runtime Validation and Handoff (Implementation)
 
 - [x] 6.1 Perform a manual runtime validation of `make wikijs-up` and confirm Traefik routing to `https://wiki.<DEV_DOMAIN>`.
-- [ ] 6.2 Validate a Wiki.js realtime/WebSocket-capable interaction through Traefik (or the closest upstream-documented realtime check) and record the result.
-- [ ] 6.3 If Keycloak is enabled, validate the login flow (including internal CA trust when using step-ca-signed Keycloak TLS).
+- [x] 6.2 Validate a Wiki.js realtime/WebSocket-capable interaction through Traefik (or the closest upstream-documented realtime check) and record the result.
+- [x] 6.3 If Keycloak is enabled, validate the login flow (including internal CA trust when using step-ca-signed Keycloak TLS). (Not applicable in this validation run because Keycloak remained disabled.)
 - [x] 6.4 Do a final self-review pass for gaps (docs/tests/guardrails drift) before handoff.
