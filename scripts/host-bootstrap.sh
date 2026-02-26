@@ -154,7 +154,8 @@ fi
 SSH_OPTS=(
   -o BatchMode=yes
   -o ConnectTimeout=10
-  -o StrictHostKeyChecking=accept-new
+  -o StrictHostKeyChecking=no
+  -o UserKnownHostsFile=/dev/null
 )
 if [[ -n "${IDENTITY_PATH}" ]]; then
   [[ -f "${IDENTITY_PATH}" ]] || die "SSH identity file not found: ${IDENTITY_PATH}"

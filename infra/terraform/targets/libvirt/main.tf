@@ -7,6 +7,13 @@ locals {
     for item in split(",", var.dns_servers_csv) : trimspace(item)
     if trimspace(item) != ""
   ]
+
+  domain_xml_xslt_path = (
+    var.libvirt_disable_apparmor_seclabel && var.libvirt_remove_ide_controller ? "${path.module}/domain-seclabel-none-and-remove-ide-controller.xslt" :
+    var.libvirt_disable_apparmor_seclabel ? "${path.module}/domain-seclabel-none.xslt" :
+    var.libvirt_remove_ide_controller ? "${path.module}/domain-remove-ide-controller.xslt" :
+    ""
+  )
 }
 
 resource "libvirt_volume" "ubuntu_base" {
@@ -28,9 +35,16 @@ resource "libvirt_cloudinit_disk" "seed" {
   pool = var.libvirt_pool
 
   user_data = templatefile("${path.module}/../../../cloud-init/user-data.yaml.tftpl", {
-    hostname       = var.hostname
-    ssh_user       = var.ssh_user
-    ssh_public_key = var.ssh_public_key
+    hostname             = var.hostname
+    ssh_user             = var.ssh_user
+    ssh_public_key       = var.ssh_public_key
+    os_family            = var.os_family
+    init_system          = var.init_system
+    vm_ip                = var.vm_ip
+    vm_cidr_prefix       = var.vm_cidr_prefix
+    vm_gateway           = var.vm_gateway
+    dns_servers          = local.dns_servers
+    guest_interface_name = var.guest_interface_name
   })
 
   network_config = templatefile("${path.module}/../../../cloud-init/network-config.yaml.tftpl", {
@@ -40,6 +54,8 @@ resource "libvirt_cloudinit_disk" "seed" {
     vm_cidr_prefix       = var.vm_cidr_prefix
     vm_gateway           = var.vm_gateway
     dns_servers          = local.dns_servers
+    os_family            = var.os_family
+    init_system          = var.init_system
   })
 
   meta_data = <<-EOT
@@ -79,6 +95,8 @@ resource "libvirt_domain" "vm" {
   memory    = var.vm_memory_mb
   vcpu      = var.vm_cpu
   autostart = var.autostart
+  firmware  = var.libvirt_firmware != "" ? var.libvirt_firmware : null
+  machine   = var.libvirt_machine != "" ? var.libvirt_machine : null
   # Keep apply deterministic: guest agent may not be ready during first boot.
   qemu_agent = false
 
@@ -90,9 +108,9 @@ resource "libvirt_domain" "vm" {
   }
 
   dynamic "xml" {
-    for_each = var.libvirt_disable_apparmor_seclabel ? [1] : []
+    for_each = local.domain_xml_xslt_path != "" ? [1] : []
     content {
-      xslt = file("${path.module}/domain-seclabel-none.xslt")
+      xslt = file(local.domain_xml_xslt_path)
     }
   }
 
@@ -100,7 +118,15 @@ resource "libvirt_domain" "vm" {
     volume_id = libvirt_volume.root_disk.id
   }
 
-  cloudinit = libvirt_cloudinit_disk.seed.id
+  dynamic "disk" {
+    for_each = var.libvirt_attach_cloudinit_as_scsi ? [1] : []
+    content {
+      file = split(";", libvirt_cloudinit_disk.seed.id)[0]
+      scsi = true
+    }
+  }
+
+  cloudinit = var.libvirt_attach_cloudinit_as_scsi ? null : libvirt_cloudinit_disk.seed.id
 
   network_interface {
     network_name   = var.libvirt_network_name

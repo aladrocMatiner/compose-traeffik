@@ -4,6 +4,11 @@ ethernets:
     match:
       macaddress: "${vm_mac}"
     set-name: ${guest_interface_name}
+%{ if os_family == "gentoo" && init_system == "systemd" ~}
+    # Gentoo cloud-init QCOW2 (official) currently validates more reliably with DHCP first boot.
+    # Static addressing for Gentoo is tracked separately once the guest is reachable for inspection.
+    dhcp4: true
+%{ else ~}
     dhcp4: false
     addresses:
       - ${vm_ip}/${vm_cidr_prefix}
@@ -15,3 +20,4 @@ ethernets:
 %{ for dns in dns_servers ~}
         - ${dns}
 %{ endfor ~}
+%{ endif ~}

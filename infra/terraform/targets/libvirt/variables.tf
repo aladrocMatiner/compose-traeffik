@@ -70,6 +70,18 @@ variable "ssh_public_key" {
   sensitive   = true
 }
 
+variable "os_family" {
+  description = "Guest OS family for cloud-init template branching"
+  type        = string
+  default     = "ubuntu"
+}
+
+variable "init_system" {
+  description = "Guest init system (used by cloud-init template branching)"
+  type        = string
+  default     = ""
+}
+
 variable "ubuntu_image_path" {
   description = "Local path to the Ubuntu cloud image file"
   type        = string
@@ -103,6 +115,30 @@ variable "libvirt_cpu_mode" {
   description = "Libvirt CPU mode; set empty to skip cpu block"
   type        = string
   default     = "host-passthrough"
+}
+
+variable "libvirt_firmware" {
+  description = "Libvirt firmware mode (e.g. efi); empty to use provider default"
+  type        = string
+  default     = ""
+}
+
+variable "libvirt_machine" {
+  description = "Libvirt machine type (e.g. q35); empty to use provider default"
+  type        = string
+  default     = ""
+}
+
+variable "libvirt_attach_cloudinit_as_scsi" {
+  description = "Attach cloud-init ISO as a SCSI disk instead of using the cloudinit attr (useful for q35/UEFI)"
+  type        = bool
+  default     = false
+}
+
+variable "libvirt_remove_ide_controller" {
+  description = "Strip IDE controller from generated domain XML (useful for q35)"
+  type        = bool
+  default     = false
 }
 
 variable "libvirt_pool_path" {
