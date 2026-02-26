@@ -1,0 +1,70 @@
+services:
+  wikijs:
+    image: ${WIKIJS_IMAGE:-ghcr.io/requarks/wiki:2}
+    container_name: wikijs
+    profiles:
+      - wikijs
+    restart: unless-stopped
+    depends_on:
+      wikijs-db:
+        condition: service_healthy
+    env_file:
+      - ./services/wikijs/config/wikijs.env.example
+      - ./services/wikijs/rendered/wikijs.env
+    environment:
+      TZ: ${TZ:-UTC}
+    networks:
+      - proxy
+      - wikijs-internal
+    volumes:
+      - wikijs-data:/wiki/data
+      - ./services/wikijs/rendered/stepca-root-ca.crt:/wiki/certs/stepca-root-ca.crt:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.wikijs-web.rule=Host(`${WIKIJS_HOSTNAME:-wiki}.${DEV_DOMAIN}`)"
+      - "traefik.http.routers.wikijs-web.entrypoints=web"
+      - "traefik.http.routers.wikijs-web.middlewares=${HTTP_TO_HTTPS_MIDDLEWARE:-redirect-to-https@file}"
+      - "traefik.http.routers.wikijs-websecure.rule=Host(`${WIKIJS_HOSTNAME:-wiki}.${DEV_DOMAIN}`)"
+      - "traefik.http.routers.wikijs-websecure.entrypoints=websecure"
+      - "traefik.http.routers.wikijs-websecure.service=wikijs-service"
+      - "traefik.http.routers.wikijs-websecure.tls=true"
+      - "traefik.http.routers.wikijs-websecure.tls.certresolver=${TLS_CERT_RESOLVER:-}"
+      - "traefik.http.routers.wikijs-websecure.middlewares=security-headers@file"
+      # Traefik handles WebSocket upgrades automatically for HTTP services.
+      - "traefik.http.services.wikijs-service.loadbalancer.server.port=${WIKIJS_PORT:-3000}"
+
+  wikijs-db:
+    image: ${WIKIJS_POSTGRES_IMAGE:-postgres:15-alpine}
+    container_name: wikijs-db
+    profiles:
+      - wikijs
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${WIKIJS_DB_NAME:-wiki}
+      POSTGRES_USER: ${WIKIJS_DB_USER:-wikijs}
+      POSTGRES_PASSWORD: ${WIKIJS_DB_PASSWORD:-changeme}
+    command:
+      - postgres
+      - -c
+      - max_connections=${WIKIJS_DB_MAX_CONNECTIONS:-200}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - wikijs-internal
+    volumes:
+      - wikijs-db-data:/var/lib/postgresql/data
+
+networks:
+  wikijs-internal:
+    name: wikijs-internal
+    internal: true
+
+volumes:
+  wikijs-data:
+    name: wikijs-data
+  wikijs-db-data:
+    name: wikijs-db-data

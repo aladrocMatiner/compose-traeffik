@@ -16,6 +16,15 @@ COMPOSE_PROFILES_ENV="${COMPOSE_PROFILES:-}"
 TRAEFIK_DASHBOARD_ENV="${TRAEFIK_DASHBOARD:-}"
 BIND_BIND_ADDRESS_ENV="${BIND_BIND_ADDRESS:-}"
 BIND_ALLOW_NONLOCAL_BIND_ENV="${BIND_ALLOW_NONLOCAL_BIND:-}"
+WIKIJS_KEYCLOAK_ENABLE_ENV="${WIKIJS_KEYCLOAK_ENABLE:-}"
+WIKIJS_KEYCLOAK_ISSUER_URL_ENV="${WIKIJS_KEYCLOAK_ISSUER_URL:-}"
+WIKIJS_KEYCLOAK_CLIENT_ID_ENV="${WIKIJS_KEYCLOAK_CLIENT_ID:-}"
+WIKIJS_KEYCLOAK_CLIENT_SECRET_ENV="${WIKIJS_KEYCLOAK_CLIENT_SECRET:-}"
+WIKIJS_OBSERVABILITY_ENABLE_ENV="${WIKIJS_OBSERVABILITY_ENABLE:-}"
+WIKIJS_OBSERVABILITY_MODE_ENV="${WIKIJS_OBSERVABILITY_MODE:-}"
+WIKIJS_STEPCA_TRUST_ENABLE_ENV="${WIKIJS_STEPCA_TRUST_ENABLE:-}"
+WIKIJS_STEPCA_TRUST_SOURCE_PATH_ENV="${WIKIJS_STEPCA_TRUST_SOURCE_PATH:-}"
+WIKIJS_RENDERED_ENV_PATH_ENV="${WIKIJS_RENDERED_ENV_PATH:-}"
 
 load_env
 
@@ -33,6 +42,33 @@ if [ -n "${BIND_BIND_ADDRESS_ENV}" ]; then
 fi
 if [ -n "${BIND_ALLOW_NONLOCAL_BIND_ENV}" ]; then
     BIND_ALLOW_NONLOCAL_BIND="${BIND_ALLOW_NONLOCAL_BIND_ENV}"
+fi
+if [ -n "${WIKIJS_KEYCLOAK_ENABLE_ENV}" ]; then
+    WIKIJS_KEYCLOAK_ENABLE="${WIKIJS_KEYCLOAK_ENABLE_ENV}"
+fi
+if [ -n "${WIKIJS_KEYCLOAK_ISSUER_URL_ENV}" ]; then
+    WIKIJS_KEYCLOAK_ISSUER_URL="${WIKIJS_KEYCLOAK_ISSUER_URL_ENV}"
+fi
+if [ -n "${WIKIJS_KEYCLOAK_CLIENT_ID_ENV}" ]; then
+    WIKIJS_KEYCLOAK_CLIENT_ID="${WIKIJS_KEYCLOAK_CLIENT_ID_ENV}"
+fi
+if [ -n "${WIKIJS_KEYCLOAK_CLIENT_SECRET_ENV}" ]; then
+    WIKIJS_KEYCLOAK_CLIENT_SECRET="${WIKIJS_KEYCLOAK_CLIENT_SECRET_ENV}"
+fi
+if [ -n "${WIKIJS_OBSERVABILITY_ENABLE_ENV}" ]; then
+    WIKIJS_OBSERVABILITY_ENABLE="${WIKIJS_OBSERVABILITY_ENABLE_ENV}"
+fi
+if [ -n "${WIKIJS_OBSERVABILITY_MODE_ENV}" ]; then
+    WIKIJS_OBSERVABILITY_MODE="${WIKIJS_OBSERVABILITY_MODE_ENV}"
+fi
+if [ -n "${WIKIJS_STEPCA_TRUST_ENABLE_ENV}" ]; then
+    WIKIJS_STEPCA_TRUST_ENABLE="${WIKIJS_STEPCA_TRUST_ENABLE_ENV}"
+fi
+if [ -n "${WIKIJS_STEPCA_TRUST_SOURCE_PATH_ENV}" ]; then
+    WIKIJS_STEPCA_TRUST_SOURCE_PATH="${WIKIJS_STEPCA_TRUST_SOURCE_PATH_ENV}"
+fi
+if [ -n "${WIKIJS_RENDERED_ENV_PATH_ENV}" ]; then
+    WIKIJS_RENDERED_ENV_PATH="${WIKIJS_RENDERED_ENV_PATH_ENV}"
 fi
 
 resolve_auth_path() {
@@ -104,6 +140,13 @@ is_bind_profile_enabled() {
     esac
 }
 
+is_wikijs_profile_enabled() {
+    case " ${COMPOSE_PROFILES_NORMALIZED:-} " in
+        *" wikijs "*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
 is_ipv4_loopback() {
     local value="$1"
     if [[ ! "$value" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
@@ -144,6 +187,83 @@ validate_domain_name() {
     done
 }
 
+validate_bool() {
+    local label="$1"
+    local value="$2"
+    case "$value" in
+        true|false) ;;
+        *) log_error "${label} must be 'true' or 'false'. Got: ${value}" ;;
+    esac
+}
+
+validate_https_url() {
+    local label="$1"
+    local value="$2"
+    if [ -z "$value" ]; then
+        log_error "${label} is required."
+    fi
+    if [[ ! "$value" =~ ^https://[^[:space:]]+$ ]]; then
+        log_error "${label} must be an https:// URL. Got: ${value}"
+    fi
+}
+
+validate_wikijs_rendered_env() {
+    local path="${WIKIJS_RENDERED_ENV_PATH:-${REPO_ROOT}/services/wikijs/rendered/wikijs.env}"
+    local resolved="$path"
+    if [[ "$resolved" != /* ]]; then
+        resolved="${REPO_ROOT}/${resolved}"
+    fi
+
+    if [ ! -f "$resolved" ]; then
+        log_error "Wiki.js rendered env not found: ${resolved}. Run 'make wikijs-bootstrap'."
+    fi
+    if ! grep -Eq '^WIKIJS_RENDER_STATUS=ready$' "$resolved"; then
+        log_error "Wiki.js rendered env is missing or stale (${resolved}). Run 'make wikijs-bootstrap'."
+    fi
+}
+
+validate_wikijs_optional_integrations() {
+    local keycloak_enabled="${WIKIJS_KEYCLOAK_ENABLE:-false}"
+    local observability_enabled="${WIKIJS_OBSERVABILITY_ENABLE:-false}"
+    local stepca_trust_enabled="${WIKIJS_STEPCA_TRUST_ENABLE:-false}"
+    local observability_mode="${WIKIJS_OBSERVABILITY_MODE:-telemetry}"
+
+    validate_bool "WIKIJS_KEYCLOAK_ENABLE" "$keycloak_enabled"
+    validate_bool "WIKIJS_OBSERVABILITY_ENABLE" "$observability_enabled"
+    validate_bool "WIKIJS_STEPCA_TRUST_ENABLE" "$stepca_trust_enabled"
+
+    if [ "$keycloak_enabled" = "true" ]; then
+        validate_https_url "WIKIJS_KEYCLOAK_ISSUER_URL" "${WIKIJS_KEYCLOAK_ISSUER_URL:-}"
+        if [ -z "${WIKIJS_KEYCLOAK_CLIENT_ID:-}" ]; then
+            log_error "WIKIJS_KEYCLOAK_CLIENT_ID is required when WIKIJS_KEYCLOAK_ENABLE=true."
+        fi
+        if [ -z "${WIKIJS_KEYCLOAK_CLIENT_SECRET:-}" ]; then
+            log_error "WIKIJS_KEYCLOAK_CLIENT_SECRET is required when WIKIJS_KEYCLOAK_ENABLE=true."
+        fi
+    fi
+
+    if [ "$observability_enabled" = "true" ]; then
+        case "$observability_mode" in
+            telemetry|full|custom) ;;
+            *) log_error "WIKIJS_OBSERVABILITY_MODE must be one of: telemetry, full, custom. Got: ${observability_mode}" ;;
+        esac
+    fi
+
+    if [ "$stepca_trust_enabled" = "true" ]; then
+        local source_path="${WIKIJS_STEPCA_TRUST_SOURCE_PATH:-}"
+        if [ -z "$source_path" ]; then
+            log_error "WIKIJS_STEPCA_TRUST_SOURCE_PATH is required when WIKIJS_STEPCA_TRUST_ENABLE=true."
+        fi
+        local resolved="$source_path"
+        if [[ "$resolved" != /* ]]; then
+            resolved="${REPO_ROOT}/${resolved}"
+        fi
+        if [ ! -f "$resolved" ]; then
+            log_error "WIKIJS_STEPCA_TRUST_SOURCE_PATH file not found: ${resolved}"
+        fi
+    fi
+}
+
 if [ "${TRAEFIK_DASHBOARD:-false}" = "true" ]; then
     require_auth_file "Traefik dashboard" "${TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH:-}"
 fi
@@ -160,4 +280,9 @@ if is_bind_profile_enabled; then
             log_error "BIND_BIND_ADDRESS must be loopback by default. Set BIND_ALLOW_NONLOCAL_BIND=true for intentional non-local exposure."
         fi
     fi
+fi
+
+if is_wikijs_profile_enabled; then
+    validate_wikijs_rendered_env
+    validate_wikijs_optional_integrations
 fi

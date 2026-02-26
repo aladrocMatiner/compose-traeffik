@@ -48,6 +48,14 @@
       }
     },
     {
+      "slug": "wikijs",
+      "title": {
+        "en": "Wiki.js",
+        "sv": "Wiki.js",
+        "es": "Wiki.js"
+      }
+    },
+    {
       "slug": "certbot",
       "title": {
         "en": "Certbot",

@@ -32,6 +32,10 @@ services/traefik/dynamic-rendered/
 services/dns/
 services/dns-bind/zones/db.aladroc.io
 
+# Wiki.js rendered artifacts and local data
+services/wikijs/rendered/
+services/wikijs/config/*.local
+
 # --- Environment files ---
 .env
 

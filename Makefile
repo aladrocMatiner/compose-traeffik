@@ -21,7 +21,8 @@ SHELL := /bin/bash # Ensure bash is used for shell commands
         stepca-up stepca-down stepca-bootstrap stepca-verify-cert \
         stepca-trust-install stepca-trust-uninstall stepca-trust-verify \
         hosts-generate hosts-apply hosts-remove hosts-status \
-        bind-up bind-down bind-restart bind-logs bind-status bind-provision bind-provision-dry
+        bind-up bind-down bind-restart bind-logs bind-status bind-provision bind-provision-dry \
+        wikijs-bootstrap wikijs-up wikijs-down wikijs-restart wikijs-logs wikijs-status test-wikijs
 
 # Include .env for environment variables if it exists.
 # This makes variables in .env available to the Makefile.
@@ -35,6 +36,7 @@ COMPOSE_FILES := \
   -f compose/base.yml \
   -f services/traefik/compose.yml \
   -f services/whoami/compose.yml \
+  -f services/wikijs/compose.yml \
   -f services/dns-bind/compose.yml \
   -f services/certbot/compose.yml \
   -f services/step-ca/compose.yml
@@ -98,12 +100,12 @@ ps:
 bootstrap:
 	@echo "Bootstrapping local environment (.env and directories)..."
 	./scripts/env-generate.sh --mode=prod
-	mkdir -p shared/certs shared/certs/local-ca shared/certs/local
+	mkdir -p shared/certs shared/certs/local-ca shared/certs/local services/wikijs/rendered
 
 bootstrap-full:
 	@echo "Bootstrapping local environment (.env and directories) with full defaults..."
 	./scripts/env-generate.sh --mode=full
-	mkdir -p shared/certs shared/certs/local-ca shared/certs/local
+	mkdir -p shared/certs shared/certs/local-ca shared/certs/local services/wikijs/rendered
 
 certs-local:
 	@echo "Generating local self-signed certificates..."
@@ -181,6 +183,38 @@ test:
 docs-check:
 	@echo "Validating multilingual README structure..."
 	./scripts/docs-check.sh
+
+# --- Wiki.js (optional profile: wikijs) ---
+
+wikijs-bootstrap:
+	@echo "Rendering Wiki.js runtime config and optional integration runbooks..."
+	./scripts/wikijs-bootstrap.sh
+
+wikijs-up: wikijs-bootstrap
+	@echo "Starting Wiki.js service (profile: wikijs)..."
+	COMPOSE_PROFILES=wikijs "$(SCRIPTS_DIR)/compose.sh" --profile wikijs $(COMPOSE_OPTS) up -d wikijs wikijs-db
+
+wikijs-down:
+	@echo "Stopping Wiki.js service..."
+	COMPOSE_PROFILES=wikijs "$(SCRIPTS_DIR)/compose.sh" --profile wikijs $(COMPOSE_OPTS) stop wikijs wikijs-db || true
+	COMPOSE_PROFILES=wikijs "$(SCRIPTS_DIR)/compose.sh" --profile wikijs $(COMPOSE_OPTS) rm -f wikijs wikijs-db || true
+
+wikijs-restart: wikijs-down wikijs-up
+
+wikijs-logs:
+	@echo "Showing Wiki.js logs..."
+	COMPOSE_PROFILES=wikijs "$(SCRIPTS_DIR)/compose.sh" --profile wikijs $(COMPOSE_OPTS) logs -f wikijs wikijs-db
+
+wikijs-status:
+	@echo "Wiki.js service status:"
+	COMPOSE_PROFILES=wikijs "$(SCRIPTS_DIR)/compose.sh" --profile wikijs $(COMPOSE_OPTS) ps wikijs wikijs-db
+
+test-wikijs:
+	@echo "Running Wiki.js static smoke tests..."
+	./tests/smoke/test_wikijs_make_targets.sh
+	./tests/smoke/test_wikijs_compose_wiring.sh
+	./tests/smoke/test_wikijs_guardrails.sh
+	./tests/smoke/test_wikijs_render_config.sh
 
 # --- Hosts Subdomain Mapper ---
 
@@ -268,9 +302,18 @@ help:
 	@echo ""
 	@echo "Testing:"
 	@echo "  test                  Run all smoke tests for the current configuration."
+	@echo "  test-wikijs           Run Wiki.js static smoke tests (wiring/guardrails/rendering)."
 	@echo ""
 	@echo "Docs:"
 	@echo "  docs-check            Validate multilingual README structure and links."
+	@echo ""
+	@echo "Wiki.js:"
+	@echo "  wikijs-bootstrap      Render Wiki.js runtime config and optional integration runbooks."
+	@echo "  wikijs-up             Start Wiki.js + PostgreSQL (profile: wikijs)."
+	@echo "  wikijs-down           Stop and remove Wiki.js containers."
+	@echo "  wikijs-restart        Restart Wiki.js (wikijs-down + wikijs-up)."
+	@echo "  wikijs-logs           Follow Wiki.js and PostgreSQL logs."
+	@echo "  wikijs-status         Show Wiki.js service status."
 	@echo ""
 	@echo "Hosts Subdomain Mapper:"
 	@echo "  hosts-generate        Print the managed hosts block."
@@ -289,6 +332,6 @@ help:
 	@echo ""
 	@echo "Profiles:"
 	@echo "  Use COMPOSE_PROFILES=<profile_name> before make commands to activate profiles."
-	@echo "  Available profiles: bind, le, stepca"
+	@echo "  Available profiles: bind, le, stepca, wikijs"
 	@echo "  Example: COMPOSE_PROFILES=le make up"
 	@echo ""
