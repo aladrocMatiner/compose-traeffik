@@ -28,6 +28,9 @@ services/traefik/auth/*.htpasswd
 # Rendered Traefik dynamic config
 services/traefik/dynamic-rendered/
 
+# Rocket.Chat rendered bootstrap artifacts
+services/rocketchat/rendered/
+
 # Legacy local DNS artifacts from prior branches/runs
 services/dns/
 services/dns-bind/zones/db.aladroc.io

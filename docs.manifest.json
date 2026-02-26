@@ -48,6 +48,14 @@
       }
     },
     {
+      "slug": "rocketchat",
+      "title": {
+        "en": "Rocket.Chat",
+        "sv": "Rocket.Chat",
+        "es": "Rocket.Chat"
+      }
+    },
+    {
       "slug": "certbot",
       "title": {
         "en": "Certbot",

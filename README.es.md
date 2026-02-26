@@ -72,6 +72,7 @@ Guias de TLS:
 ## Endpoints
 
 - **Whoami**: `https://whoami.${DEV_DOMAIN}` (stack por defecto)
+- **Rocket.Chat**: `https://rocketchat.${DEV_DOMAIN}` (perfil `rocketchat`; enroutado por Traefik; hooks opcionales de Keycloak/observabilidad)
 - **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth; habilitado por defecto)
 - **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (perfil `stepca`; habilitado por defecto)
 
@@ -80,6 +81,7 @@ Guias de TLS:
 
 - [Traefik](services/traefik/README.es.md) - reverse proxy y nucleo de routing.
 - [Whoami](services/whoami/README.es.md) - servicio demo para pruebas de routing.
+- [Rocket.Chat](services/rocketchat/README.es.md) - modulo opcional de chat detras de Traefik.
 - [DNS (BIND)](services/dns-bind/README.es.md) - perfil opcional `bind`.
 - [Certbot](services/certbot/README.es.md) - perfil opcional `le`.
 - [Step-CA](services/step-ca/README.es.md) - perfil opcional `stepca`.
@@ -104,6 +106,7 @@ Comandos comunes:
 - `make certs-le-issue`, `make certs-le-renew` (perfil `le`)
 - `make stepca-up`, `make stepca-bootstrap`, `make stepca-trust-install`
 - `make bind-up`, `make bind-status`, `make bind-restart`, `make bind-provision`
+- `make rocketchat-bootstrap`, `make rocketchat-up`, `make rocketchat-status`, `make rocketchat-logs`
 - `make hosts-generate`, `make hosts-apply`, `make hosts-status`
 
 Archivos auth:
@@ -126,6 +129,7 @@ make test
 ```
 Ve `tests/README.md` para detalles.
 Scripts operativos: ver `scripts/README.md`.
+Suite smoke estatica de Rocket.Chat: `make test-rocketchat`.
 
 <a id="troubleshooting"></a>
 ## Troubleshooting

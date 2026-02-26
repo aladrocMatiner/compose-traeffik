@@ -21,7 +21,9 @@ SHELL := /bin/bash # Ensure bash is used for shell commands
         stepca-up stepca-down stepca-bootstrap stepca-verify-cert \
         stepca-trust-install stepca-trust-uninstall stepca-trust-verify \
         hosts-generate hosts-apply hosts-remove hosts-status \
-        bind-up bind-down bind-restart bind-logs bind-status bind-provision bind-provision-dry
+        bind-up bind-down bind-restart bind-logs bind-status bind-provision bind-provision-dry \
+        rocketchat-bootstrap rocketchat-up rocketchat-down rocketchat-restart rocketchat-logs rocketchat-status \
+        test-rocketchat
 
 # Include .env for environment variables if it exists.
 # This makes variables in .env available to the Makefile.
@@ -35,6 +37,7 @@ COMPOSE_FILES := \
   -f compose/base.yml \
   -f services/traefik/compose.yml \
   -f services/whoami/compose.yml \
+  -f services/rocketchat/compose.yml \
   -f services/dns-bind/compose.yml \
   -f services/certbot/compose.yml \
   -f services/step-ca/compose.yml
@@ -176,6 +179,18 @@ test:
 	@echo "Running smoke tests..."
 	./scripts/healthcheck.sh
 
+test-rocketchat:
+	@echo "Running Rocket.Chat static smoke tests..."
+	@set -e; \
+	for t in \
+		tests/smoke/test_rocketchat_make_targets.sh \
+		tests/smoke/test_rocketchat_compose_wiring.sh \
+		tests/smoke/test_rocketchat_guardrails.sh \
+		tests/smoke/test_rocketchat_render_config.sh; do \
+		echo ">> $$t"; \
+		"$$t"; \
+	done
+
 # --- Documentation ---
 
 docs-check:
@@ -225,6 +240,34 @@ bind-provision:
 bind-provision-dry:
 	"$(SCRIPTS_DIR)/bind-provision.sh" $(BIND_ENV_ARGS) --dry-run
 
+# --- Rocket.Chat ---
+
+rocketchat-bootstrap:
+	"$(SCRIPTS_DIR)/rocketchat-bootstrap.sh" $(if $(ENV_FILE),--env-file $(ENV_FILE),)
+
+rocketchat-up: rocketchat-bootstrap
+	@echo "Starting Rocket.Chat profile (rocketchat)..."
+	COMPOSE_PROFILES=rocketchat "$(SCRIPTS_DIR)/compose.sh" --profile rocketchat $(COMPOSE_OPTS) up -d
+
+rocketchat-down:
+	@echo "Stopping Rocket.Chat profile containers..."
+	COMPOSE_PROFILES=rocketchat "$(SCRIPTS_DIR)/compose.sh" --profile rocketchat $(COMPOSE_OPTS) stop \
+		rocketchat rocketchat-nats rocketchat-mongodb rocketchat-mongodb-init rocketchat-mongodb-fix-permissions || true
+	COMPOSE_PROFILES=rocketchat "$(SCRIPTS_DIR)/compose.sh" --profile rocketchat $(COMPOSE_OPTS) rm -f \
+		rocketchat rocketchat-nats rocketchat-mongodb rocketchat-mongodb-init rocketchat-mongodb-fix-permissions || true
+
+rocketchat-restart: rocketchat-down rocketchat-up
+
+rocketchat-logs:
+	@echo "Showing Rocket.Chat profile logs..."
+	COMPOSE_PROFILES=rocketchat "$(SCRIPTS_DIR)/compose.sh" --profile rocketchat $(COMPOSE_OPTS) logs -f \
+		rocketchat rocketchat-nats rocketchat-mongodb rocketchat-mongodb-init
+
+rocketchat-status:
+	@echo "Rocket.Chat profile status:"
+	COMPOSE_PROFILES=rocketchat "$(SCRIPTS_DIR)/compose.sh" --profile rocketchat $(COMPOSE_OPTS) ps \
+		rocketchat rocketchat-nats rocketchat-mongodb rocketchat-mongodb-init rocketchat-mongodb-fix-permissions
+
 # --- Help ---
 
 help:
@@ -268,6 +311,7 @@ help:
 	@echo ""
 	@echo "Testing:"
 	@echo "  test                  Run all smoke tests for the current configuration."
+	@echo "  test-rocketchat       Run Rocket.Chat static smoke tests (wiring/guardrails/rendering)."
 	@echo ""
 	@echo "Docs:"
 	@echo "  docs-check            Validate multilingual README structure and links."
@@ -287,8 +331,16 @@ help:
 	@echo "  bind-provision        Generate the BIND zone file from ENDPOINTS."
 	@echo "  bind-provision-dry    Print the generated zone file without writing."
 	@echo ""
+	@echo "Rocket.Chat:"
+	@echo "  rocketchat-bootstrap  Render Rocket.Chat env/checklist artifacts under services/rocketchat/rendered/."
+	@echo "  rocketchat-up         Start Rocket.Chat profile (includes MongoDB, init helper, and NATS)."
+	@echo "  rocketchat-down       Stop and remove Rocket.Chat profile containers."
+	@echo "  rocketchat-restart    Restart Rocket.Chat profile."
+	@echo "  rocketchat-logs       Follow Rocket.Chat profile logs."
+	@echo "  rocketchat-status     Show Rocket.Chat profile container status."
+	@echo ""
 	@echo "Profiles:"
 	@echo "  Use COMPOSE_PROFILES=<profile_name> before make commands to activate profiles."
-	@echo "  Available profiles: bind, le, stepca"
+	@echo "  Available profiles: bind, le, rocketchat, stepca"
 	@echo "  Example: COMPOSE_PROFILES=le make up"
 	@echo ""

@@ -1,6 +1,6 @@
 # Smoke Tests for Traefik Edge Stack
 
-This directory contains smoke tests that verify Traefik readiness, routing, TLS, and auxiliary tooling (hosts scripts). The tests are designed to be fast and provide immediate feedback on the stack state.
+This directory contains smoke tests that verify Traefik readiness, routing, TLS, auxiliary tooling, and service module wiring/guardrails. The tests are designed to be fast and provide immediate feedback on the stack state.
 
 ## How to run
 
@@ -14,7 +14,12 @@ This directory contains smoke tests that verify Traefik readiness, routing, TLS,
    ```bash
    make test
    ```
-   This runs `scripts/healthcheck.sh`, which executes all scripts in `tests/smoke/`.
+   This runs `scripts/healthcheck.sh`, which executes the shared smoke suite (`make test`).
+
+   Rocket.Chat static smoke suite:
+   ```bash
+   make test-rocketchat
+   ```
 
 3. **Run a single test**
    ```bash
@@ -38,6 +43,10 @@ This directory contains smoke tests that verify Traefik readiness, routing, TLS,
 | `tests/smoke/test_bind_file_permissions.sh` | Validate config/zone file permissions are not world-writable. | `stat`, generated zone file or `bind-provision`. | Template, zone dir, and zone file reject world-writable modes. |
 | `tests/smoke/test_bind_provisioning_validation.sh` | Validate `bind-provision` rejects invalid domain and endpoint labels. | `mktemp`, `scripts/bind-provision.sh`. | Invalid `BASE_DOMAIN` or endpoint labels fail with non-zero exit. |
 | `tests/smoke/test_bind_security_runtime.sh` | Validate runtime DNS security behavior (no recursion, AXFR denied, hidden CHAOS metadata, expected listener). | `dig`, `docker`, `make`, loopback test address. | Security checks pass and BIND responds only on the expected test bind address. |
+| `tests/smoke/test_rocketchat_make_targets.sh` | Validate Rocket.Chat Make lifecycle targets and profile wiring. | `Makefile`, `grep`, `awk`. | Rocket.Chat targets exist and lifecycle commands use `scripts/compose.sh --profile rocketchat`. |
+| `tests/smoke/test_rocketchat_compose_wiring.sh` | Validate Rocket.Chat compose fragment routing/dependency wiring. | `services/rocketchat/compose.yml`, `grep`, `awk`. | Compose file includes Rocket.Chat dependencies, Traefik labels, and no direct host port publish for app service. |
+| `tests/smoke/test_rocketchat_guardrails.sh` | Validate Rocket.Chat preflight guardrails (rendered env, Keycloak/observability inputs). | `scripts/validate-env.sh`, `mktemp`. | Missing rendered env or invalid optional inputs fail; valid config passes. |
+| `tests/smoke/test_rocketchat_render_config.sh` | Validate Rocket.Chat bootstrap/rendered env and Keycloak checklist output. | `scripts/rocketchat-bootstrap.sh`, `scripts/rocketchat-render-config.sh`, `mktemp`. | Rendered env contains expected URLs/settings; Keycloak checklist includes callback/endpoints without leaking secret. |
 
 ## Configuration
 
@@ -48,6 +57,7 @@ Smoke tests use environment variables loaded from `.env` via `scripts/healthchec
 - `BIND_BIND_ADDRESS` (default listener for BIND)
 - `BIND_ALLOW_NONLOCAL_BIND` (must be `true` to allow non-loopback bind)
 - `BIND_SECURITY_TEST_ADDRESS` (optional loopback override for runtime security smoke)
+- `ROCKETCHAT_*` variables for Rocket.Chat static smoke tests (`make test-rocketchat`)
 
 Ensure `.env` exists (prefer `make bootstrap`) before running tests. Optional profiles
 are enabled by default via `COMPOSE_PROFILES` in `.env`; edit it if you want a smaller stack.
@@ -56,6 +66,7 @@ are enabled by default via `COMPOSE_PROFILES` in `.env`; edit it if you want a s
 
 - `make test` prints per-test results and exits with non-zero status on failure.
 - A successful run ends with `All smoke tests passed!`.
+- `make test-rocketchat` runs Rocket.Chat static checks only (wiring/guardrails/rendering), not a full Rocket.Chat runtime flow.
 
 ## Common failures and fixes
 
@@ -103,3 +114,13 @@ are enabled by default via `COMPOSE_PROFILES` in `.env`; edit it if you want a s
   - Symptom: `test_bind_provisioning_validation.sh` fails.
   - Diagnose: inspect `BASE_DOMAIN` format and endpoint labels in `ENDPOINTS`.
   - Fix: use lowercase DNS labels only (`a-z`, `0-9`, internal `-`) and valid dot-separated domain format.
+
+- **Rocket.Chat guardrails fail**
+  - Symptom: `test_rocketchat_guardrails.sh` fails.
+  - Diagnose: inspect `ROCKETCHAT_RENDERED_ENV_PATH`, `ROCKETCHAT_KEYCLOAK_*`, and `ROCKETCHAT_OBSERVABILITY_ENABLED` values.
+  - Fix: run `make rocketchat-bootstrap`, use an HTTPS Keycloak issuer, and set valid ports/credentials when optional integrations are enabled.
+
+- **Rocket.Chat render config test fails**
+  - Symptom: `test_rocketchat_render_config.sh` fails.
+  - Diagnose: run `./scripts/rocketchat-render-config.sh --env-file <file>` manually and inspect generated files.
+  - Fix: correct `DEV_DOMAIN` and `ROCKETCHAT_*` inputs (especially hostname label and Keycloak issuer/client values).

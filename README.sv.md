@@ -72,6 +72,7 @@ Detaljerade TLS-floden:
 ## Endpoints
 
 - **Whoami**: `https://whoami.${DEV_DOMAIN}` (standardstack)
+- **Rocket.Chat**: `https://rocketchat.${DEV_DOMAIN}` (profil `rocketchat`; routas via Traefik; valfria Keycloak/observability-hooks)
 - **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth; aktiverad som standard)
 - **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (profil `stepca`; aktiverad som standard)
 
@@ -80,6 +81,7 @@ Detaljerade TLS-floden:
 
 - [Traefik](services/traefik/README.sv.md) - reverse proxy och routing-karnan.
 - [Whoami](services/whoami/README.sv.md) - demo-service for routingtester.
+- [Rocket.Chat](services/rocketchat/README.sv.md) - valfri chattapplikationsmodul bakom Traefik.
 - [DNS (BIND)](services/dns-bind/README.sv.md) - valfri profil `bind`.
 - [Certbot](services/certbot/README.sv.md) - valfri profil `le`.
 - [Step-CA](services/step-ca/README.sv.md) - valfri profil `stepca`.
@@ -104,6 +106,7 @@ Vanliga kommandon:
 - `make certs-le-issue`, `make certs-le-renew` (profil `le`)
 - `make stepca-up`, `make stepca-bootstrap`, `make stepca-trust-install`
 - `make bind-up`, `make bind-status`, `make bind-restart`, `make bind-provision`
+- `make rocketchat-bootstrap`, `make rocketchat-up`, `make rocketchat-status`, `make rocketchat-logs`
 - `make hosts-generate`, `make hosts-apply`, `make hosts-status`
 
 Auth-filer:
@@ -126,6 +129,7 @@ make test
 ```
 Se `tests/README.md` for detaljer.
 Operativa script: se `scripts/README.md`.
+Statisk Rocket.Chat smoke-suite: `make test-rocketchat`.
 
 <a id="troubleshooting"></a>
 ## Felsokning

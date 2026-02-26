@@ -15,6 +15,7 @@ Prerequisites:
 Preflight validation:
 - `scripts/validate-env.sh` runs before `make up` and any `scripts/compose.sh` call.
 - It enforces safe defaults for admin UIs (Traefik dashboard) and validates profile syntax.
+- It also validates Rocket.Chat profile prerequisites (rendered config) and optional Keycloak/observability settings when enabled.
 - Create htpasswd files under `services/traefik/auth/`, for example:
   - `htpasswd -nbB admin 'change-me' > services/traefik/auth/traefik-dashboard.htpasswd`
 - Set the container paths in `.env`:
@@ -41,6 +42,8 @@ Preflight validation:
 | `scripts/ca-config-verify.sh` | Validate shared CA configuration | `./scripts/ca-config-verify.sh` | `DEV_DOMAIN`, `CA_*`, `LEAF_*` (or legacy `STEP_CA_*`) | Prints effective CA configuration |
 | `scripts/hosts-subdomains.sh` | Manage hosts block for loopback subdomains | `make hosts-apply` | `BASE_DOMAIN`, `LOOPBACK_X` | Modifies hosts file (with sudo) |
 | `scripts/bind-provision.sh` | Generate BIND zone file from ENDPOINTS | `make bind-provision` | `BASE_DOMAIN`, `LOOPBACK_X`, `ENDPOINTS` | Writes `services/dns-bind/zones` |
+| `scripts/rocketchat-bootstrap.sh` | Render Rocket.Chat config artifacts | `make rocketchat-bootstrap` | `DEV_DOMAIN`, `ROCKETCHAT_*` | Writes `services/rocketchat/rendered/*` |
+| `scripts/rocketchat-render-config.sh` | Render Rocket.Chat runtime env + Keycloak checklist | `./scripts/rocketchat-render-config.sh` | `DEV_DOMAIN`, `ROCKETCHAT_*` | Writes `services/rocketchat/rendered/*` |
 | `scripts/common.sh` | Shared helpers | sourced by other scripts | none | none |
 
 ## Workflows
@@ -63,6 +66,17 @@ make bind-status
 make bind-restart
 make bind-logs
 make bind-down
+```
+
+### Rocket.Chat lifecycle
+
+```bash
+make rocketchat-bootstrap
+make rocketchat-up
+make rocketchat-status
+make rocketchat-logs
+make test-rocketchat
+make rocketchat-down
 ```
 
 ### Certificates
@@ -100,6 +114,7 @@ COMPOSE_PROFILES=stepca make up
 - Permission denied (certs or trust store): re-run with `sudo` where required.
 - Profile not enabled: use `COMPOSE_PROFILES=<profile> make up` when needed.
 - BIND exposed on non-loopback: set `BIND_ALLOW_NONLOCAL_BIND=true` explicitly if this is intentional.
+- Rocket.Chat rendered config missing: run `make rocketchat-bootstrap` before `make rocketchat-up`.
 
 Useful commands:
 ```bash
