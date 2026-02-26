@@ -35,7 +35,7 @@
 
 ## 6. Runtime Validation and Handoff (Implementation)
 
-- [ ] 6.1 Perform a manual runtime validation of `make wikijs-up` and confirm Traefik routing to `https://wiki.<DEV_DOMAIN>`.
+- [x] 6.1 Perform a manual runtime validation of `make wikijs-up` and confirm Traefik routing to `https://wiki.<DEV_DOMAIN>`.
 - [ ] 6.2 Validate a Wiki.js realtime/WebSocket-capable interaction through Traefik (or the closest upstream-documented realtime check) and record the result.
 - [ ] 6.3 If Keycloak is enabled, validate the login flow (including internal CA trust when using step-ca-signed Keycloak TLS).
 - [x] 6.4 Do a final self-review pass for gaps (docs/tests/guardrails drift) before handoff.
