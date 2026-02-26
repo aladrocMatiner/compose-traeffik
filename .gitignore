@@ -48,3 +48,14 @@ services/dns-bind/zones/db.aladroc.io
 # Build artifacts
 *.log
 *.tmp
+
+# --- Terraform / IaC local artifacts ---
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+crash.*.log
+infra/images/
+.tools/

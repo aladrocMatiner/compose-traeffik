@@ -32,6 +32,11 @@ Consulta estado:
 make bind-status
 ```
 
+Ejecuta preflight de puertos:
+```bash
+make bind-port-check
+```
+
 Reinicia tras cambios de configuracion:
 ```bash
 make bind-restart
@@ -77,6 +82,7 @@ Ruta del fichero de zona:
 ## Troubleshooting
 
 - Puerto 53 en uso: detiene el servicio en conflicto o cambia `BIND_BIND_ADDRESS`.
+- Ejecuta `make bind-port-check` para listar listeners locales en el puerto 53 antes de arrancar.
 - Falta zone file: ejecuta `make bind-provision` antes de iniciar.
 
 <a id="related"></a>

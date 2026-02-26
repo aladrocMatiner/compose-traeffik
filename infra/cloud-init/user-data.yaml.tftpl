@@ -1,0 +1,33 @@
+#cloud-config
+preserve_hostname: false
+hostname: ${hostname}
+fqdn: ${hostname}
+manage_etc_hosts: true
+ssh_pwauth: false
+disable_root: true
+
+users:
+  - name: ${ssh_user}
+    gecos: Deployment Bootstrap User
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    groups: [adm, sudo]
+    shell: /bin/bash
+    lock_passwd: true
+    ssh_authorized_keys:
+      - ${ssh_public_key}
+
+package_update: true
+package_upgrade: false
+packages:
+  - openssh-server
+  - qemu-guest-agent
+  - python3
+  - python3-apt
+  - curl
+  - ca-certificates
+
+runcmd:
+  - [ sh, -c, "systemctl enable --now ssh || systemctl enable --now sshd || true" ]
+  - [ sh, -c, "systemctl enable --now qemu-guest-agent || true" ]
+
+final_message: "cloud-init bootstrap finished for ${hostname}"

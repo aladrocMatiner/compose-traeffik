@@ -32,6 +32,11 @@ Visa status:
 make bind-status
 ```
 
+Kor port-preflight:
+```bash
+make bind-port-check
+```
+
 Starta om efter konfigurationsandringar:
 ```bash
 make bind-restart
@@ -77,6 +82,7 @@ Sokvag for zonfil:
 ## Felsokning
 
 - Port 53 ar upptagen: stoppa den konflikterande tjansten eller byt `BIND_BIND_ADDRESS`.
+- Kor `make bind-port-check` for att lista lokala lyssnare pa port 53 innan start.
 - Zone-filen saknas: kor `make bind-provision` innan du startar.
 
 <a id="related"></a>

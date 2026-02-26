@@ -1,0 +1,17 @@
+version: 2
+ethernets:
+  ${guest_interface_name}:
+    match:
+      macaddress: "${vm_mac}"
+    set-name: ${guest_interface_name}
+    dhcp4: false
+    addresses:
+      - ${vm_ip}/${vm_cidr_prefix}
+    routes:
+      - to: default
+        via: ${vm_gateway}
+    nameservers:
+      addresses:
+%{ for dns in dns_servers ~}
+        - ${dns}
+%{ endfor ~}

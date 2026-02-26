@@ -1,0 +1,25 @@
+# Copy to terraform.tfvars (or export DEPLOYMENT_* vars and use the wrapper script).
+
+libvirt_uri          = "qemu:///system"
+libvirt_pool         = "default"
+libvirt_pool_path    = "/var/lib/libvirt/images"
+libvirt_network_name = "default"
+
+vm_name   = "compose-traeffik-ubuntu"
+hostname  = "compose-traeffik-ubuntu"
+vm_ip     = "192.168.122.50"
+vm_cidr_prefix = 24
+vm_gateway = "192.168.122.1"
+dns_servers_csv = "1.1.1.1,8.8.8.8"
+vm_mac    = "52:54:c0:a8:7a:32"
+
+guest_interface_name = "ens3"
+ssh_user             = "ubuntu"
+ssh_public_key       = "ssh-ed25519 AAAA... replace-me"
+
+ubuntu_image_path = "../../../images/ubuntu/noble-server-cloudimg-amd64.img"
+
+vm_cpu       = 2
+vm_memory_mb = 2048
+vm_disk_gb   = 20
+autostart    = false

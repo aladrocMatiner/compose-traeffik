@@ -21,7 +21,10 @@ SHELL := /bin/bash # Ensure bash is used for shell commands
         stepca-up stepca-down stepca-bootstrap stepca-verify-cert \
         stepca-trust-install stepca-trust-uninstall stepca-trust-verify \
         hosts-generate hosts-apply hosts-remove hosts-status \
-        bind-up bind-down bind-restart bind-logs bind-status bind-provision bind-provision-dry
+        bind-up bind-down bind-restart bind-logs bind-status bind-provision bind-provision-dry bind-port-check \
+        deployment deployment-ubuntu deployment-plan deployment-destroy deployment-output deployment-ssh \
+        deployment-wait deployment-bootstrap deployment-bootstrap-check deployment-ready \
+        ubuntu debian gentoo libvirt
 
 # Include .env for environment variables if it exists.
 # This makes variables in .env available to the Makefile.
@@ -68,6 +71,45 @@ endif
 BIND_ENV_ARGS :=
 ifneq ($(ENV_FILE),)
 BIND_ENV_ARGS += --env-file $(ENV_FILE)
+endif
+
+# Deployment provisioning options (interface supports os=/init=; implementation remains Ubuntu-first)
+DEPLOYMENT_TARGET ?= libvirt
+DEPLOYMENT_OS ?= ubuntu
+DEPLOYMENT_INIT ?=
+
+# Lowercase convenience vars (GNU Make CLI style), e.g. `make deployment os=gentoo init=openrc`
+ifneq ($(strip $(target)),)
+DEPLOYMENT_TARGET := $(target)
+endif
+ifneq ($(strip $(os)),)
+DEPLOYMENT_OS := $(os)
+endif
+ifneq ($(strip $(init)),)
+DEPLOYMENT_INIT := $(init)
+endif
+
+DEPLOYMENT_INIT_ARG :=
+ifneq ($(strip $(DEPLOYMENT_INIT)),)
+DEPLOYMENT_INIT_ARG := --init "$(DEPLOYMENT_INIT)"
+endif
+
+# Allow positional shorthand: `make deployment ubuntu`, `make deployment gentoo`, `make deployment libvirt`
+ifneq (,$(filter ubuntu,$(MAKECMDGOALS)))
+DEPLOYMENT_OS := ubuntu
+$(eval ubuntu:;@:)
+endif
+ifneq (,$(filter debian,$(MAKECMDGOALS)))
+DEPLOYMENT_OS := debian
+$(eval debian:;@:)
+endif
+ifneq (,$(filter gentoo,$(MAKECMDGOALS)))
+DEPLOYMENT_OS := gentoo
+$(eval gentoo:;@:)
+endif
+ifneq (,$(filter libvirt,$(MAKECMDGOALS)))
+DEPLOYMENT_TARGET := libvirt
+$(eval libvirt:;@:)
 endif
 
 # Start the stack
@@ -202,6 +244,7 @@ hosts-status:
 
 bind-up:
 	@echo "Starting BIND service (profile: bind)..."
+	@"$(SCRIPTS_DIR)/bind-port-check.sh"
 	COMPOSE_PROFILES=bind "$(SCRIPTS_DIR)/compose.sh" --profile bind $(COMPOSE_OPTS) up -d bind
 
 bind-down:
@@ -224,6 +267,47 @@ bind-provision:
 
 bind-provision-dry:
 	"$(SCRIPTS_DIR)/bind-provision.sh" $(BIND_ENV_ARGS) --dry-run
+
+bind-port-check:
+	@"$(SCRIPTS_DIR)/bind-port-check.sh"
+
+# --- VM Deployment Provisioning (Phase 1 bootstrap host) ---
+
+deployment:
+	@echo "Provisioning $(DEPLOYMENT_OS) VM on target $(DEPLOYMENT_TARGET)..."
+	@"$(SCRIPTS_DIR)/infra-provision.sh" apply --target "$(DEPLOYMENT_TARGET)" --os "$(DEPLOYMENT_OS)" $(DEPLOYMENT_INIT_ARG)
+
+deployment-ubuntu:
+	@$(MAKE) deployment DEPLOYMENT_TARGET=libvirt DEPLOYMENT_OS=ubuntu
+
+deployment-plan:
+	@echo "Planning $(DEPLOYMENT_OS) VM on target $(DEPLOYMENT_TARGET)..."
+	@"$(SCRIPTS_DIR)/infra-provision.sh" plan --target "$(DEPLOYMENT_TARGET)" --os "$(DEPLOYMENT_OS)" $(DEPLOYMENT_INIT_ARG)
+
+deployment-destroy:
+	@echo "Destroying deployment VM on target $(DEPLOYMENT_TARGET)..."
+	@"$(SCRIPTS_DIR)/infra-provision.sh" destroy --target "$(DEPLOYMENT_TARGET)" --os "$(DEPLOYMENT_OS)" $(DEPLOYMENT_INIT_ARG)
+
+deployment-output:
+	@"$(SCRIPTS_DIR)/infra-provision.sh" output --target "$(DEPLOYMENT_TARGET)" --os "$(DEPLOYMENT_OS)" $(DEPLOYMENT_INIT_ARG)
+
+deployment-ssh:
+	@"$(SCRIPTS_DIR)/infra-provision.sh" ssh --target "$(DEPLOYMENT_TARGET)" --os "$(DEPLOYMENT_OS)" $(DEPLOYMENT_INIT_ARG)
+
+deployment-wait:
+	@echo "Waiting for deployment VM SSH/cloud-init ($(DEPLOYMENT_TARGET)/$(DEPLOYMENT_OS))..."
+	@"$(SCRIPTS_DIR)/host-wait-ssh.sh" --target "$(DEPLOYMENT_TARGET)" --os "$(DEPLOYMENT_OS)" $(DEPLOYMENT_INIT_ARG)
+
+deployment-bootstrap:
+	@echo "Installing Docker on deployment VM ($(DEPLOYMENT_TARGET)/$(DEPLOYMENT_OS))..."
+	@"$(SCRIPTS_DIR)/host-bootstrap.sh" --target "$(DEPLOYMENT_TARGET)" --os "$(DEPLOYMENT_OS)" $(DEPLOYMENT_INIT_ARG)
+
+deployment-bootstrap-check:
+	@echo "Checking deployment VM readiness ($(DEPLOYMENT_TARGET)/$(DEPLOYMENT_OS))..."
+	@"$(SCRIPTS_DIR)/host-bootstrap-check.sh" --target "$(DEPLOYMENT_TARGET)" --os "$(DEPLOYMENT_OS)" $(DEPLOYMENT_INIT_ARG)
+
+deployment-ready: deployment deployment-wait deployment-bootstrap deployment-bootstrap-check
+	@echo "Deployment VM is provisioned and Docker-ready for Ansible."
 
 # --- Help ---
 
@@ -286,6 +370,26 @@ help:
 	@echo "  bind-status           Show BIND service status."
 	@echo "  bind-provision        Generate the BIND zone file from ENDPOINTS."
 	@echo "  bind-provision-dry    Print the generated zone file without writing."
+	@echo "  bind-port-check       Validate host port 53 is free before starting BIND."
+	@echo ""
+	@echo "VM Deployment Provisioning (Phase 1, libvirt target; Ubuntu implemented, Debian/Gentoo interface scaffolded):"
+	@echo "  deployment            Provision a VM on local libvirt (defaults to os=ubuntu)."
+	@echo "  deployment-plan       Run terraform plan for the deployment VM."
+	@echo "  deployment-output     Print terraform outputs (JSON) for the provisioned VM."
+	@echo "  deployment-ssh        SSH into the provisioned VM using terraform outputs."
+	@echo "  deployment-wait       Wait for SSH and cloud-init completion on the provisioned VM."
+	@echo "  deployment-bootstrap  Install Docker Engine + Compose plugin on the provisioned Ubuntu VM."
+	@echo "  deployment-bootstrap-check  Verify SSH, Python, Docker and Compose on the provisioned VM."
+	@echo "  deployment-ready      End-to-end: provision + wait + Docker bootstrap + readiness check."
+	@echo "  deployment-destroy    Destroy the provisioned VM and related resources."
+	@echo "  deployment-ubuntu     Alias for 'make deployment DEPLOYMENT_TARGET=libvirt DEPLOYMENT_OS=ubuntu'."
+	@echo "                       You can also run: make deployment ubuntu"
+	@echo "                       (GNU Make does not support custom flags like '--ubuntu')."
+	@echo "  New selector syntax:  make deployment os=<ubuntu|debian|gentoo> [init=<openrc|systemd>]"
+	@echo "                       'init' is only valid for os=gentoo and defaults to openrc."
+	@echo "                       Current provisioning implementation is Ubuntu-only; Debian/Gentoo fail fast with clear errors."
+	@echo "  Common overrides: DEPLOYMENT_VM_NAME, DEPLOYMENT_VM_IP, DEPLOYMENT_VM_GATEWAY,"
+	@echo "                    DEPLOYMENT_DNS_SERVERS, DEPLOYMENT_SSH_USER, DEPLOYMENT_SSH_PUBKEY_PATH"
 	@echo ""
 	@echo "Profiles:"
 	@echo "  Use COMPOSE_PROFILES=<profile_name> before make commands to activate profiles."
