@@ -1,0 +1,5 @@
+change_id: add-n8n-service-module
+status: proposed
+created: 2026-02-26
+owner: Codex
+summary: Add an optional n8n service module behind Traefik with optional Keycloak, observability, and step-ca compatibility hooks.
