@@ -2,6 +2,12 @@
 # File: scripts/validate-env.sh
 #
 # Preflight checks for environment variables used by profiles and UI auth.
+#
+# Validates:
+# - Traefik dashboard BasicAuth file safety
+# - COMPOSE_PROFILES syntax
+# - BIND profile bind-address guardrails
+# - Rocket.Chat profile rendered-config and optional integration guardrails
 
 set -euo pipefail
 
@@ -69,6 +75,7 @@ FREEIPA_PROMETHEUS_METRICS_PATH_ENV="${FREEIPA_PROMETHEUS_METRICS_PATH:-}"
 
 load_env
 
+# Re-apply explicit environment overrides captured before load_env.
 if [ -n "${TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH_ENV}" ]; then
     TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH="${TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH_ENV}"
 fi
@@ -328,6 +335,14 @@ is_n8n_profile_enabled() {
         *" n8n "*) return 0 ;;
         *) return 1 ;;
     esac
+}
+
+is_bind_profile_enabled() {
+    profile_enabled bind
+}
+
+is_rocketchat_profile_enabled() {
+    profile_enabled rocketchat
 }
 
 is_ipv4_loopback() {
