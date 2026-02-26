@@ -16,6 +16,16 @@ COMPOSE_PROFILES_ENV="${COMPOSE_PROFILES:-}"
 TRAEFIK_DASHBOARD_ENV="${TRAEFIK_DASHBOARD:-}"
 BIND_BIND_ADDRESS_ENV="${BIND_BIND_ADDRESS:-}"
 BIND_ALLOW_NONLOCAL_BIND_ENV="${BIND_ALLOW_NONLOCAL_BIND:-}"
+N8N_KEYCLOAK_ENABLE_ENV="${N8N_KEYCLOAK_ENABLE:-}"
+N8N_KEYCLOAK_DISCOVERY_URL_ENV="${N8N_KEYCLOAK_DISCOVERY_URL:-}"
+N8N_KEYCLOAK_CLIENT_ID_ENV="${N8N_KEYCLOAK_CLIENT_ID:-}"
+N8N_KEYCLOAK_CLIENT_SECRET_ENV="${N8N_KEYCLOAK_CLIENT_SECRET:-}"
+N8N_OBSERVABILITY_ENABLE_ENV="${N8N_OBSERVABILITY_ENABLE:-}"
+N8N_OBSERVABILITY_MODE_ENV="${N8N_OBSERVABILITY_MODE:-}"
+N8N_METRICS_CUSTOM_ENABLE_ENV="${N8N_METRICS_CUSTOM_ENABLE:-}"
+N8N_STEPCA_TRUST_ENABLE_ENV="${N8N_STEPCA_TRUST_ENABLE:-}"
+N8N_STEPCA_TRUST_SOURCE_PATH_ENV="${N8N_STEPCA_TRUST_SOURCE_PATH:-}"
+N8N_RENDERED_ENV_PATH_ENV="${N8N_RENDERED_ENV_PATH:-}"
 
 load_env
 
@@ -33,6 +43,36 @@ if [ -n "${BIND_BIND_ADDRESS_ENV}" ]; then
 fi
 if [ -n "${BIND_ALLOW_NONLOCAL_BIND_ENV}" ]; then
     BIND_ALLOW_NONLOCAL_BIND="${BIND_ALLOW_NONLOCAL_BIND_ENV}"
+fi
+if [ -n "${N8N_KEYCLOAK_ENABLE_ENV}" ]; then
+    N8N_KEYCLOAK_ENABLE="${N8N_KEYCLOAK_ENABLE_ENV}"
+fi
+if [ -n "${N8N_KEYCLOAK_DISCOVERY_URL_ENV}" ]; then
+    N8N_KEYCLOAK_DISCOVERY_URL="${N8N_KEYCLOAK_DISCOVERY_URL_ENV}"
+fi
+if [ -n "${N8N_KEYCLOAK_CLIENT_ID_ENV}" ]; then
+    N8N_KEYCLOAK_CLIENT_ID="${N8N_KEYCLOAK_CLIENT_ID_ENV}"
+fi
+if [ -n "${N8N_KEYCLOAK_CLIENT_SECRET_ENV}" ]; then
+    N8N_KEYCLOAK_CLIENT_SECRET="${N8N_KEYCLOAK_CLIENT_SECRET_ENV}"
+fi
+if [ -n "${N8N_OBSERVABILITY_ENABLE_ENV}" ]; then
+    N8N_OBSERVABILITY_ENABLE="${N8N_OBSERVABILITY_ENABLE_ENV}"
+fi
+if [ -n "${N8N_OBSERVABILITY_MODE_ENV}" ]; then
+    N8N_OBSERVABILITY_MODE="${N8N_OBSERVABILITY_MODE_ENV}"
+fi
+if [ -n "${N8N_METRICS_CUSTOM_ENABLE_ENV}" ]; then
+    N8N_METRICS_CUSTOM_ENABLE="${N8N_METRICS_CUSTOM_ENABLE_ENV}"
+fi
+if [ -n "${N8N_STEPCA_TRUST_ENABLE_ENV}" ]; then
+    N8N_STEPCA_TRUST_ENABLE="${N8N_STEPCA_TRUST_ENABLE_ENV}"
+fi
+if [ -n "${N8N_STEPCA_TRUST_SOURCE_PATH_ENV}" ]; then
+    N8N_STEPCA_TRUST_SOURCE_PATH="${N8N_STEPCA_TRUST_SOURCE_PATH_ENV}"
+fi
+if [ -n "${N8N_RENDERED_ENV_PATH_ENV}" ]; then
+    N8N_RENDERED_ENV_PATH="${N8N_RENDERED_ENV_PATH_ENV}"
 fi
 
 resolve_auth_path() {
@@ -104,6 +144,13 @@ is_bind_profile_enabled() {
     esac
 }
 
+is_n8n_profile_enabled() {
+    case " ${COMPOSE_PROFILES_NORMALIZED:-} " in
+        *" n8n "*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
 is_ipv4_loopback() {
     local value="$1"
     if [[ ! "$value" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
@@ -144,6 +191,92 @@ validate_domain_name() {
     done
 }
 
+validate_bool() {
+    local label="$1"
+    local value="$2"
+    case "$value" in
+        true|false) ;;
+        *) log_error "${label} must be 'true' or 'false'. Got: ${value}" ;;
+    esac
+}
+
+validate_https_url() {
+    local label="$1"
+    local value="$2"
+    if [ -z "$value" ]; then
+        log_error "${label} is required."
+    fi
+    if [[ ! "$value" =~ ^https://[^[:space:]]+$ ]]; then
+        log_error "${label} must be an https:// URL. Got: ${value}"
+    fi
+}
+
+validate_path_fragment() {
+    local label="$1"
+    local value="$2"
+    if [ -z "$value" ]; then
+        log_error "${label} is required."
+    fi
+    if [[ "$value" =~ [[:space:]] ]]; then
+        log_error "${label} must not contain whitespace. Got: ${value}"
+    fi
+    if [[ "$value" == /* || "$value" == */* ]]; then
+        log_error "${label} must be a single path segment without '/'. Got: ${value}"
+    fi
+}
+
+validate_n8n_rendered_env() {
+    local path="${N8N_RENDERED_ENV_PATH:-${REPO_ROOT}/services/n8n/rendered/n8n.env}"
+    local resolved="$path"
+    if [[ "$resolved" != /* ]]; then
+        resolved="${REPO_ROOT}/${resolved}"
+    fi
+    if [ ! -f "$resolved" ]; then
+        log_error "n8n rendered env not found: ${resolved}. Run 'make n8n-bootstrap'."
+    fi
+    if ! grep -Eq '^N8N_RENDER_STATUS=ready$' "$resolved"; then
+        log_error "n8n rendered env is missing or stale (${resolved}). Run 'make n8n-bootstrap'."
+    fi
+}
+
+validate_n8n_optional_integrations() {
+    local keycloak_enabled="${N8N_KEYCLOAK_ENABLE:-false}"
+    local observability_enabled="${N8N_OBSERVABILITY_ENABLE:-false}"
+    local metrics_custom="${N8N_METRICS_CUSTOM_ENABLE:-false}"
+    local stepca_trust_enabled="${N8N_STEPCA_TRUST_ENABLE:-false}"
+    local observability_mode="${N8N_OBSERVABILITY_MODE:-health}"
+    local health_endpoint="${N8N_ENDPOINT_HEALTH:-healthz}"
+
+    validate_bool "N8N_KEYCLOAK_ENABLE" "$keycloak_enabled"
+    validate_bool "N8N_OBSERVABILITY_ENABLE" "$observability_enabled"
+    validate_bool "N8N_METRICS_CUSTOM_ENABLE" "$metrics_custom"
+    validate_bool "N8N_STEPCA_TRUST_ENABLE" "$stepca_trust_enabled"
+    validate_path_fragment "N8N_ENDPOINT_HEALTH" "$health_endpoint"
+
+    if [ "$keycloak_enabled" = "true" ]; then
+        validate_https_url "N8N_KEYCLOAK_DISCOVERY_URL" "${N8N_KEYCLOAK_DISCOVERY_URL:-}"
+        [ -n "${N8N_KEYCLOAK_CLIENT_ID:-}" ] || log_error "N8N_KEYCLOAK_CLIENT_ID is required when N8N_KEYCLOAK_ENABLE=true."
+        [ -n "${N8N_KEYCLOAK_CLIENT_SECRET:-}" ] || log_error "N8N_KEYCLOAK_CLIENT_SECRET is required when N8N_KEYCLOAK_ENABLE=true."
+    fi
+
+    if [ "$observability_enabled" = "true" ]; then
+        case "$observability_mode" in
+            health|metrics|full|custom) ;;
+            *) log_error "N8N_OBSERVABILITY_MODE must be one of: health, metrics, full, custom. Got: ${observability_mode}" ;;
+        esac
+    fi
+
+    if [ "$stepca_trust_enabled" = "true" ]; then
+        local source_path="${N8N_STEPCA_TRUST_SOURCE_PATH:-}"
+        [ -n "$source_path" ] || log_error "N8N_STEPCA_TRUST_SOURCE_PATH is required when N8N_STEPCA_TRUST_ENABLE=true."
+        local resolved="$source_path"
+        if [[ "$resolved" != /* ]]; then
+            resolved="${REPO_ROOT}/${resolved}"
+        fi
+        [ -f "$resolved" ] || log_error "N8N_STEPCA_TRUST_SOURCE_PATH file not found: ${resolved}"
+    fi
+}
+
 if [ "${TRAEFIK_DASHBOARD:-false}" = "true" ]; then
     require_auth_file "Traefik dashboard" "${TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH:-}"
 fi
@@ -160,4 +293,9 @@ if is_bind_profile_enabled; then
             log_error "BIND_BIND_ADDRESS must be loopback by default. Set BIND_ALLOW_NONLOCAL_BIND=true for intentional non-local exposure."
         fi
     fi
+fi
+
+if is_n8n_profile_enabled; then
+    validate_n8n_rendered_env
+    validate_n8n_optional_integrations
 fi

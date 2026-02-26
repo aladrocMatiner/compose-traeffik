@@ -72,6 +72,7 @@ Detaljerade TLS-floden:
 ## Endpoints
 
 - **Whoami**: `https://whoami.${DEV_DOMAIN}` (standardstack)
+- **n8n**: `https://n8n.${DEV_DOMAIN}` (profil `n8n`; valfri)
 - **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth; aktiverad som standard)
 - **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (profil `stepca`; aktiverad som standard)
 
@@ -80,6 +81,7 @@ Detaljerade TLS-floden:
 
 - [Traefik](services/traefik/README.sv.md) - reverse proxy och routing-karnan.
 - [Whoami](services/whoami/README.sv.md) - demo-service for routingtester.
+- [n8n](services/n8n/README.sv.md) - valfri profil `n8n` (workflow-automation).
 - [DNS (BIND)](services/dns-bind/README.sv.md) - valfri profil `bind`.
 - [Certbot](services/certbot/README.sv.md) - valfri profil `le`.
 - [Step-CA](services/step-ca/README.sv.md) - valfri profil `stepca`.
@@ -104,6 +106,7 @@ Vanliga kommandon:
 - `make certs-le-issue`, `make certs-le-renew` (profil `le`)
 - `make stepca-up`, `make stepca-bootstrap`, `make stepca-trust-install`
 - `make bind-up`, `make bind-status`, `make bind-restart`, `make bind-provision`
+- `make n8n-bootstrap`, `make n8n-up`, `make n8n-status`
 - `make hosts-generate`, `make hosts-apply`, `make hosts-status`
 
 Auth-filer:

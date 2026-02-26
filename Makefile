@@ -21,7 +21,8 @@ SHELL := /bin/bash # Ensure bash is used for shell commands
         stepca-up stepca-down stepca-bootstrap stepca-verify-cert \
         stepca-trust-install stepca-trust-uninstall stepca-trust-verify \
         hosts-generate hosts-apply hosts-remove hosts-status \
-        bind-up bind-down bind-restart bind-logs bind-status bind-provision bind-provision-dry
+        bind-up bind-down bind-restart bind-logs bind-status bind-provision bind-provision-dry \
+        n8n-bootstrap n8n-up n8n-down n8n-restart n8n-logs n8n-status test-n8n
 
 # Include .env for environment variables if it exists.
 # This makes variables in .env available to the Makefile.
@@ -35,6 +36,7 @@ COMPOSE_FILES := \
   -f compose/base.yml \
   -f services/traefik/compose.yml \
   -f services/whoami/compose.yml \
+  -f services/n8n/compose.yml \
   -f services/dns-bind/compose.yml \
   -f services/certbot/compose.yml \
   -f services/step-ca/compose.yml
@@ -98,12 +100,12 @@ ps:
 bootstrap:
 	@echo "Bootstrapping local environment (.env and directories)..."
 	./scripts/env-generate.sh --mode=prod
-	mkdir -p shared/certs shared/certs/local-ca shared/certs/local
+	mkdir -p shared/certs shared/certs/local-ca shared/certs/local services/n8n/rendered
 
 bootstrap-full:
 	@echo "Bootstrapping local environment (.env and directories) with full defaults..."
 	./scripts/env-generate.sh --mode=full
-	mkdir -p shared/certs shared/certs/local-ca shared/certs/local
+	mkdir -p shared/certs shared/certs/local-ca shared/certs/local services/n8n/rendered
 
 certs-local:
 	@echo "Generating local self-signed certificates..."
@@ -181,6 +183,38 @@ test:
 docs-check:
 	@echo "Validating multilingual README structure..."
 	./scripts/docs-check.sh
+
+# --- n8n (optional profile: n8n) ---
+
+n8n-bootstrap:
+	@echo "Rendering n8n runtime config and optional integration runbooks..."
+	./scripts/n8n-bootstrap.sh
+
+n8n-up: n8n-bootstrap
+	@echo "Starting n8n service (profile: n8n)..."
+	COMPOSE_PROFILES=n8n "$(SCRIPTS_DIR)/compose.sh" --profile n8n $(COMPOSE_OPTS) up -d n8n n8n-db
+
+n8n-down:
+	@echo "Stopping n8n service..."
+	COMPOSE_PROFILES=n8n "$(SCRIPTS_DIR)/compose.sh" --profile n8n $(COMPOSE_OPTS) stop n8n n8n-db || true
+	COMPOSE_PROFILES=n8n "$(SCRIPTS_DIR)/compose.sh" --profile n8n $(COMPOSE_OPTS) rm -f n8n n8n-db || true
+
+n8n-restart: n8n-down n8n-up
+
+n8n-logs:
+	@echo "Showing n8n logs..."
+	COMPOSE_PROFILES=n8n "$(SCRIPTS_DIR)/compose.sh" --profile n8n $(COMPOSE_OPTS) logs -f n8n n8n-db
+
+n8n-status:
+	@echo "n8n service status:"
+	COMPOSE_PROFILES=n8n "$(SCRIPTS_DIR)/compose.sh" --profile n8n $(COMPOSE_OPTS) ps n8n n8n-db
+
+test-n8n:
+	@echo "Running n8n static smoke tests..."
+	./tests/smoke/test_n8n_make_targets.sh
+	./tests/smoke/test_n8n_compose_wiring.sh
+	./tests/smoke/test_n8n_guardrails.sh
+	./tests/smoke/test_n8n_render_config.sh
 
 # --- Hosts Subdomain Mapper ---
 
@@ -268,9 +302,18 @@ help:
 	@echo ""
 	@echo "Testing:"
 	@echo "  test                  Run all smoke tests for the current configuration."
+	@echo "  test-n8n              Run n8n static smoke tests (wiring/guardrails/rendering)."
 	@echo ""
 	@echo "Docs:"
 	@echo "  docs-check            Validate multilingual README structure and links."
+	@echo ""
+	@echo "n8n:"
+	@echo "  n8n-bootstrap         Render n8n runtime config and optional integration runbooks."
+	@echo "  n8n-up                Start n8n + PostgreSQL (profile: n8n)."
+	@echo "  n8n-down              Stop and remove n8n containers."
+	@echo "  n8n-restart           Restart n8n (n8n-down + n8n-up)."
+	@echo "  n8n-logs              Follow n8n and PostgreSQL logs."
+	@echo "  n8n-status            Show n8n service status."
 	@echo ""
 	@echo "Hosts Subdomain Mapper:"
 	@echo "  hosts-generate        Print the managed hosts block."
@@ -289,6 +332,6 @@ help:
 	@echo ""
 	@echo "Profiles:"
 	@echo "  Use COMPOSE_PROFILES=<profile_name> before make commands to activate profiles."
-	@echo "  Available profiles: bind, le, stepca"
+	@echo "  Available profiles: bind, le, stepca, n8n"
 	@echo "  Example: COMPOSE_PROFILES=le make up"
 	@echo ""

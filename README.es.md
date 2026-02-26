@@ -72,6 +72,7 @@ Guias de TLS:
 ## Endpoints
 
 - **Whoami**: `https://whoami.${DEV_DOMAIN}` (stack por defecto)
+- **n8n**: `https://n8n.${DEV_DOMAIN}` (perfil `n8n`; opcional)
 - **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth; habilitado por defecto)
 - **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (perfil `stepca`; habilitado por defecto)
 
@@ -80,6 +81,7 @@ Guias de TLS:
 
 - [Traefik](services/traefik/README.es.md) - reverse proxy y nucleo de routing.
 - [Whoami](services/whoami/README.es.md) - servicio demo para pruebas de routing.
+- [n8n](services/n8n/README.es.md) - perfil opcional `n8n` (automatizacion de workflows).
 - [DNS (BIND)](services/dns-bind/README.es.md) - perfil opcional `bind`.
 - [Certbot](services/certbot/README.es.md) - perfil opcional `le`.
 - [Step-CA](services/step-ca/README.es.md) - perfil opcional `stepca`.
@@ -104,6 +106,7 @@ Comandos comunes:
 - `make certs-le-issue`, `make certs-le-renew` (perfil `le`)
 - `make stepca-up`, `make stepca-bootstrap`, `make stepca-trust-install`
 - `make bind-up`, `make bind-status`, `make bind-restart`, `make bind-provision`
+- `make n8n-bootstrap`, `make n8n-up`, `make n8n-status`
 - `make hosts-generate`, `make hosts-apply`, `make hosts-status`
 
 Archivos auth:

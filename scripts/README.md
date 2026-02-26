@@ -15,6 +15,7 @@ Prerequisites:
 Preflight validation:
 - `scripts/validate-env.sh` runs before `make up` and any `scripts/compose.sh` call.
 - It enforces safe defaults for admin UIs (Traefik dashboard) and validates profile syntax.
+- It also validates profile-gated n8n rendered config prerequisites and optional integration inputs when `n8n` is enabled.
 - Create htpasswd files under `services/traefik/auth/`, for example:
   - `htpasswd -nbB admin 'change-me' > services/traefik/auth/traefik-dashboard.htpasswd`
 - Set the container paths in `.env`:
@@ -41,6 +42,8 @@ Preflight validation:
 | `scripts/ca-config-verify.sh` | Validate shared CA configuration | `./scripts/ca-config-verify.sh` | `DEV_DOMAIN`, `CA_*`, `LEAF_*` (or legacy `STEP_CA_*`) | Prints effective CA configuration |
 | `scripts/hosts-subdomains.sh` | Manage hosts block for loopback subdomains | `make hosts-apply` | `BASE_DOMAIN`, `LOOPBACK_X` | Modifies hosts file (with sudo) |
 | `scripts/bind-provision.sh` | Generate BIND zone file from ENDPOINTS | `make bind-provision` | `BASE_DOMAIN`, `LOOPBACK_X`, `ENDPOINTS` | Writes `services/dns-bind/zones` |
+| `scripts/n8n-bootstrap.sh` | Render n8n runtime env and optional runbooks | `make n8n-bootstrap` | `DEV_DOMAIN`, `N8N_DB_*`, `N8N_ENCRYPTION_KEY`, optional `N8N_*` integration vars | Writes `services/n8n/rendered` |
+| `scripts/n8n-render-config.sh` | Render n8n config artifacts directly | `./scripts/n8n-render-config.sh` | `DEV_DOMAIN`, `N8N_DB_PASSWORD`, `N8N_ENCRYPTION_KEY` | Writes `services/n8n/rendered` |
 | `scripts/common.sh` | Shared helpers | sourced by other scripts | none | none |
 
 ## Workflows
@@ -63,6 +66,16 @@ make bind-status
 make bind-restart
 make bind-logs
 make bind-down
+```
+
+### n8n lifecycle
+
+```bash
+make n8n-bootstrap
+make n8n-up
+make n8n-status
+make n8n-logs
+make n8n-down
 ```
 
 ### Certificates
@@ -100,6 +113,7 @@ COMPOSE_PROFILES=stepca make up
 - Permission denied (certs or trust store): re-run with `sudo` where required.
 - Profile not enabled: use `COMPOSE_PROFILES=<profile> make up` when needed.
 - BIND exposed on non-loopback: set `BIND_ALLOW_NONLOCAL_BIND=true` explicitly if this is intentional.
+- n8n preflight fails on rendered config: run `make n8n-bootstrap` before enabling profile `n8n`.
 
 Useful commands:
 ```bash

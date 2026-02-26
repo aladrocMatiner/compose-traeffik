@@ -48,6 +48,14 @@
       }
     },
     {
+      "slug": "n8n",
+      "title": {
+        "en": "n8n",
+        "sv": "n8n",
+        "es": "n8n"
+      }
+    },
+    {
       "slug": "certbot",
       "title": {
         "en": "Certbot",

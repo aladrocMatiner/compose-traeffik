@@ -1,6 +1,7 @@
 # Smoke Tests for Traefik Edge Stack
 
 This directory contains smoke tests that verify Traefik readiness, routing, TLS, and auxiliary tooling (hosts scripts). The tests are designed to be fast and provide immediate feedback on the stack state.
+It also contains static smoke tests for optional service modules (for example BIND and n8n) that validate wiring, guardrails, and render scripts without requiring runtime startup.
 
 ## How to run
 
@@ -38,6 +39,10 @@ This directory contains smoke tests that verify Traefik readiness, routing, TLS,
 | `tests/smoke/test_bind_file_permissions.sh` | Validate config/zone file permissions are not world-writable. | `stat`, generated zone file or `bind-provision`. | Template, zone dir, and zone file reject world-writable modes. |
 | `tests/smoke/test_bind_provisioning_validation.sh` | Validate `bind-provision` rejects invalid domain and endpoint labels. | `mktemp`, `scripts/bind-provision.sh`. | Invalid `BASE_DOMAIN` or endpoint labels fail with non-zero exit. |
 | `tests/smoke/test_bind_security_runtime.sh` | Validate runtime DNS security behavior (no recursion, AXFR denied, hidden CHAOS metadata, expected listener). | `dig`, `docker`, `make`, loopback test address. | Security checks pass and BIND responds only on the expected test bind address. |
+| `tests/smoke/test_n8n_make_targets.sh` | Validate n8n Make targets and compose-wrapper profile wiring. | `Makefile`, `awk`, `grep`. | n8n lifecycle targets exist and use `scripts/compose.sh --profile n8n`. |
+| `tests/smoke/test_n8n_compose_wiring.sh` | Validate n8n compose fragment (Traefik labels, env files, DB dependency). | `services/n8n/compose.yml`, `grep`. | Required profile, labels, env files, and DB health wiring are present. |
+| `tests/smoke/test_n8n_guardrails.sh` | Validate preflight guardrails for n8n rendered config and optional Keycloak/step-ca inputs. | `scripts/validate-env.sh`, `mktemp`. | Missing/stale rendered config fails; invalid Keycloak/step-ca inputs fail; valid inputs pass. |
+| `tests/smoke/test_n8n_render_config.sh` | Validate n8n render script output and optional runbook generation. | `scripts/n8n-render-config.sh`, `mktemp`. | Rendered env has ready marker and expected keys; runbooks are generated without leaking secrets. |
 
 ## Configuration
 
@@ -48,6 +53,7 @@ Smoke tests use environment variables loaded from `.env` via `scripts/healthchec
 - `BIND_BIND_ADDRESS` (default listener for BIND)
 - `BIND_ALLOW_NONLOCAL_BIND` (must be `true` to allow non-loopback bind)
 - `BIND_SECURITY_TEST_ADDRESS` (optional loopback override for runtime security smoke)
+- `N8N_*` variables (for module-specific render/guardrail tests when running individual n8n tests)
 
 Ensure `.env` exists (prefer `make bootstrap`) before running tests. Optional profiles
 are enabled by default via `COMPOSE_PROFILES` in `.env`; edit it if you want a smaller stack.
@@ -103,3 +109,8 @@ are enabled by default via `COMPOSE_PROFILES` in `.env`; edit it if you want a s
   - Symptom: `test_bind_provisioning_validation.sh` fails.
   - Diagnose: inspect `BASE_DOMAIN` format and endpoint labels in `ENDPOINTS`.
   - Fix: use lowercase DNS labels only (`a-z`, `0-9`, internal `-`) and valid dot-separated domain format.
+
+- **n8n guardrails or render smoke fails**
+  - Symptom: `test_n8n_guardrails.sh` or `test_n8n_render_config.sh` fails.
+  - Diagnose: inspect `scripts/validate-env.sh` and `scripts/n8n-render-config.sh`, then re-run the failing test directly.
+  - Fix: ensure n8n variables in `.env.example` and rendered file marker expectations stay in sync with the scripts.
