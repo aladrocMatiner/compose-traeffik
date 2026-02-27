@@ -1,17 +1,17 @@
-id: gentoo-openrc-stage3-hostkernel-20260222T170100Z
+id: gentoo-systemd-stage3-hostkernel-20260222T170100Z
 kind: experimental-build-input
 target: qemu-libvirt
 arch: amd64
 os: gentoo
-init_system: openrc
+init_system: systemd
 cloud_init_support: image-built
 source:
   type: stage3-tarball
-  url: https://distfiles.gentoo.org/releases/amd64/autobuilds/20260222T170100Z/stage3-amd64-openrc-20260222T170100Z.tar.xz
-  sha256: 75d385060630fce54cfc4d10567e2e8524dcc0a336b81dfe7f3b21f6606234ef
-  checksum_url: https://distfiles.gentoo.org/releases/amd64/autobuilds/20260222T170100Z/stage3-amd64-openrc-20260222T170100Z.tar.xz.sha256
+  url: https://distfiles.gentoo.org/releases/amd64/autobuilds/20260222T170100Z/stage3-amd64-systemd-20260222T170100Z.tar.xz
+  sha256: 41f585bba48bd1c979868d035b78c06d690f1819a249e059ee82a4172d3fb813
+  checksum_url: https://distfiles.gentoo.org/releases/amd64/autobuilds/20260222T170100Z/stage3-amd64-systemd-20260222T170100Z.tar.xz.sha256
 build_strategy:
-  rootfs: Gentoo stage3 OpenRC
+  rootfs: Gentoo stage3 systemd
   packages:
     install_mode: binpkg-only
     required:
@@ -30,8 +30,8 @@ constraints:
 status: candidate
 support_level: experimental
 qualified_qemu_provisioning: true
-qualified_ansible_ready: true
+qualified_ansible_ready: false
 qualified_docker_bootstrap: false
 qualification_notes:
-  - OpenRC remains the default Gentoo baseline for qemu provisioning.
-  - Docker bootstrap parity remains explicitly out of scope for this experimental profile.
+  - systemd variant is available as an explicit experimental override (`init=systemd`).
+  - OpenRC remains the default Gentoo baseline.

@@ -33,16 +33,26 @@ Environment overrides (selected):
   DEPLOYMENT_DEBIAN13_SHA512SUMS_URL
   DEPLOYMENT_OPENSUSE_LEAP_IMAGE_URL
   DEPLOYMENT_OPENSUSE_LEAP_IMAGE_PATH
+  DEPLOYMENT_OPENSUSE_LEAP_IMAGE_SHA256
+  DEPLOYMENT_OPENSUSE_LEAP_SHA256SUMS_URL
   DEPLOYMENT_ALMALINUX9_IMAGE_URL
   DEPLOYMENT_ALMALINUX9_IMAGE_PATH
+  DEPLOYMENT_ALMALINUX9_IMAGE_SHA256
+  DEPLOYMENT_ALMALINUX9_SHA256SUMS_URL
   DEPLOYMENT_ROCKYLINUX9_IMAGE_URL
   DEPLOYMENT_ROCKYLINUX9_IMAGE_PATH
+  DEPLOYMENT_ROCKYLINUX9_IMAGE_SHA256
+  DEPLOYMENT_ROCKYLINUX9_SHA256SUMS_URL
   DEPLOYMENT_FEDORA_CLOUD_IMAGE_URL
   DEPLOYMENT_FEDORA_CLOUD_IMAGE_PATH
+  DEPLOYMENT_FEDORA_CLOUD_IMAGE_SHA256
+  DEPLOYMENT_FEDORA_CLOUD_SHA256SUMS_URL
   DEPLOYMENT_GENTOO_SYSTEMD_IMAGE_URL
   DEPLOYMENT_GENTOO_SYSTEMD_IMAGE_PATH
   DEPLOYMENT_GENTOO_OPENRC_IMAGE_URL
   DEPLOYMENT_GENTOO_OPENRC_IMAGE_PATH
+  DEPLOYMENT_GENTOO_OPENRC_MANIFEST_PATH
+  DEPLOYMENT_GENTOO_SYSTEMD_MANIFEST_PATH
   DEPLOYMENT_GENTOO_OPENRC_AUTO_BUILD
   DEPLOYMENT_LIBVIRT_URI
   DEPLOYMENT_LIBVIRT_POOL
@@ -140,13 +150,31 @@ sha512_file() {
   sha512sum "${file_path}" | awk '{print $1}'
 }
 
-fetch_debian_sha512_from_sums() {
+sha256_file() {
+  local file_path="$1"
+  sha256sum "${file_path}" | awk '{print $1}'
+}
+
+fetch_checksum_from_sums() {
   local sums_url="$1"
   local image_name="$2"
-  local line
-  line="$(curl -fsSL "${sums_url}" | awk -v f="${image_name}" '$2 == f { print; exit }')"
-  [[ -n "${line}" ]] || return 1
-  printf '%s\n' "${line%% *}"
+  local algorithm="$3"
+  local checksum
+  checksum="$(
+    curl -fsSL "${sums_url}" | awk -v f="${image_name}" -v algo="${algorithm}" '
+      BEGIN { IGNORECASE=1 }
+      $2 == f && $1 ~ /^[0-9A-Fa-f]{32,128}$/ {
+        print tolower($1)
+        exit
+      }
+      toupper($1) == toupper(algo) && $2 == "(" f ")" && $3 == "=" && $4 ~ /^[0-9A-Fa-f]{32,128}$/ {
+        print tolower($4)
+        exit
+      }
+    '
+  )"
+  [[ -n "${checksum}" ]] || return 1
+  printf '%s\n' "${checksum}"
 }
 
 validate_target_os_init() {
@@ -194,6 +222,8 @@ resolve_base_image_config() {
   BASE_IMAGE_LABEL=""
   BASE_IMAGE_URL=""
   BASE_IMAGE_PATH=""
+  BASE_IMAGE_SHA256=""
+  BASE_IMAGE_SHA256SUMS_URL=""
   BASE_IMAGE_SHA512=""
   BASE_IMAGE_SHA512SUMS_URL=""
   BASE_IMAGE_EXPECTED_NAME=""
@@ -227,24 +257,36 @@ resolve_base_image_config() {
       BASE_IMAGE_LABEL="openSUSE Leap (cloud image)"
       BASE_IMAGE_URL="${DEPLOYMENT_OPENSUSE_LEAP_IMAGE_URL:-https://download.opensuse.org/distribution/leap/15.6/appliances/openSUSE-Leap-15.6-Minimal-VM.x86_64-Cloud.qcow2}"
       BASE_IMAGE_PATH="${DEPLOYMENT_OPENSUSE_LEAP_IMAGE_PATH:-${REPO_ROOT}/infra/images/opensuse/openSUSE-Leap-15.6-Minimal-VM.x86_64-Cloud.qcow2}"
+      BASE_IMAGE_SHA256="${DEPLOYMENT_OPENSUSE_LEAP_IMAGE_SHA256:-ba32ea4136812cb09a3a853723187b007f5cf0a2013a0123240a7d45f42ea4a9}"
+      BASE_IMAGE_SHA256SUMS_URL="${DEPLOYMENT_OPENSUSE_LEAP_SHA256SUMS_URL:-https://download.opensuse.org/distribution/leap/15.6/appliances/openSUSE-Leap-15.6-Minimal-VM.x86_64-Cloud.qcow2.sha256}"
+      BASE_IMAGE_EXPECTED_NAME="$(basename "${BASE_IMAGE_URL}")"
       TEMPLATE_OS_FAMILY="opensuse"
       ;;
     almalinux9)
       BASE_IMAGE_LABEL="AlmaLinux 9 (GenericCloud)"
-      BASE_IMAGE_URL="${DEPLOYMENT_ALMALINUX9_IMAGE_URL:-https://repo.almalinux.org/almalinux/9/cloud/x86_64/images/AlmaLinux-9-GenericCloud-latest.x86_64.qcow2}"
-      BASE_IMAGE_PATH="${DEPLOYMENT_ALMALINUX9_IMAGE_PATH:-${REPO_ROOT}/infra/images/almalinux/AlmaLinux-9-GenericCloud-latest.x86_64.qcow2}"
+      BASE_IMAGE_URL="${DEPLOYMENT_ALMALINUX9_IMAGE_URL:-https://repo.almalinux.org/almalinux/9/cloud/x86_64/images/AlmaLinux-9-GenericCloud-9.7-20251118.x86_64.qcow2}"
+      BASE_IMAGE_PATH="${DEPLOYMENT_ALMALINUX9_IMAGE_PATH:-${REPO_ROOT}/infra/images/almalinux/AlmaLinux-9-GenericCloud-9.7-20251118.x86_64.qcow2}"
+      BASE_IMAGE_SHA256="${DEPLOYMENT_ALMALINUX9_IMAGE_SHA256:-5ff9c048859046f41db4a33b1f1a96675711288078aac66b47d0be023af270d1}"
+      BASE_IMAGE_SHA256SUMS_URL="${DEPLOYMENT_ALMALINUX9_SHA256SUMS_URL:-https://repo.almalinux.org/almalinux/9/cloud/x86_64/images/CHECKSUM}"
+      BASE_IMAGE_EXPECTED_NAME="$(basename "${BASE_IMAGE_URL}")"
       TEMPLATE_OS_FAMILY="rhel"
       ;;
     rockylinux9)
       BASE_IMAGE_LABEL="Rocky Linux 9 (GenericCloud)"
-      BASE_IMAGE_URL="${DEPLOYMENT_ROCKYLINUX9_IMAGE_URL:-https://dl.rockylinux.org/pub/rocky/9/images/x86_64/Rocky-9-GenericCloud.latest.x86_64.qcow2}"
-      BASE_IMAGE_PATH="${DEPLOYMENT_ROCKYLINUX9_IMAGE_PATH:-${REPO_ROOT}/infra/images/rocky/Rocky-9-GenericCloud.latest.x86_64.qcow2}"
+      BASE_IMAGE_URL="${DEPLOYMENT_ROCKYLINUX9_IMAGE_URL:-https://dl.rockylinux.org/pub/rocky/9/images/x86_64/Rocky-9-GenericCloud-9.7-20251123.2.x86_64.qcow2}"
+      BASE_IMAGE_PATH="${DEPLOYMENT_ROCKYLINUX9_IMAGE_PATH:-${REPO_ROOT}/infra/images/rocky/Rocky-9-GenericCloud-9.7-20251123.2.x86_64.qcow2}"
+      BASE_IMAGE_SHA256="${DEPLOYMENT_ROCKYLINUX9_IMAGE_SHA256:-15d81d3434b298142b2fdd8fb54aef2662684db5c082cc191c3c79762ed6360c}"
+      BASE_IMAGE_SHA256SUMS_URL="${DEPLOYMENT_ROCKYLINUX9_SHA256SUMS_URL:-https://dl.rockylinux.org/pub/rocky/9/images/x86_64/CHECKSUM}"
+      BASE_IMAGE_EXPECTED_NAME="$(basename "${BASE_IMAGE_URL}")"
       TEMPLATE_OS_FAMILY="rhel"
       ;;
     fedora-cloud)
       BASE_IMAGE_LABEL="Fedora Cloud (qcow2)"
       BASE_IMAGE_URL="${DEPLOYMENT_FEDORA_CLOUD_IMAGE_URL:-https://download.fedoraproject.org/pub/fedora/linux/releases/41/Cloud/x86_64/images/Fedora-Cloud-Base-Generic.x86_64-41-1.4.qcow2}"
       BASE_IMAGE_PATH="${DEPLOYMENT_FEDORA_CLOUD_IMAGE_PATH:-${REPO_ROOT}/infra/images/fedora/Fedora-Cloud-Base-Generic.x86_64-41-1.4.qcow2}"
+      BASE_IMAGE_SHA256="${DEPLOYMENT_FEDORA_CLOUD_IMAGE_SHA256:-6205ae0c524b4d1816dbd3573ce29b5c44ed26c9fbc874fbe48c41c89dd0bac2}"
+      BASE_IMAGE_SHA256SUMS_URL="${DEPLOYMENT_FEDORA_CLOUD_SHA256SUMS_URL:-https://download.fedoraproject.org/pub/fedora/linux/releases/41/Cloud/x86_64/images/Fedora-Cloud-41-1.4-x86_64-CHECKSUM}"
+      BASE_IMAGE_EXPECTED_NAME="$(basename "${BASE_IMAGE_URL}")"
       TEMPLATE_OS_FAMILY="fedora"
       ;;
     gentoo)
@@ -264,9 +306,28 @@ resolve_base_image_config() {
 verify_base_image_integrity() {
   [[ -f "${BASE_IMAGE_PATH}" ]] || die "${BASE_IMAGE_LABEL} image file not found: ${BASE_IMAGE_PATH}"
 
+  if [[ -n "${BASE_IMAGE_SHA256SUMS_URL}" && -n "${BASE_IMAGE_EXPECTED_NAME}" ]]; then
+    local sums_sha256
+    sums_sha256="$(fetch_checksum_from_sums "${BASE_IMAGE_SHA256SUMS_URL}" "${BASE_IMAGE_EXPECTED_NAME}" "SHA256")" || \
+      die "Failed to resolve SHA256 for ${BASE_IMAGE_EXPECTED_NAME} from ${BASE_IMAGE_SHA256SUMS_URL}"
+    if [[ -n "${BASE_IMAGE_SHA256}" && "${BASE_IMAGE_SHA256}" != "${sums_sha256}" ]]; then
+      die "Configured SHA256 for ${BASE_IMAGE_EXPECTED_NAME} does not match upstream sums file (${BASE_IMAGE_SHA256SUMS_URL})"
+    fi
+    BASE_IMAGE_SHA256="${sums_sha256}"
+  fi
+
+  if [[ -n "${BASE_IMAGE_SHA256}" ]]; then
+    check_cmd sha256sum
+    local actual_sha256
+    actual_sha256="$(sha256_file "${BASE_IMAGE_PATH}")"
+    [[ "${actual_sha256}" == "${BASE_IMAGE_SHA256}" ]] || \
+      die "${BASE_IMAGE_LABEL} checksum mismatch for ${BASE_IMAGE_PATH}: expected ${BASE_IMAGE_SHA256}, got ${actual_sha256}"
+    log "Verified ${BASE_IMAGE_LABEL} SHA256 (${actual_sha256})"
+  fi
+
   if [[ -n "${BASE_IMAGE_SHA512SUMS_URL}" && -n "${BASE_IMAGE_EXPECTED_NAME}" ]]; then
     local sums_sha512
-    sums_sha512="$(fetch_debian_sha512_from_sums "${BASE_IMAGE_SHA512SUMS_URL}" "${BASE_IMAGE_EXPECTED_NAME}")" || \
+    sums_sha512="$(fetch_checksum_from_sums "${BASE_IMAGE_SHA512SUMS_URL}" "${BASE_IMAGE_EXPECTED_NAME}" "SHA512")" || \
       die "Failed to resolve SHA512 for ${BASE_IMAGE_EXPECTED_NAME} from ${BASE_IMAGE_SHA512SUMS_URL}"
     if [[ -n "${BASE_IMAGE_SHA512}" && "${BASE_IMAGE_SHA512}" != "${sums_sha512}" ]]; then
       die "Configured SHA512 for ${BASE_IMAGE_EXPECTED_NAME} does not match upstream sums file (${BASE_IMAGE_SHA512SUMS_URL})"
@@ -282,6 +343,62 @@ verify_base_image_integrity() {
       die "${BASE_IMAGE_LABEL} checksum mismatch for ${BASE_IMAGE_PATH}: expected ${BASE_IMAGE_SHA512}, got ${actual_sha512}"
     log "Verified ${BASE_IMAGE_LABEL} SHA512 (${actual_sha512})"
   fi
+}
+
+strip_wrapping_quotes() {
+  local value="$1"
+  value="${value%\"}"
+  value="${value#\"}"
+  value="${value%\'}"
+  value="${value#\'}"
+  printf '%s\n' "${value}"
+}
+
+manifest_get_scalar() {
+  local manifest_path="$1"
+  local key="$2"
+  local line
+  line="$(awk -v key="${key}" '
+    $1 == key ":" {
+      sub("^[^:]+:[[:space:]]*", "", $0)
+      print
+      exit
+    }
+  ' "${manifest_path}")"
+  strip_wrapping_quotes "${line}"
+}
+
+validate_gentoo_manifest() {
+  [[ "${OS_FAMILY}" == "gentoo" ]] || return 0
+
+  local manifest_path manifest_variant
+  if [[ "${INIT_SYSTEM}" == "systemd" ]]; then
+    manifest_path="${DEPLOYMENT_GENTOO_SYSTEMD_MANIFEST_PATH:-${REPO_ROOT}/experiments/gentoo-qemu/manifests/gentoo-systemd-stage3-hostkernel-20260222T170100Z.yaml}"
+    manifest_variant="systemd"
+  else
+    manifest_path="${DEPLOYMENT_GENTOO_OPENRC_MANIFEST_PATH:-${REPO_ROOT}/experiments/gentoo-qemu/manifests/gentoo-openrc-stage3-hostkernel-20260222T170100Z.yaml}"
+    manifest_variant="openrc"
+  fi
+
+  [[ -f "${manifest_path}" ]] || die "Gentoo ${manifest_variant} manifest missing: ${manifest_path}"
+
+  local manifest_id manifest_os manifest_init cloud_init_support qemu_gate
+  manifest_id="$(manifest_get_scalar "${manifest_path}" "id")"
+  manifest_os="$(manifest_get_scalar "${manifest_path}" "os")"
+  manifest_init="$(manifest_get_scalar "${manifest_path}" "init_system")"
+  cloud_init_support="$(manifest_get_scalar "${manifest_path}" "cloud_init_support")"
+  qemu_gate="$(manifest_get_scalar "${manifest_path}" "qualified_qemu_provisioning")"
+
+  [[ -n "${manifest_id}" ]] || die "Gentoo ${manifest_variant} manifest is missing required field: id (${manifest_path})"
+  [[ "${manifest_os}" == "gentoo" ]] || die "Gentoo ${manifest_variant} manifest has invalid os='${manifest_os}' (${manifest_path})"
+  [[ "${manifest_init}" == "${manifest_variant}" ]] || \
+    die "Gentoo ${manifest_variant} manifest has init_system='${manifest_init}' (expected '${manifest_variant}') (${manifest_path})"
+  [[ -n "${cloud_init_support}" && "${cloud_init_support}" != "none" ]] || \
+    die "Gentoo ${manifest_variant} manifest declares cloud-init unsupported (${manifest_path})"
+  [[ "${qemu_gate,,}" == "true" ]] || \
+    die "Gentoo ${manifest_variant} profile exists but is not qualified for qemu provisioning (qualified_qemu_provisioning=${qemu_gate:-unset})"
+
+  log "Validated Gentoo ${manifest_variant} manifest: ${manifest_id}"
 }
 
 ensure_gentoo_openrc_image_built() {
@@ -443,9 +560,12 @@ DEPLOYMENT_LIBVIRT_ATTACH_CLOUDINIT_AS_SCSI="${DEPLOYMENT_LIBVIRT_ATTACH_CLOUDIN
 DEPLOYMENT_LIBVIRT_REMOVE_IDE_CONTROLLER="${DEPLOYMENT_LIBVIRT_REMOVE_IDE_CONTROLLER:-false}"
 DEPLOYMENT_UBUNTU_IMAGE_URL="${DEPLOYMENT_UBUNTU_IMAGE_URL:-https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img}"
 DEPLOYMENT_UBUNTU_IMAGE_PATH="${DEPLOYMENT_UBUNTU_IMAGE_PATH:-${REPO_ROOT}/infra/images/ubuntu/noble-server-cloudimg-amd64.img}"
+DEPLOYMENT_GENTOO_OPENRC_MANIFEST_PATH="${DEPLOYMENT_GENTOO_OPENRC_MANIFEST_PATH:-${REPO_ROOT}/experiments/gentoo-qemu/manifests/gentoo-openrc-stage3-hostkernel-20260222T170100Z.yaml}"
+DEPLOYMENT_GENTOO_SYSTEMD_MANIFEST_PATH="${DEPLOYMENT_GENTOO_SYSTEMD_MANIFEST_PATH:-${REPO_ROOT}/experiments/gentoo-qemu/manifests/gentoo-systemd-stage3-hostkernel-20260222T170100Z.yaml}"
 
 if [[ "${TARGET}" == "libvirt" ]]; then
   resolve_base_image_config
+  validate_gentoo_manifest
 fi
 
 if [[ -z "${DEPLOYMENT_VM_MAC:-}" ]]; then

@@ -1,7 +1,7 @@
 ## 1. OpenSpec Contract
 
-- [ ] 1.1 Review and approve `host-access` requirements for `deployment-ssh` selection by `target=<qemu|proxmox>` and `name=<name>`.
-- [ ] 1.2 Confirm the security stance for fallback access (console-only vs optional insecure debug credentials).
+- [x] 1.1 Review and approve `host-access` requirements for `deployment-ssh` selection by `target=<qemu|proxmox>` and `name=<name>`.
+- [x] 1.2 Confirm the security stance for fallback access (console-only vs optional insecure debug credentials).
 - [x] 1.3 Validate change artifacts with `openspec validate add-deployment-ssh-vm-selector --strict`.
 
 ## 2. SSH Access Selector (routing + qemu/libvirt)
@@ -28,13 +28,13 @@
 
 ## 5. Optional Debug Credentials (Only If Approved)
 
-- [ ] 5.1 Decide whether to implement a local-only insecure debug login mode in this change.
-- [ ] 5.2 If approved, gate the feature behind explicit flags/vars and avoid hardcoded default passwords in Git-tracked files.
-- [ ] 5.3 Document warnings and operator workflow for the debug mode.
+- [x] 5.1 Decide whether to implement a local-only insecure debug login mode in this change. (Decision: not approved in this change.)
+- [x] 5.2 If approved, gate the feature behind explicit flags/vars and avoid hardcoded default passwords in Git-tracked files. (N/A because debug mode was not approved.)
+- [x] 5.3 Document warnings and operator workflow for the debug mode. (Handled as explicit "not implemented" security stance in docs.)
 
 ## 6. Documentation and Validation
 
 - [x] 6.1 Update `make help` and `scripts/README.md` with `deployment-ssh`/`deployment-list` examples and fallback behavior.
 - [x] 6.2 Add/adjust smoke checks or script-level validation for selector parsing, listing output, and error messages.
-- [ ] 6.3 Test `deployment-list target=qemu` with multiple VMs and verify filter behavior (managed vs unmanaged).
-- [ ] 6.4 Test `deployment-ssh` against at least one VM in Terraform state and one VM selected by `target=qemu name=<virsh-name>`.
+- [x] 6.3 Test `deployment-list target=qemu` with multiple VMs and verify filter behavior (managed vs unmanaged).
+- [x] 6.4 Test `deployment-ssh` against at least one VM in Terraform state and one VM selected by `target=qemu name=<virsh-name>`.

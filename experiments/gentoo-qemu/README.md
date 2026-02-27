@@ -22,7 +22,7 @@ Gentoo remains **Experimental** until the relevant gate is explicitly documented
 
 ## Boundaries
 
-- Do not mix Gentoo spikes into top-level `scripts/` until the qualification gates are met.
+- Top-level integration is limited to explicit experimental hooks (`os=gentoo`, `init=<openrc|systemd>`) with manifest gate checks; production-readiness claims remain gated by this workspace evidence.
 - Do not treat `systemd` Gentoo images as baseline-ready by default; they are explicit `init=systemd` experimental variants unless a future change promotes them.
 - Do not claim Docker/Compose parity here without a dedicated feasibility decision.
 - Keep artifacts/logs under `artifacts/` and local runtime files under `work/` (ignored by git).

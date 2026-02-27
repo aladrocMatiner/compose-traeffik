@@ -1,6 +1,6 @@
 ## 1. OpenSpec Contract Finalization
 
-- [ ] 1.1 Review and approve the `vm-provisioning` and `host-bootstrap` deltas for Phase 1 scope (no Ansible deployment yet).
+- [x] 1.1 Review and approve the `vm-provisioning` and `host-bootstrap` deltas for Phase 1 scope (no Ansible deployment yet).
 - [x] 1.2 Validate change artifacts with `openspec validate add-vm-bootstrap-targets --strict`.
 
 ## 2. Infrastructure Layout and Shared Contracts

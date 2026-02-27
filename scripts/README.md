@@ -107,6 +107,20 @@ Notes:
 - Docker bootstrap/check scripts currently support `ubuntu`, `debian12` and `debian13`.
 - Gentoo provisioning is experimental; Docker bootstrap/check for Gentoo are not implemented in these scripts.
 
+#### QEMU image profile defaults
+
+| OS selector | Pinned image default | Integrity policy | Default SSH user | Bootstrap parity |
+| --- | --- | --- | --- | --- |
+| `debian12` | Debian cloud `bookworm/20260129-2372` qcow2 | SHA512 (remote sums + local file verify) | `debian` | supported |
+| `debian13` / `debian` | Debian cloud `trixie/20260220-2394` qcow2 | SHA512 (remote sums + local file verify) | `debian` | supported |
+| `opensuse-leap` | openSUSE Leap 15.6 cloud qcow2 | SHA256 (`.sha256` + local file verify) | `opensuse` | not implemented |
+| `almalinux9` | AlmaLinux 9.7 GenericCloud qcow2 | SHA256 (`CHECKSUM` + local file verify) | `cloud-user` | not implemented |
+| `rockylinux9` | Rocky Linux 9.7 GenericCloud qcow2 | SHA256 (`CHECKSUM` + local file verify) | `rocky` | not implemented |
+| `fedora-cloud` | Fedora Cloud 41-1.4 Generic qcow2 | SHA256 (`CHECKSUM` + local file verify) | `fedora` | not implemented |
+| `gentoo` (`openrc`/`systemd`) | Experimental project-built qcow2 image | Manifest-gated variant + builder checks | `gentoo` | not implemented |
+
+The full override surface is documented in `.env.example` under `Deployment VM Provisioning`.
+
 ### Certificates
 
 Mode A (self-signed):

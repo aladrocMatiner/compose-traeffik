@@ -170,6 +170,15 @@ else
     TEST_RESULTS=1
 fi
 
+# --- Test 15: Deployment Profile Metadata (no sudo) ---
+log_info "Running test_deployment_profile_metadata.sh..."
+if "$TEST_DIR/test_deployment_profile_metadata.sh"; then
+    log_success "Test: Deployment Profile Metadata"
+else
+    log_warn "Test failed: Deployment Profile Metadata"
+    TEST_RESULTS=1
+fi
+
 if [ "$TEST_RESULTS" -eq 0 ]; then
     log_success "All smoke tests passed!"
 else
