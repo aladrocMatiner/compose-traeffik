@@ -3,6 +3,10 @@
     {
       "id": "traefik-stepca",
       "manifest": "deployment/projects/traefik-stepca/manifest.json"
+    },
+    {
+      "id": "traefik-observability",
+      "manifest": "deployment/projects/traefik-observability/manifest.json"
     }
   ]
 }

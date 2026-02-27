@@ -45,6 +45,10 @@
         or (deployment_project_manifest_data.depends_on_projects is sequence)
     fail_msg: "Invalid optional manifest fields"
 
+- name: Resolve effective tls_mode (manifest default with optional override)
+  ansible.builtin.set_fact:
+    deployment_project_effective_tls_mode: "{{ deployment_project_tls_mode_override | default('', true) | trim | default(deployment_project_manifest_data.tls_mode, true) }}"
+
 - name: Resolve project repository destination
   ansible.builtin.set_fact:
     deployment_project_repo_dir: "{{ deployment_project_workspace_dir }}/{{ deployment_project_manifest_data.id }}"
@@ -72,14 +76,14 @@
     - stepca-bootstrap.sh
     - traefik-render-dynamic.sh
     - traefik-render-static.sh
-  when: deployment_project_manifest_data.tls_mode == "stepca-acme"
+  when: deployment_project_effective_tls_mode == "stepca-acme"
 
 - name: Backport step-ca compose definition from controller workspace
   ansible.builtin.copy:
     src: "{{ playbook_dir }}/../../../services/step-ca/compose.yml"
     dest: "{{ deployment_project_repo_dir }}/services/step-ca/compose.yml"
     mode: "0644"
-  when: deployment_project_manifest_data.tls_mode == "stepca-acme"
+  when: deployment_project_effective_tls_mode == "stepca-acme"
 
 - name: Backport traefik compose definition from controller workspace
   ansible.builtin.copy:
@@ -154,15 +158,41 @@
 
 - name: Resolve TLS cert resolver from tls_mode
   ansible.builtin.set_fact:
-    deployment_project_tls_resolver: "{{ deployment_project_tls_resolver_map[deployment_project_manifest_data.tls_mode] | default('') }}"
+    deployment_project_tls_resolver: "{{ deployment_project_tls_resolver_map[deployment_project_effective_tls_mode] | default('') }}"
 
 - name: Enforce tls_mode support
   ansible.builtin.assert:
     that:
       - deployment_project_tls_resolver | length > 0
     fail_msg: >-
-      Unsupported tls_mode '{{ deployment_project_manifest_data.tls_mode }}'.
+      Unsupported tls_mode '{{ deployment_project_effective_tls_mode }}'.
       Supported modes: {{ deployment_project_tls_resolver_map.keys() | list | join(', ') }}.
+
+- name: Validate mode-specific env requirements for stepca-acme
+  ansible.builtin.command:
+    cmd: "bash -lc \"grep -Eq '^{{ item }}=.+' .env\""
+  args:
+    chdir: "{{ deployment_project_repo_dir }}"
+  loop:
+    - STEP_CA_ADMIN_PROVISIONER_PASSWORD
+    - STEP_CA_PASSWORD
+  loop_control:
+    label: "{{ item }}"
+  changed_when: false
+  when: deployment_project_effective_tls_mode == "stepca-acme"
+
+- name: Validate mode-specific env requirements for letsencrypt-acme
+  ansible.builtin.command:
+    cmd: "bash -lc \"grep -Eq '^{{ item }}=.+' .env\""
+  args:
+    chdir: "{{ deployment_project_repo_dir }}"
+  loop:
+    - ACME_EMAIL
+    - LETSENCRYPT_CA_SERVER
+  loop_control:
+    label: "{{ item }}"
+  changed_when: false
+  when: deployment_project_effective_tls_mode == "letsencrypt-acme"
 
 - name: Apply TLS resolver in project .env
   ansible.builtin.lineinfile:
@@ -225,7 +255,7 @@
     - { key: "CA_SUBJECT_O", value: "\"AMOU\"" }
     - { key: "CA_SUBJECT_OU", value: "infra" }
     - { key: "CA_SUBJECT_CN", value: "aladroc.io" }
-  when: deployment_project_manifest_data.tls_mode == "stepca-acme"
+  when: deployment_project_effective_tls_mode == "stepca-acme"
 
 - name: Render Traefik dynamic configuration from project env
   ansible.builtin.command:
@@ -247,7 +277,7 @@
   register: deployment_project_stepca_ca_json_stat
   when:
     - "'step-ca' in deployment_project_manifest_data.services"
-    - deployment_project_manifest_data.tls_mode == "stepca-acme"
+    - deployment_project_effective_tls_mode == "stepca-acme"
 
 - name: Check whether step-ca intermediate cert is present
   ansible.builtin.stat:
@@ -255,7 +285,7 @@
   register: deployment_project_stepca_intermediate_cert_stat
   when:
     - "'step-ca' in deployment_project_manifest_data.services"
-    - deployment_project_manifest_data.tls_mode == "stepca-acme"
+    - deployment_project_effective_tls_mode == "stepca-acme"
 
 - name: Check whether step-ca root cert is present
   ansible.builtin.stat:
@@ -263,7 +293,7 @@
   register: deployment_project_stepca_root_cert_stat
   when:
     - "'step-ca' in deployment_project_manifest_data.services"
-    - deployment_project_manifest_data.tls_mode == "stepca-acme"
+    - deployment_project_effective_tls_mode == "stepca-acme"
 
 - name: Resolve step-ca bootstrap requirement
   ansible.builtin.set_fact:
@@ -279,7 +309,7 @@
       }}
   when:
     - "'step-ca' in deployment_project_manifest_data.services"
-    - deployment_project_manifest_data.tls_mode == "stepca-acme"
+    - deployment_project_effective_tls_mode == "stepca-acme"
 
 - name: Ensure step-ca runtime password file exists from .env
   ansible.builtin.shell: |
@@ -294,7 +324,7 @@
   changed_when: true
   when:
     - "'step-ca' in deployment_project_manifest_data.services"
-    - deployment_project_manifest_data.tls_mode == "stepca-acme"
+    - deployment_project_effective_tls_mode == "stepca-acme"
 
 - name: Start step-ca service prior to bootstrap
   ansible.builtin.command:
@@ -305,7 +335,7 @@
   changed_when: true
   when:
     - "'step-ca' in deployment_project_manifest_data.services"
-    - deployment_project_manifest_data.tls_mode == "stepca-acme"
+    - deployment_project_effective_tls_mode == "stepca-acme"
     - not (deployment_project_stepca_bootstrap_required | default(true))
 
 - name: Bootstrap step-ca for first-run project deployment (non-interactive)
@@ -371,7 +401,7 @@
     (deployment_project_stepca_bootstrap_cmd.stderr | default('')) is not search('already initialized')
   when:
     - "'step-ca' in deployment_project_manifest_data.services"
-    - deployment_project_manifest_data.tls_mode == "stepca-acme"
+    - deployment_project_effective_tls_mode == "stepca-acme"
     - deployment_project_stepca_bootstrap_required | default(true)
 
 - name: Read step-ca admin password from project .env
@@ -383,7 +413,7 @@
   changed_when: false
   when:
     - "'step-ca' in deployment_project_manifest_data.services"
-    - deployment_project_manifest_data.tls_mode == "stepca-acme"
+    - deployment_project_effective_tls_mode == "stepca-acme"
 
 - name: Assert step-ca admin password is available
   ansible.builtin.assert:
@@ -392,7 +422,7 @@
     fail_msg: "STEP_CA_ADMIN_PROVISIONER_PASSWORD must be set in project .env for step-ca ACME provisioning."
   when:
     - "'step-ca' in deployment_project_manifest_data.services"
-    - deployment_project_manifest_data.tls_mode == "stepca-acme"
+    - deployment_project_effective_tls_mode == "stepca-acme"
 
 - name: Ensure step-ca ACME provisioner exists
   ansible.builtin.shell: |
@@ -438,7 +468,7 @@
     (deployment_project_stepca_provisioner_cmd.stderr | default('')) is search('created')
   when:
     - "'step-ca' in deployment_project_manifest_data.services"
-    - deployment_project_manifest_data.tls_mode == "stepca-acme"
+    - deployment_project_effective_tls_mode == "stepca-acme"
 
 - name: Restart step-ca to load current provisioner configuration
   ansible.builtin.command:
@@ -449,7 +479,63 @@
   changed_when: true
   when:
     - "'step-ca' in deployment_project_manifest_data.services"
-    - deployment_project_manifest_data.tls_mode == "stepca-acme"
+    - deployment_project_effective_tls_mode == "stepca-acme"
+
+- name: Configure observability grafana router middleware for Keycloak forward auth
+  ansible.builtin.stat:
+    path: "{{ deployment_project_repo_dir }}/services/observability/compose.yml"
+  register: deployment_project_observability_compose_stat
+  when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Assert observability compose exists in pinned repo for observability project
+  ansible.builtin.assert:
+    that:
+      - deployment_project_observability_compose_stat.stat.exists
+    fail_msg: "services/observability/compose.yml not found in pinned repo_ref. Update manifest repo_ref for traefik-observability."
+  when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Configure observability grafana router middleware for Keycloak forward auth
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/services/observability/compose.yml"
+    regexp: 'traefik\.http\.routers\.grafana-websecure\.middlewares='
+    line: '      - "traefik.http.routers.grafana-websecure.middlewares=security-headers@file,keycloak-forwardauth@file"'
+  when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Configure Traefik Keycloak forwardAuth middleware for observability project
+  ansible.builtin.copy:
+    dest: "{{ deployment_project_repo_dir }}/services/traefik/dynamic/keycloak-forwardauth.yml"
+    mode: "0644"
+    content: |
+      http:
+        middlewares:
+          keycloak-forwardauth:
+            forwardAuth:
+              address: "__KEYCLOAK_FORWARDAUTH_ADDRESS__"
+              trustForwardHeader: true
+  when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Read Keycloak forwardAuth endpoint from project .env
+  ansible.builtin.command:
+    cmd: "bash -lc \"awk -F= '$1==\\\"KEYCLOAK_FORWARDAUTH_ADDRESS\\\" {print $2}' .env | tail -n1 | xargs\""
+  args:
+    chdir: "{{ deployment_project_repo_dir }}"
+  register: deployment_project_keycloak_forwardauth_address_cmd
+  changed_when: false
+  when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Assert Keycloak forwardAuth endpoint is available for observability project
+  ansible.builtin.assert:
+    that:
+      - deployment_project_keycloak_forwardauth_address_cmd.stdout | trim | length > 0
+    fail_msg: "KEYCLOAK_FORWARDAUTH_ADDRESS must be set in project .env for traefik-observability."
+  when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Render Keycloak forwardAuth middleware endpoint from .env
+  ansible.builtin.replace:
+    path: "{{ deployment_project_repo_dir }}/services/traefik/dynamic/keycloak-forwardauth.yml"
+    regexp: "__KEYCLOAK_FORWARDAUTH_ADDRESS__"
+    replace: "{{ deployment_project_keycloak_forwardauth_address_cmd.stdout | trim }}"
+  when: deployment_project_manifest_data.id == "traefik-observability"
 
 - name: Apply docker compose stack for project manifest contract
   ansible.builtin.command:
@@ -485,7 +571,7 @@
   when:
     - deployment_project_manifest_data.id == "traefik-stepca"
     - "'whoami' in deployment_project_manifest_data.services"
-    - deployment_project_manifest_data.tls_mode == "stepca-acme"
+    - deployment_project_effective_tls_mode == "stepca-acme"
 
 - name: Ensure deployment-project state directory exists for remote user
   ansible.builtin.file:

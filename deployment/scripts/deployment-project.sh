@@ -9,7 +9,7 @@ usage() {
   cat <<'USAGE'
 Usage:
   deployment/scripts/deployment-project.sh list
-  deployment/scripts/deployment-project.sh run --project <id> [--target <libvirt|qemu|proxmox>] [--os <selector>] [--init <openrc|systemd>]
+  deployment/scripts/deployment-project.sh run --project <id> [--target <libvirt|qemu|proxmox>] [--os <selector>] [--init <openrc|systemd>] [--tls-mode <stepca-acme|letsencrypt-acme>]
 
 Notes:
   - run uses ordered stages: provision -> wait -> system_bootstrap -> project deploy.
@@ -211,6 +211,9 @@ run_project() {
   manifest_tls_mode="$(jq -r '.tls_mode' "${manifest_path}")"
 
   log "Selected project=${PROJECT_ID} target=${TARGET_INPUT} os=${OS_SELECTOR}"
+  if [[ -n "${TLS_MODE_OVERRIDE}" ]]; then
+    log "Requested tls_mode override=${TLS_MODE_OVERRIDE}"
+  fi
   log "Manifest source=${manifest_path}"
   log "Repo=${manifest_repo_url} ref=${manifest_repo_ref} profile=${manifest_profile} services=${manifest_services} tls_mode=${manifest_tls_mode}"
 
@@ -253,7 +256,8 @@ run_project() {
     "${REPO_ROOT}/deployment/ansible/playbooks/project_deploy.yml" \
     --extra-vars "deployment_project_manifest=${manifest_path}" \
     --extra-vars "deployment_project_target=${TARGET_INPUT}" \
-    --extra-vars "deployment_project_os=${OS_SELECTOR}"
+    --extra-vars "deployment_project_os=${OS_SELECTOR}" \
+    --extra-vars "deployment_project_tls_mode_override=${TLS_MODE_OVERRIDE}"
 
   log "Project deployment finished successfully for project=${PROJECT_ID}"
 }
@@ -265,6 +269,7 @@ OS_SELECTOR="ubuntu"
 INIT_ARG=""
 IDENTITY_PATH="${DEPLOYMENT_SSH_PRIVATE_KEY_PATH:-}"
 SSH_PORT="${DEPLOYMENT_SSH_PORT:-22}"
+TLS_MODE_OVERRIDE=""
 
 if [[ "$#" -eq 0 ]]; then
   usage
@@ -294,6 +299,11 @@ while [[ $# -gt 0 ]]; do
     --init)
       [[ $# -ge 2 ]] || die "--init requires a value"
       INIT_ARG="$2"
+      shift 2
+      ;;
+    --tls-mode)
+      [[ $# -ge 2 ]] || die "--tls-mode requires a value"
+      TLS_MODE_OVERRIDE="$2"
       shift 2
       ;;
     --help|-h)

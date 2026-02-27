@@ -60,4 +60,8 @@ if ! grep -q "Destroy manually if needed" "$RUNNER"; then
     log_error "deployment-project must provide explicit recovery guidance on failure"
 fi
 
+if ! grep -q -- "--tls-mode" "$RUNNER"; then
+    log_error "deployment-project runner must expose --tls-mode override option"
+fi
+
 log_success "Deployment project workflow contract test passed."

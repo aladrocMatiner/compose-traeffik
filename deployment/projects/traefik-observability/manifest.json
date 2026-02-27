@@ -1,0 +1,31 @@
+{
+  "id": "traefik-observability",
+  "description": "Deploy Traefik + observability stack (Grafana/Prometheus/Loki/Tempo/Pyroscope/Alloy) with StepCA ACME by default and Keycloak-based auth contract for Grafana.",
+  "repo_url": "https://github.com/aladrocMatiner/compose-traeffik.git",
+  "repo_ref": "aa6cc13ab6e5ca0e6284f6b335266de6064406e0",
+  "compose_profile": "observability",
+  "services": [
+    "traefik",
+    "step-ca",
+    "whoami",
+    "grafana",
+    "prometheus",
+    "loki",
+    "tempo",
+    "pyroscope",
+    "alloy"
+  ],
+  "deploy_playbook": "deployment/ansible/playbooks/project_deploy.yml",
+  "required_env": [
+    "BASE_DOMAIN",
+    "DEV_DOMAIN",
+    "STEP_CA_ADMIN_PROVISIONER_PASSWORD",
+    "STEP_CA_PASSWORD",
+    "KEYCLOAK_FORWARDAUTH_ADDRESS"
+  ],
+  "tls_mode": "stepca-acme",
+  "depends_on_projects": [
+    "traefik-stepca",
+    "traefik-keycloak"
+  ]
+}

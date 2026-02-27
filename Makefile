@@ -84,6 +84,7 @@ DEPLOYMENT_NAME ?=
 DEPLOYMENT_PROJECT ?=
 DEPLOYMENT_PROJECT_TARGET ?= qemu
 DEPLOYMENT_PROJECT_OS ?= ubuntu
+DEPLOYMENT_PROJECT_TLS_MODE ?=
 DEPLOYMENT_SUPPORTED_OS_SELECTORS := ubuntu debian12 debian13 debian gentoo opensuse-leap almalinux9 rockylinux9 fedora-cloud
 DEPLOYMENT_SUPPORTED_TARGET_SELECTORS := qemu
 
@@ -114,6 +115,9 @@ DEPLOYMENT_PROJECT_TARGET := $(target)
 endif
 ifneq ($(strip $(os)),)
 DEPLOYMENT_PROJECT_OS := $(os)
+endif
+ifneq ($(strip $(tls_mode)),)
+DEPLOYMENT_PROJECT_TLS_MODE := $(tls_mode)
 endif
 
 DEPLOYMENT_INIT_ARG :=
@@ -374,6 +378,7 @@ deployment-project:
 		--project "$(DEPLOYMENT_PROJECT)" \
 		--target "$(DEPLOYMENT_PROJECT_TARGET)" \
 		--os "$(DEPLOYMENT_PROJECT_OS)" \
+		$(if $(strip $(DEPLOYMENT_PROJECT_TLS_MODE)),--tls-mode "$(DEPLOYMENT_PROJECT_TLS_MODE)",) \
 		$(DEPLOYMENT_INIT_ARG)
 
 deployment-wait:
@@ -504,7 +509,7 @@ help:
 	@echo "                       Docker bootstrap/checks currently support ubuntu, debian12 and debian13; gentoo remains separate/experimental."
 	@echo "  SSH selector syntax:  make deployment-ssh target=<qemu|proxmox> name=<vm-name>"
 	@echo "                       make deployment-list target=<qemu|proxmox>"
-	@echo "  Project workflow:     make deployment-project project=<id> [target=<qemu>] [os=<ubuntu>]"
+	@echo "  Project workflow:     make deployment-project project=<id> [target=<qemu>] [os=<ubuntu>] [tls_mode=<stepca-acme|letsencrypt-acme>]"
 	@echo "                       make deployment-project-list"
 	@echo "  Discovery commands:   make deployment-list-os"
 	@echo "                       make deployment-list-targets   # current phase output: qemu"

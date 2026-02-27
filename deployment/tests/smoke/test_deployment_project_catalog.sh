@@ -1,7 +1,7 @@
 #!/bin/bash
 # File: deployment/tests/smoke/test_deployment_project_catalog.sh
 #
-# Smoke test: Validate deployment project catalog and traefik-stepca manifest contract.
+# Smoke test: Validate deployment project catalog and manifest contracts.
 #
 # Usage: ./deployment/tests/smoke/test_deployment_project_catalog.sh
 #
@@ -17,6 +17,7 @@ SCRIPT_DIR=$(dirname "$0")
 REPO_ROOT="$SCRIPT_DIR/../../.."
 CATALOG="$REPO_ROOT/deployment/projects/catalog.json"
 MANIFEST="$REPO_ROOT/deployment/projects/traefik-stepca/manifest.json"
+OBS_MANIFEST="$REPO_ROOT/deployment/projects/traefik-observability/manifest.json"
 
 check_command "jq"
 check_command "make"
@@ -29,10 +30,14 @@ fi
 if [ ! -f "$MANIFEST" ]; then
     log_error "Missing traefik-stepca manifest: $MANIFEST"
 fi
+if [ ! -f "$OBS_MANIFEST" ]; then
+    log_error "Missing traefik-observability manifest: $OBS_MANIFEST"
+fi
 
 list_output="$(make -s -C "$REPO_ROOT" deployment-project-list)"
-if [ "$list_output" != "traefik-stepca" ]; then
-    log_error "deployment-project-list output drifted. Expected 'traefik-stepca', got: $list_output"
+expected_list=$'traefik-stepca\ntraefik-observability'
+if [ "$list_output" != "$expected_list" ]; then
+    log_error "deployment-project-list output drifted. Expected:\n${expected_list}\nGot:\n${list_output}"
 fi
 
 if ! jq -e '.projects | type == "array" and length > 0' "$CATALOG" >/dev/null; then
@@ -41,6 +46,9 @@ fi
 
 if ! jq -e '.projects[] | select(.id=="traefik-stepca") | .manifest == "deployment/projects/traefik-stepca/manifest.json"' "$CATALOG" >/dev/null; then
     log_error "Catalog entry for traefik-stepca is missing or points to an unexpected manifest path"
+fi
+if ! jq -e '.projects[] | select(.id=="traefik-observability") | .manifest == "deployment/projects/traefik-observability/manifest.json"' "$CATALOG" >/dev/null; then
+    log_error "Catalog entry for traefik-observability is missing or points to an unexpected manifest path"
 fi
 
 if ! jq -e '
@@ -56,6 +64,23 @@ if ! jq -e '
     (.depends_on_projects | type == "array")
 ' "$MANIFEST" >/dev/null; then
     log_error "traefik-stepca manifest contract is invalid"
+fi
+
+if ! jq -e '
+    .id == "traefik-observability" and
+    (.description | type == "string" and length > 0) and
+    (.repo_url | type == "string" and length > 0) and
+    (.repo_ref | test("^[0-9a-f]{40}$")) and
+    .compose_profile == "observability" and
+    (.services | type == "array" and length > 0) and
+    (.services | index("traefik")) and
+    (.services | index("grafana")) and
+    .deploy_playbook == "deployment/ansible/playbooks/project_deploy.yml" and
+    (.required_env | index("KEYCLOAK_FORWARDAUTH_ADDRESS")) and
+    .tls_mode == "stepca-acme" and
+    (.depends_on_projects == ["traefik-stepca", "traefik-keycloak"])
+' "$OBS_MANIFEST" >/dev/null; then
+    log_error "traefik-observability manifest contract is invalid"
 fi
 
 set +e

@@ -8,3 +8,4 @@ deployment_project_tls_resolver_map:
   letsencrypt-acme: le-resolver
 deployment_project_stepca_acme_provisioner: traefik-acme
 deployment_project_stepca_admin_provisioner: admin
+deployment_project_tls_mode_override: ""
