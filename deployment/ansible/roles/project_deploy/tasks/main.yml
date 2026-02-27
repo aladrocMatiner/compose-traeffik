@@ -70,6 +70,7 @@
     mode: "0755"
   loop:
     - stepca-bootstrap.sh
+    - traefik-render-dynamic.sh
     - traefik-render-static.sh
   when: deployment_project_manifest_data.tls_mode == "stepca-acme"
 
@@ -84,6 +85,13 @@
   ansible.builtin.copy:
     src: "{{ playbook_dir }}/../../../services/traefik/compose.yml"
     dest: "{{ deployment_project_repo_dir }}/services/traefik/compose.yml"
+    mode: "0644"
+  when: "'traefik' in deployment_project_manifest_data.services"
+
+- name: Backport traefik ACME dashboard template from controller workspace
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../../services/traefik/dynamic/dashboard-acme.yml"
+    dest: "{{ deployment_project_repo_dir }}/services/traefik/dynamic/dashboard-acme.yml"
     mode: "0644"
   when: "'traefik' in deployment_project_manifest_data.services"
 
@@ -192,6 +200,13 @@
     regexp: "^TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH="
     line: "TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH=/etc/traefik/auth/traefik-dashboard.htpasswd"
   when: deployment_project_manifest_data.id == "traefik-stepca"
+
+- name: Regenerate project managed environment artifacts from .env
+  ansible.builtin.command:
+    cmd: ./scripts/env-generate.sh --mode=full
+    chdir: "{{ deployment_project_repo_dir }}"
+  changed_when: true
+  when: "'traefik' in deployment_project_manifest_data.services"
 
 - name: Set internal Step-CA ACME directory URL for traefik-stepca project
   ansible.builtin.lineinfile:
