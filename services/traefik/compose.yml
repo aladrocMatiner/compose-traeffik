@@ -16,11 +16,14 @@ services:
       - DEV_DOMAIN=${DEV_DOMAIN}
       - ACME_EMAIL=${ACME_EMAIL}
       - LETSENCRYPT_CA_SERVER=${LETSENCRYPT_CA_SERVER}
+      - STEP_CA_CA_SERVER=${STEP_CA_CA_SERVER}
+      - LEGO_CA_CERTIFICATES=/etc/traefik/stepca/root_ca.crt
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./services/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./services/traefik/traefik-rendered.yml:/etc/traefik/traefik.yml:ro
       - ./services/traefik/dynamic-rendered:/etc/traefik/dynamic:ro
       - ./services/traefik/auth:/etc/traefik/auth:ro
       - ./services/certbot/conf:/etc/letsencrypt:ro
+      - ./services/step-ca/certs:/etc/traefik/stepca:ro
       - certs-data:/certs
       - ./shared/certs/local:/etc/certs/local:ro

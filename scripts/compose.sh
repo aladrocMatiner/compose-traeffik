@@ -18,7 +18,12 @@ COMPOSE_FILES=(
 )
 
 run_preflight() {
-  (cd "${REPO_ROOT}" && "${SCRIPT_DIR}/validate-env.sh")
+  (
+    cd "${REPO_ROOT}"
+    "${SCRIPT_DIR}/validate-env.sh"
+    "${SCRIPT_DIR}/traefik-render-static.sh"
+    "${SCRIPT_DIR}/traefik-render-dynamic.sh"
+  )
 }
 
 run_preflight

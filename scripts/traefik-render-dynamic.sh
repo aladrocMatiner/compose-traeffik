@@ -43,6 +43,7 @@ if [ -z "${DEV_DOMAIN:-}" ]; then
 fi
 
 TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH="${TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH:-/etc/traefik/auth/traefik-dashboard.htpasswd.example}"
+TLS_CERT_RESOLVER="${TLS_CERT_RESOLVER:-}"
 
 escape_sed() {
     printf '%s' "$1" | sed 's/[&/]/\\&/g'
@@ -64,6 +65,11 @@ fi
 
 for file in "$TEMPLATE_DIR"/*.yml; do
     filename=$(basename "$file")
+    source_file="$file"
+    if [ "$filename" = "tls.yml" ] && [ -n "${TLS_CERT_RESOLVER}" ]; then
+        rm -f "${OUTPUT_DIR}/${filename}"
+        continue
+    fi
     if [ "$filename" = "tls-certbot.yml" ] && [ "$RENDER_CERTBOT_TLS" != "true" ]; then
         rm -f "${OUTPUT_DIR}/${filename}"
         continue
@@ -72,8 +78,12 @@ for file in "$TEMPLATE_DIR"/*.yml; do
         rm -f "${OUTPUT_DIR}/${filename}"
         continue
     fi
+    if [ "$filename" = "dashboard.yml" ] && [ -n "${TLS_CERT_RESOLVER}" ]; then
+        source_file="${TEMPLATE_DIR}/dashboard-acme.yml"
+    fi
     sed \
         -e "s/__DEV_DOMAIN__/${DEV_DOMAIN}/g" \
+        -e "s/__TLS_CERT_RESOLVER__/${TLS_CERT_RESOLVER}/g" \
         -e "s/__TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH__/${dashboard_auth_path_escaped}/g" \
-        "$file" > "${OUTPUT_DIR}/${filename}"
+        "$source_file" > "${OUTPUT_DIR}/${filename}"
 done

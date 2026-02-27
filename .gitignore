@@ -13,6 +13,7 @@ services/certbot/www/
 # Step-CA data and config
 services/step-ca/config/
 services/step-ca/secrets/
+services/step-ca/certs/
 stepca-data/
 
 # Traefik ACME storage (from certs-data volume)
@@ -26,6 +27,7 @@ services/traefik/auth/*.htpasswd
 !services/traefik/auth/*.htpasswd.example
 
 # Rendered Traefik dynamic config
+services/traefik/traefik-rendered.yml
 services/traefik/dynamic-rendered/
 services/gitlab/rendered/
 services/n8n/rendered/
