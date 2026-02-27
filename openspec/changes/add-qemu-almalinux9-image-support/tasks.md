@@ -1,12 +1,12 @@
 ## 1. OpenSpec Contract
 
 - [ ] 1.1 Review and approve qemu image-profile scope for `AlmaLinux 9` (`vm-provisioning` only vs full bootstrap parity).
-- [ ] 1.2 Validate change artifacts with `openspec validate add-qemu-almalinux9-image-support --strict`.
+- [x] 1.2 Validate change artifacts with `openspec validate add-qemu-almalinux9-image-support --strict`.
 
 ## 2. QEMU Image Profile Definition
 
-- [ ] 2.1 Add a `almalinux9` OS/image profile for `target=qemu` in the provisioning interface.
-- [ ] 2.2 Define pinned image source/version metadata for `AlmaLinux 9` (and checksum strategy if available).
+- [x] 2.1 Add a `almalinux9` OS/image profile for `target=qemu` in the provisioning interface.
+- [x] 2.2 Define pinned image source/version metadata for `AlmaLinux 9` (and checksum strategy if available).
 - [ ] 2.3 Document profile-specific defaults or required overrides (CPU/RAM/disk/network if any).
 
 ## 3. cloud-init Compatibility Validation
@@ -17,6 +17,6 @@
 
 ## 4. Documentation and Handoff Notes
 
-- [ ] 4.1 Update `make help` / docs with the `almalinux9` profile selection example for qemu (when implemented).
+- [x] 4.1 Update `make help` / docs with the `almalinux9` profile selection example for qemu (when implemented).
 - [ ] 4.2 Document known limitations and follow-up needs for Docker bootstrap parity on `AlmaLinux 9`.
 - [ ] 4.3 Record test evidence (hostname, IP, SSH) for the qemu image profile.

@@ -17,10 +17,10 @@
 
 ## 4. Proxmox (remote) Target
 
-- [ ] 4.1 Select and pin a Terraform Proxmox provider compatible with the target environment.
-- [ ] 4.2 Implement Terraform wiring for remote Proxmox provisioning with cloud-init-enabled VM creation/cloning.
-- [ ] 4.3 Ensure Proxmox credentials and sensitive values are consumed via environment variables or ignored files only.
-- [ ] 4.4 Verify the Proxmox target emits the same core output schema as `libvirt`.
+- [x] 4.1 Select and pin a Terraform Proxmox provider compatible with the target environment.
+- [x] 4.2 Implement Terraform wiring for remote Proxmox provisioning with cloud-init-enabled VM creation/cloning.
+- [x] 4.3 Ensure Proxmox credentials and sensitive values are consumed via environment variables or ignored files only.
+- [x] 4.4 Verify the Proxmox target emits the same core output schema as `libvirt`.
 
 ## 5. cloud-init Templates
 
@@ -38,5 +38,5 @@
 ## 7. Validation and Handoff Readiness
 
 - [ ] 7.1 Add basic validation commands/documentation for `terraform fmt`, `terraform validate`, and target smoke checks.
-- [ ] 7.2 Confirm the host metadata outputs can be consumed by future Ansible inventory generation without format changes.
-- [ ] 7.3 Document secrets handling and operator prerequisites for both targets (SSH keys, Proxmox API access, network assumptions).
+- [x] 7.2 Confirm the host metadata outputs can be consumed by future Ansible inventory generation without format changes.
+- [x] 7.3 Document secrets handling and operator prerequisites for both targets (SSH keys, Proxmox API access, network assumptions).
