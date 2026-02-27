@@ -152,6 +152,15 @@ else
     TEST_RESULTS=1
 fi
 
+# --- Test 13: Deployment Make Target Wiring (no sudo) ---
+log_info "Running test_deployment_make_targets.sh..."
+if "$TEST_DIR/test_deployment_make_targets.sh"; then
+    log_success "Test: Deployment Make Target Wiring"
+else
+    log_warn "Test failed: Deployment Make Target Wiring"
+    TEST_RESULTS=1
+fi
+
 if [ "$TEST_RESULTS" -eq 0 ]; then
     log_success "All smoke tests passed!"
 else
