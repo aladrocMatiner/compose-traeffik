@@ -16,6 +16,8 @@ COMPOSE_PROFILES_ENV="${COMPOSE_PROFILES:-}"
 TRAEFIK_DASHBOARD_ENV="${TRAEFIK_DASHBOARD:-}"
 BIND_BIND_ADDRESS_ENV="${BIND_BIND_ADDRESS:-}"
 BIND_ALLOW_NONLOCAL_BIND_ENV="${BIND_ALLOW_NONLOCAL_BIND:-}"
+CTFD_HOSTNAME_ENV="${CTFD_HOSTNAME:-}"
+GRAFANA_HOSTNAME_ENV="${GRAFANA_HOSTNAME:-}"
 
 load_env
 
@@ -33,6 +35,12 @@ if [ -n "${BIND_BIND_ADDRESS_ENV}" ]; then
 fi
 if [ -n "${BIND_ALLOW_NONLOCAL_BIND_ENV}" ]; then
     BIND_ALLOW_NONLOCAL_BIND="${BIND_ALLOW_NONLOCAL_BIND_ENV}"
+fi
+if [ -n "${CTFD_HOSTNAME_ENV}" ]; then
+    CTFD_HOSTNAME="${CTFD_HOSTNAME_ENV}"
+fi
+if [ -n "${GRAFANA_HOSTNAME_ENV}" ]; then
+    GRAFANA_HOSTNAME="${GRAFANA_HOSTNAME_ENV}"
 fi
 
 resolve_auth_path() {
@@ -98,8 +106,13 @@ normalize_profiles() {
 }
 
 is_bind_profile_enabled() {
+    is_profile_enabled "bind"
+}
+
+is_profile_enabled() {
+    local profile="$1"
     case " ${COMPOSE_PROFILES_NORMALIZED:-} " in
-        *" bind "*) return 0 ;;
+        *" ${profile} "*) return 0 ;;
         *) return 1 ;;
     esac
 }
@@ -144,6 +157,72 @@ validate_domain_name() {
     done
 }
 
+validate_subdomain_label() {
+    local label="$1"
+    local var_name="$2"
+    if [ -z "$label" ]; then
+        log_error "${var_name} is required."
+    fi
+    if [ "${#label}" -gt 63 ]; then
+        log_error "${var_name} is too long: ${label}"
+    fi
+    if [[ ! "$label" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]]; then
+        log_error "${var_name} must be a lowercase DNS label (a-z, 0-9, hyphen; no leading/trailing hyphen). Got: ${label}"
+    fi
+}
+
+is_placeholder_secret() {
+    local value="$1"
+    case "$value" in
+        ""|"changeme"|"change-me"|"example"|"example123"|"password"|"admin"|"REPLACE_ME")
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+require_non_placeholder() {
+    local label="$1"
+    local value="$2"
+    local bootstrap_hint="${3:-}"
+    if [ -z "$value" ] || is_placeholder_secret "$value"; then
+        if [ -n "$bootstrap_hint" ]; then
+            log_error "${label} is missing or placeholder. Run ${bootstrap_hint}."
+        else
+            log_error "${label} is missing or placeholder."
+        fi
+    fi
+}
+
+validate_duration_token() {
+    local value="$1"
+    local var_name="$2"
+    if [ -z "$value" ]; then
+        log_error "${var_name} is required."
+    fi
+    if [[ ! "$value" =~ ^[0-9]+[smhdw]$ ]]; then
+        log_error "${var_name} must match <integer><unit> where unit is one of s,m,h,d,w. Got: ${value}"
+    fi
+}
+
+validate_positive_int() {
+    local value="$1"
+    local var_name="$2"
+    if [[ ! "$value" =~ ^[0-9]+$ ]] || [ "$value" -le 0 ]; then
+        log_error "${var_name} must be a positive integer. Got: ${value}"
+    fi
+}
+
+validate_http_url() {
+    local value="$1"
+    local var_name="$2"
+    if [[ ! "$value" =~ ^https?:// ]]; then
+        log_error "${var_name} must start with http:// or https://. Got: ${value}"
+    fi
+}
+
 if [ "${TRAEFIK_DASHBOARD:-false}" = "true" ]; then
     require_auth_file "Traefik dashboard" "${TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH:-}"
 fi
@@ -160,4 +239,26 @@ if is_bind_profile_enabled; then
             log_error "BIND_BIND_ADDRESS must be loopback by default. Set BIND_ALLOW_NONLOCAL_BIND=true for intentional non-local exposure."
         fi
     fi
+fi
+
+if is_profile_enabled "ctfd"; then
+    validate_subdomain_label "${CTFD_HOSTNAME:-ctfd}" "CTFD_HOSTNAME"
+    require_non_placeholder "CTFD_SECRET_KEY" "${CTFD_SECRET_KEY:-}" "make ctfd-bootstrap"
+    require_non_placeholder "CTFD_DB_PASSWORD" "${CTFD_DB_PASSWORD:-}" "make ctfd-bootstrap"
+    require_non_placeholder "CTFD_DB_ROOT_PASSWORD" "${CTFD_DB_ROOT_PASSWORD:-}" "make ctfd-bootstrap"
+fi
+
+if is_profile_enabled "observability"; then
+    validate_subdomain_label "${GRAFANA_HOSTNAME:-grafana}" "GRAFANA_HOSTNAME"
+    require_non_placeholder "GRAFANA_ADMIN_PASSWORD" "${GRAFANA_ADMIN_PASSWORD:-}" "make observability-bootstrap"
+    validate_duration_token "${PROMETHEUS_RETENTION_TIME:-7d}" "PROMETHEUS_RETENTION_TIME"
+    validate_duration_token "${LOKI_RETENTION_PERIOD:-168h}" "LOKI_RETENTION_PERIOD"
+    validate_duration_token "${TEMPO_RETENTION_PERIOD:-168h}" "TEMPO_RETENTION_PERIOD"
+    validate_duration_token "${PYROSCOPE_RETENTION_PERIOD:-168h}" "PYROSCOPE_RETENTION_PERIOD"
+fi
+
+if [ -n "${K6_TARGET_URL:-}" ] || [ -n "${K6_ITERATIONS:-}" ] || [ -n "${K6_SLEEP_SECONDS:-}" ]; then
+    validate_http_url "${K6_TARGET_URL:-}" "K6_TARGET_URL"
+    validate_positive_int "${K6_ITERATIONS:-0}" "K6_ITERATIONS"
+    validate_positive_int "${K6_SLEEP_SECONDS:-0}" "K6_SLEEP_SECONDS"
 fi

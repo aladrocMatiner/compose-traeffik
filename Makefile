@@ -15,13 +15,15 @@
 # --- Configuration Variables ---
 SHELL := /bin/bash # Ensure bash is used for shell commands
 .DEFAULT_GOAL := help # Default target if none is specified
-.PHONY: help up down restart logs ps test docs-check bootstrap \
+.PHONY: help up down restart logs ps test test-core test-dns test-ctfd test-observability docs-check bootstrap \
         certs-local local-ca-trust-install local-ca-trust-uninstall local-ca-trust-verify \
         certs-le-issue certs-le-renew \
         stepca-up stepca-down stepca-bootstrap stepca-verify-cert \
         stepca-trust-install stepca-trust-uninstall stepca-trust-verify \
         hosts-generate hosts-apply hosts-remove hosts-status \
-        bind-up bind-down bind-restart bind-logs bind-status bind-provision bind-provision-dry
+        bind-up bind-down bind-restart bind-logs bind-status bind-provision bind-provision-dry \
+        ctfd-bootstrap ctfd-up ctfd-down ctfd-restart ctfd-logs ctfd-status \
+        observability-bootstrap observability-up observability-down observability-restart observability-logs observability-status observability-k6
 
 # Include .env for environment variables if it exists.
 # This makes variables in .env available to the Makefile.
@@ -37,7 +39,9 @@ COMPOSE_FILES := \
   -f services/whoami/compose.yml \
   -f services/dns-bind/compose.yml \
   -f services/certbot/compose.yml \
-  -f services/step-ca/compose.yml
+  -f services/step-ca/compose.yml \
+  -f services/ctfd/compose.yml \
+  -f services/observability/compose.yml
 
 # Pin compose project directory/name to avoid cross-CWD conflicts.
 COMPOSE_PROJECT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
@@ -69,6 +73,52 @@ BIND_ENV_ARGS :=
 ifneq ($(ENV_FILE),)
 BIND_ENV_ARGS += --env-file $(ENV_FILE)
 endif
+
+CTFD_ENV_ARGS :=
+ifneq ($(ENV_FILE),)
+CTFD_ENV_ARGS += --env-file $(ENV_FILE)
+endif
+
+OBS_ENV_ARGS :=
+ifneq ($(ENV_FILE),)
+OBS_ENV_ARGS += --env-file $(ENV_FILE)
+endif
+
+SMOKE_TEST_DIR := $(REPO_ROOT)/tests/smoke
+
+CORE_SMOKE_TESTS := \
+	test_traefik_ready.sh \
+	test_routing.sh \
+	test_tls_handshake.sh \
+	test_http_redirect.sh \
+	test_hosts_subdomains.sh
+
+DNS_SMOKE_TESTS := \
+	test_bind_service_config.sh \
+	test_bind_zone_generation.sh \
+	test_bind_make_targets.sh \
+	test_bind_guardrails.sh \
+	test_bind_file_permissions.sh \
+	test_bind_provisioning_validation.sh \
+	test_bind_security_runtime.sh
+
+CTFD_SMOKE_TESTS := \
+	test_ctfd_service_config.sh \
+	test_ctfd_guardrails.sh \
+	test_ctfd_make_targets.sh \
+	test_ctfd_bootstrap_env.sh
+
+OBSERVABILITY_SMOKE_TESTS := \
+	test_observability_service_config.sh \
+	test_observability_advanced_service_config.sh \
+	test_observability_alloy_signal_pipelines.sh \
+	test_observability_traefik_config.sh \
+	test_observability_guardrails.sh \
+	test_observability_make_targets.sh \
+	test_observability_bootstrap_env.sh \
+	test_observability_grafana_provisioning.sh \
+	test_observability_k6_wiring.sh \
+	test_observability_app_pack_tolerance.sh
 
 # Start the stack
 up:
@@ -176,6 +226,50 @@ test:
 	@echo "Running smoke tests..."
 	./scripts/healthcheck.sh
 
+test-core:
+	@echo "Running core Traefik/whoami smoke tests..."
+	@set -euo pipefail; rc=0; \
+	for test_script in $(CORE_SMOKE_TESTS); do \
+		echo "==> $$test_script"; \
+		if ! "$(SMOKE_TEST_DIR)/$$test_script"; then \
+			rc=1; \
+		fi; \
+	done; \
+	exit $$rc
+
+test-dns:
+	@echo "Running DNS/BIND smoke tests..."
+	@set -euo pipefail; rc=0; \
+	for test_script in $(DNS_SMOKE_TESTS); do \
+		echo "==> $$test_script"; \
+		if ! "$(SMOKE_TEST_DIR)/$$test_script"; then \
+			rc=1; \
+		fi; \
+	done; \
+	exit $$rc
+
+test-ctfd:
+	@echo "Running CTFd smoke tests..."
+	@set -euo pipefail; rc=0; \
+	for test_script in $(CTFD_SMOKE_TESTS); do \
+		echo "==> $$test_script"; \
+		if ! "$(SMOKE_TEST_DIR)/$$test_script"; then \
+			rc=1; \
+		fi; \
+	done; \
+	exit $$rc
+
+test-observability:
+	@echo "Running observability smoke tests..."
+	@set -euo pipefail; rc=0; \
+	for test_script in $(OBSERVABILITY_SMOKE_TESTS); do \
+		echo "==> $$test_script"; \
+		if ! "$(SMOKE_TEST_DIR)/$$test_script"; then \
+			rc=1; \
+		fi; \
+	done; \
+	exit $$rc
+
 # --- Documentation ---
 
 docs-check:
@@ -225,6 +319,59 @@ bind-provision:
 bind-provision-dry:
 	"$(SCRIPTS_DIR)/bind-provision.sh" $(BIND_ENV_ARGS) --dry-run
 
+# --- CTFd Module ---
+
+ctfd-bootstrap:
+	"$(SCRIPTS_DIR)/ctfd-bootstrap.sh" $(CTFD_ENV_ARGS)
+
+ctfd-up:
+	@echo "Starting CTFd module (profile: ctfd)..."
+	COMPOSE_PROFILES=ctfd "$(SCRIPTS_DIR)/compose.sh" --profile ctfd $(COMPOSE_OPTS) up -d ctfd ctfd-db ctfd-redis
+
+ctfd-down:
+	@echo "Stopping CTFd module..."
+	COMPOSE_PROFILES=ctfd "$(SCRIPTS_DIR)/compose.sh" --profile ctfd $(COMPOSE_OPTS) stop ctfd ctfd-db ctfd-redis || true
+	COMPOSE_PROFILES=ctfd "$(SCRIPTS_DIR)/compose.sh" --profile ctfd $(COMPOSE_OPTS) rm -f ctfd ctfd-db ctfd-redis || true
+
+ctfd-restart: ctfd-down ctfd-up
+
+ctfd-logs:
+	@echo "Showing CTFd module logs..."
+	COMPOSE_PROFILES=ctfd "$(SCRIPTS_DIR)/compose.sh" --profile ctfd $(COMPOSE_OPTS) logs -f ctfd ctfd-db ctfd-redis
+
+ctfd-status:
+	@echo "CTFd module status:"
+	COMPOSE_PROFILES=ctfd "$(SCRIPTS_DIR)/compose.sh" --profile ctfd $(COMPOSE_OPTS) ps ctfd ctfd-db ctfd-redis
+
+# --- Observability Module ---
+
+observability-bootstrap:
+	"$(SCRIPTS_DIR)/observability-bootstrap.sh" $(OBS_ENV_ARGS)
+
+observability-up:
+	@echo "Starting observability module (profile: observability)..."
+	COMPOSE_PROFILES=observability "$(SCRIPTS_DIR)/compose.sh" --profile observability $(COMPOSE_OPTS) up -d grafana prometheus loki tempo pyroscope alloy
+
+observability-down:
+	@echo "Stopping observability module..."
+	COMPOSE_PROFILES=observability "$(SCRIPTS_DIR)/compose.sh" --profile observability $(COMPOSE_OPTS) stop grafana prometheus loki tempo pyroscope alloy || true
+	COMPOSE_PROFILES=observability "$(SCRIPTS_DIR)/compose.sh" --profile observability $(COMPOSE_OPTS) rm -f grafana prometheus loki tempo pyroscope alloy || true
+
+observability-restart: observability-down observability-up
+
+observability-logs:
+	@echo "Showing observability module logs..."
+	COMPOSE_PROFILES=observability "$(SCRIPTS_DIR)/compose.sh" --profile observability $(COMPOSE_OPTS) logs -f grafana prometheus loki tempo pyroscope alloy
+
+observability-status:
+	@echo "Observability module status:"
+	COMPOSE_PROFILES=observability "$(SCRIPTS_DIR)/compose.sh" --profile observability $(COMPOSE_OPTS) ps grafana prometheus loki tempo pyroscope alloy
+
+observability-k6:
+	@if [ -z "$(K6_TARGET_URL)" ]; then echo "Error: K6_TARGET_URL is required."; exit 1; fi
+	@echo "Running observability synthetic check with k6 against $(K6_TARGET_URL)..."
+	COMPOSE_PROFILES=observability "$(SCRIPTS_DIR)/compose.sh" --profile observability $(COMPOSE_OPTS) run --rm k6
+
 # --- Help ---
 
 help:
@@ -267,7 +414,11 @@ help:
 	@echo "  stepca-trust-verify   Verify Step-CA root CA trust on Ubuntu."
 	@echo ""
 	@echo "Testing:"
-	@echo "  test                  Run all smoke tests for the current configuration."
+	@echo "  test                  Run smoke tests for running services (plus common utility tests)."
+	@echo "  test-core             Run core Traefik/whoami smoke tests."
+	@echo "  test-dns              Run DNS/BIND smoke tests only."
+	@echo "  test-ctfd             Run CTFd smoke tests only."
+	@echo "  test-observability    Run observability smoke tests only."
 	@echo ""
 	@echo "Docs:"
 	@echo "  docs-check            Validate multilingual README structure and links."
@@ -287,8 +438,25 @@ help:
 	@echo "  bind-provision        Generate the BIND zone file from ENDPOINTS."
 	@echo "  bind-provision-dry    Print the generated zone file without writing."
 	@echo ""
+	@echo "CTFd:"
+	@echo "  ctfd-bootstrap        Generate/persist CTFd secrets in .env."
+	@echo "  ctfd-up               Start the CTFd module (profile: ctfd)."
+	@echo "  ctfd-down             Stop and remove the CTFd module containers."
+	@echo "  ctfd-restart          Restart the CTFd module."
+	@echo "  ctfd-logs             Follow CTFd module logs."
+	@echo "  ctfd-status           Show CTFd module status."
+	@echo ""
+	@echo "Observability:"
+	@echo "  observability-bootstrap  Generate/persist Grafana admin secrets in .env."
+	@echo "  observability-up         Start the observability module (profile: observability)."
+	@echo "  observability-down       Stop and remove observability module containers."
+	@echo "  observability-restart    Restart the observability module."
+	@echo "  observability-logs       Follow observability module logs."
+	@echo "  observability-status     Show observability module status."
+	@echo "  observability-k6         Run on-demand synthetic HTTP checks with k6."
+	@echo ""
 	@echo "Profiles:"
 	@echo "  Use COMPOSE_PROFILES=<profile_name> before make commands to activate profiles."
-	@echo "  Available profiles: bind, le, stepca"
+	@echo "  Available profiles: bind, ctfd, le, observability, stepca"
 	@echo "  Example: COMPOSE_PROFILES=le make up"
 	@echo ""

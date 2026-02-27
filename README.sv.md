@@ -74,6 +74,9 @@ Detaljerade TLS-floden:
 - **Whoami**: `https://whoami.${DEV_DOMAIN}` (standardstack)
 - **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth; aktiverad som standard)
 - **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (profil `stepca`; aktiverad som standard)
+- **CTFd**: `https://ctfd.${DEV_DOMAIN}` (profil `ctfd`; valfri)
+- **Grafana**: `https://grafana.${DEV_DOMAIN}` (profil `observability`; valfri)
+- **Prometheus/Loki/Tempo/Pyroscope**: interna som standard (profil `observability`; ingen publik endpoint)
 
 <a id="services"></a>
 ## Tjanster
@@ -83,6 +86,8 @@ Detaljerade TLS-floden:
 - [DNS (BIND)](services/dns-bind/README.sv.md) - valfri profil `bind`.
 - [Certbot](services/certbot/README.sv.md) - valfri profil `le`.
 - [Step-CA](services/step-ca/README.sv.md) - valfri profil `stepca`.
+- [CTFd](services/ctfd/README.sv.md) - valfri profil `ctfd` (CTF-plattform + DB + Redis).
+- [Observability](services/observability/README.sv.md) - valfri profil `observability` (Grafana/Prometheus/Loki/Tempo/Pyroscope/Alloy + k6 synthetic checks).
 
 <a id="docs-map"></a>
 ## Dokumentkarta
@@ -104,6 +109,8 @@ Vanliga kommandon:
 - `make certs-le-issue`, `make certs-le-renew` (profil `le`)
 - `make stepca-up`, `make stepca-bootstrap`, `make stepca-trust-install`
 - `make bind-up`, `make bind-status`, `make bind-restart`, `make bind-provision`
+- `make ctfd-bootstrap`, `make ctfd-up`, `make ctfd-status`
+- `make observability-bootstrap`, `make observability-up`, `make observability-status`, `make observability-k6`
 - `make hosts-generate`, `make hosts-apply`, `make hosts-status`
 
 Auth-filer:
@@ -116,6 +123,10 @@ DNS-sakerhetsdefaults:
 - BIND kor som auktoritativ lokal DNS med recursion avstangt och AXFR blockerat.
 - `BIND_BIND_ADDRESS` bor vara loopback som standard.
 - For avsiktlig exponering utanfor loopback, satt `BIND_ALLOW_NONLOCAL_BIND=true`.
+
+Hosts-not:
+- Om du hanterar `ENDPOINTS` manuellt, lagg till `ctfd` och/eller `grafana` innan `make hosts-apply`.
+- Eller lamna `ENDPOINTS` tomt for auto-discovery via `Host()`-regler.
 
 <a id="testing"></a>
 ## Tester

@@ -45,6 +45,29 @@ log:
   format: common # json or common
   # filePath: "/var/log/traefik.log" # Uncomment to log to a file
 
+# Access logs for observability (JSON format, sensitive headers dropped)
+accessLog:
+  format: json
+  fields:
+    defaultMode: keep
+    headers:
+      defaultMode: drop
+      names:
+        User-Agent: keep
+        X-Forwarded-For: keep
+        X-Forwarded-Proto: keep
+        X-Forwarded-Host: keep
+        Authorization: drop
+        Cookie: drop
+        Set-Cookie: drop
+
+# Metrics for internal Prometheus scraping (no public port exposure)
+metrics:
+  prometheus:
+    addEntryPointsLabels: true
+    addRoutersLabels: true
+    addServicesLabels: true
+
 # --- Certificates Resolvers ---
 # These are used by Traefik's ACME client to obtain TLS certificates.
 # Only one resolver will be active at a time based on the `TLS_CERT_RESOLVER` env var.

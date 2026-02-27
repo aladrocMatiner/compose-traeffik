@@ -15,6 +15,8 @@ COMPOSE_FILES=(
   -f "${REPO_ROOT}/services/dns-bind/compose.yml"
   -f "${REPO_ROOT}/services/certbot/compose.yml"
   -f "${REPO_ROOT}/services/step-ca/compose.yml"
+  -f "${REPO_ROOT}/services/ctfd/compose.yml"
+  -f "${REPO_ROOT}/services/observability/compose.yml"
 )
 
 run_preflight() {
