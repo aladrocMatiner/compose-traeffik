@@ -23,7 +23,7 @@ SHELL := /bin/bash # Ensure bash is used for shell commands
         hosts-generate hosts-apply hosts-remove hosts-status \
         bind-up bind-down bind-restart bind-logs bind-status bind-provision bind-provision-dry bind-port-check \
         deployment deployment-ubuntu deployment-plan deployment-destroy deployment-output deployment-ssh deployment-list \
-        deployment-wait deployment-bootstrap deployment-bootstrap-check deployment-ready \
+        deployment-wait deployment-bootstrap deployment-bootstrap-check deployment-ready deployment-validate \
         ubuntu debian debian12 debian13 gentoo opensuse-leap almalinux9 rockylinux9 fedora-cloud libvirt qemu proxmox
 
 # Include .env for environment variables if it exists.
@@ -352,6 +352,10 @@ deployment-bootstrap-check:
 deployment-ready: deployment deployment-wait deployment-bootstrap deployment-bootstrap-check
 	@echo "Deployment VM is provisioned and Docker-ready for Ansible."
 
+deployment-validate:
+	@echo "Validating terraform targets (libvirt + proxmox)..."
+	@"$(SCRIPTS_DIR)/infra-validate.sh"
+
 # --- Help ---
 
 help:
@@ -425,6 +429,7 @@ help:
 	@echo "  deployment-bootstrap  Install Docker Engine + Compose plugin on the provisioned Ubuntu/Debian(12/13) VM."
 	@echo "  deployment-bootstrap-check  Verify SSH, Python, Docker and Compose on the provisioned VM."
 	@echo "  deployment-ready      End-to-end: provision + wait + Docker bootstrap + readiness check."
+	@echo "  deployment-validate   Run terraform fmt/validate checks for libvirt and proxmox targets."
 	@echo "  deployment-destroy    Destroy the provisioned VM and related resources."
 	@echo "  deployment-ubuntu     Alias for 'make deployment DEPLOYMENT_TARGET=libvirt DEPLOYMENT_OS=ubuntu'."
 	@echo "                       You can also run: make deployment ubuntu"

@@ -23,7 +23,7 @@ fi
 check_command "grep"
 check_command "awk"
 
-for target in deployment deployment-plan deployment-output deployment-ssh deployment-list deployment-destroy; do
+for target in deployment deployment-plan deployment-output deployment-ssh deployment-list deployment-validate deployment-destroy; do
     if ! grep -q "^${target}:" "$MAKEFILE"; then
         log_error "Missing Make target: ${target}"
     fi

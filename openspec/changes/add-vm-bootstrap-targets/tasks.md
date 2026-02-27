@@ -37,6 +37,6 @@
 
 ## 7. Validation and Handoff Readiness
 
-- [ ] 7.1 Add basic validation commands/documentation for `terraform fmt`, `terraform validate`, and target smoke checks.
+- [x] 7.1 Add basic validation commands/documentation for `terraform fmt`, `terraform validate`, and target smoke checks.
 - [x] 7.2 Confirm the host metadata outputs can be consumed by future Ansible inventory generation without format changes.
 - [x] 7.3 Document secrets handling and operator prerequisites for both targets (SSH keys, Proxmox API access, network assumptions).
