@@ -80,3 +80,16 @@ The system SHALL support repeated execution of the same `project=<id>` on the sa
 - **WHEN** `deployment-project` is executed again for the same project and target host
 - **THEN** repository sync and compose application are applied in-place
 - **AND** the workflow converges to the declared manifest state without duplicating project resources
+
+### Requirement: Project workflow resolves deterministic deployment host naming
+The system SHALL resolve deployment host naming from the selected project and platform selectors using the pattern `<project-id>-<os>` and SHALL append `-<init>` only when `init` is explicitly provided.
+
+#### Scenario: Host name without init selector
+- **WHEN** an operator runs `make deployment-project project=<id> os=<os>` without `init=...`
+- **THEN** the resolved deployment host name is `<project-id>-<os>`
+- **AND** no trailing init segment is added
+
+#### Scenario: Host name with init selector
+- **WHEN** an operator runs `make deployment-project project=<id> os=<os> init=<init>`
+- **THEN** the resolved deployment host name is `<project-id>-<os>-<init>`
+- **AND** the same resolved name is used consistently across provisioning and deployment stages
