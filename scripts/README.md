@@ -2,6 +2,8 @@
 
 This directory contains helper scripts used to operate the stack. Prefer running them via Make targets where available so environment loading and compose layering stay consistent.
 
+Deployment lifecycle scripts are kept under `deployment/scripts/` and are called via `make deployment-*` targets.
+
 ## How to use
 
 - Preferred: `make <target>` (see `make help` for a list).
@@ -41,12 +43,12 @@ Preflight validation:
 | `scripts/ca-config-verify.sh` | Validate shared CA configuration | `./scripts/ca-config-verify.sh` | `DEV_DOMAIN`, `CA_*`, `LEAF_*` (or legacy `STEP_CA_*`) | Prints effective CA configuration |
 | `scripts/hosts-subdomains.sh` | Manage hosts block for loopback subdomains | `make hosts-apply` | `BASE_DOMAIN`, `LOOPBACK_X` | Modifies hosts file (with sudo) |
 | `scripts/bind-provision.sh` | Generate BIND zone file from ENDPOINTS | `make bind-provision` | `BASE_DOMAIN`, `LOOPBACK_X`, `ENDPOINTS` | Writes `services/dns-bind/zones` |
-| `scripts/infra-provision.sh` | Provision/destroy deployment VMs (interface: `target=libvirt|qemu|proxmox`, `os=ubuntu|debian12|debian13|gentoo|opensuse-leap|almalinux9|rockylinux9|fedora-cloud`; Gentoo `init=openrc|systemd`; `debian` alias -> `debian13`) with Terraform + cloud-init | `make deployment`, `make deployment-destroy` | `DEPLOYMENT_*` / `PROXMOX_*` overrides (optional) | Creates/destroys VM resources, downloads/verifies cloud images for libvirt |
-| `scripts/infra-validate.sh` | Validate Terraform layout for infra targets (`fmt`, `init -backend=false`, `validate`) | `make deployment-validate` | none | Reads Terraform config and plugins |
-| `scripts/deployment-access.sh` | List/select deployment VMs by backend (`qemu` and `proxmox`) | `make deployment-list target=qemu`, `make deployment-list target=proxmox`, `make deployment-ssh target=<qemu\\|proxmox> name=<vm>` | `DEPLOYMENT_MANAGED_PREFIX`, optional `DEPLOYMENT_SSH_USER`, for proxmox `PROXMOX_API_URL` + `PROXMOX_API_TOKEN` | Reads hypervisor inventory and opens SSH |
-| `scripts/host-wait-ssh.sh` | Wait for SSH reachability and cloud-init completion on a provisioned VM | `make deployment-wait` | Terraform state (default) or host/user args | Waits/polls remote host |
-| `scripts/host-bootstrap.sh` | Install Docker Engine + Compose plugin over SSH on a provisioned Ubuntu/Debian (12/13) VM | `make deployment-bootstrap` | Terraform state (default) or host/user args | Modifies remote host packages and Docker config |
-| `scripts/host-bootstrap-check.sh` | Verify SSH/Python/Docker readiness on a provisioned Ubuntu/Debian (12/13) VM | `make deployment-bootstrap-check` | Terraform state (default) or host/user args | Reads remote host state |
+| `deployment/scripts/infra-provision.sh` | Provision/destroy deployment VMs (interface: `target=libvirt|qemu|proxmox`, `os=ubuntu|debian12|debian13|gentoo|opensuse-leap|almalinux9|rockylinux9|fedora-cloud`; Gentoo `init=openrc|systemd`; `debian` alias -> `debian13`) with Terraform + cloud-init | `make deployment`, `make deployment-destroy` | `DEPLOYMENT_*` / `PROXMOX_*` overrides (optional) | Creates/destroys VM resources, downloads/verifies cloud images for libvirt |
+| `deployment/scripts/infra-validate.sh` | Validate Terraform layout for infra targets (`fmt`, `init -backend=false`, `validate`) | `make deployment-validate` | none | Reads Terraform config and plugins |
+| `deployment/scripts/deployment-access.sh` | List/select deployment VMs by backend (`qemu` and `proxmox`) | `make deployment-list target=qemu`, `make deployment-list target=proxmox`, `make deployment-ssh target=<qemu\\|proxmox> name=<vm>` | `DEPLOYMENT_MANAGED_PREFIX`, optional `DEPLOYMENT_SSH_USER`, for proxmox `PROXMOX_API_URL` + `PROXMOX_API_TOKEN` | Reads hypervisor inventory and opens SSH |
+| `deployment/scripts/host-wait-ssh.sh` | Wait for SSH reachability and cloud-init completion on a provisioned VM | `make deployment-wait` | Terraform state (default) or host/user args | Waits/polls remote host |
+| `deployment/scripts/host-bootstrap.sh` | Install Docker Engine + Compose plugin over SSH on a provisioned Ubuntu/Debian (12/13) VM | `make deployment-bootstrap` | Terraform state (default) or host/user args | Modifies remote host packages and Docker config |
+| `deployment/scripts/host-bootstrap-check.sh` | Verify SSH/Python/Docker readiness on a provisioned Ubuntu/Debian (12/13) VM | `make deployment-bootstrap-check` | Terraform state (default) or host/user args | Reads remote host state |
 | `scripts/common.sh` | Shared helpers | sourced by other scripts | none | none |
 
 ## Workflows

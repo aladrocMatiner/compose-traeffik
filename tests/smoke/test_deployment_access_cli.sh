@@ -14,7 +14,7 @@ SCRIPT_DIR=$(dirname "$0")
 # shellcheck source=scripts/common.sh
 . "$SCRIPT_DIR/../../scripts/common.sh"
 
-ACCESS_SCRIPT="$SCRIPT_DIR/../../scripts/deployment-access.sh"
+ACCESS_SCRIPT="$SCRIPT_DIR/../../deployment/scripts/deployment-access.sh"
 
 if [ ! -x "$ACCESS_SCRIPT" ]; then
     log_error "deployment-access script not found or not executable."

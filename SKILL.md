@@ -34,9 +34,9 @@ Implement the provisioning stack in two phases and keep the boundary strict.
 - `infra/terraform/targets/proxmox/`
 - `infra/cloud-init/user-data.yaml.tftpl`
 - `infra/cloud-init/network-config.yaml.tftpl` (if separate template is needed)
-- `scripts/infra-provision.sh`
-- `scripts/host-bootstrap.sh`
-- `scripts/host-bootstrap-check.sh`
+- `deployment/scripts/infra-provision.sh`
+- `deployment/scripts/host-bootstrap.sh`
+- `deployment/scripts/host-bootstrap-check.sh`
 
 ## Implementation workflow
 

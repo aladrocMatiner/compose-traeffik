@@ -2,31 +2,23 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 usage() {
   cat <<'EOF'
 Usage:
-  scripts/host-bootstrap.sh [--host IP] [--user USER] [--port PORT] [--identity PATH]
+  deployment/scripts/host-wait-ssh.sh [--host IP] [--user USER] [--port PORT] [--identity PATH]
                            [--target <libvirt|qemu|proxmox>]
                            [--os <ubuntu|debian|debian12|debian13|gentoo|opensuse-leap|almalinux9|rockylinux9|fedora-cloud>]
                            [--init <openrc|systemd>] [--terraform-dir DIR]
+                           [--timeout SECONDS] [--interval SECONDS] [--skip-cloud-init-wait]
 
-Defaults:
-  - Resolves host/user from Terraform outputs in infra/terraform/targets/libvirt
-  - Uses current SSH agent / default SSH keys unless --identity is provided
-
-This script installs Docker Engine and Docker Compose plugin on a provisioned host.
-Current implementation supports Ubuntu and Debian (12/13) over apt (Docker CE repo).
+Waits for SSH reachability and (by default) waits for cloud-init completion.
 EOF
 }
 
 log() {
   printf 'INFO: %s\n' "$*"
-}
-
-warn() {
-  printf 'WARN: %s\n' "$*" >&2
 }
 
 die() {
@@ -107,6 +99,9 @@ TARGET="${DEPLOYMENT_TARGET:-libvirt}"
 OS_FAMILY="${DEPLOYMENT_OS:-ubuntu}"
 INIT_SYSTEM="${DEPLOYMENT_INIT:-}"
 TF_DIR=""
+TIMEOUT_SECONDS="${DEPLOYMENT_WAIT_TIMEOUT_SECONDS:-300}"
+INTERVAL_SECONDS="${DEPLOYMENT_WAIT_INTERVAL_SECONDS:-5}"
+WAIT_CLOUD_INIT=true
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -150,6 +145,20 @@ while [[ $# -gt 0 ]]; do
       TF_DIR="$2"
       shift 2
       ;;
+    --timeout)
+      [[ $# -ge 2 ]] || die "--timeout requires a value"
+      TIMEOUT_SECONDS="$2"
+      shift 2
+      ;;
+    --interval)
+      [[ $# -ge 2 ]] || die "--interval requires a value"
+      INTERVAL_SECONDS="$2"
+      shift 2
+      ;;
+    --skip-cloud-init-wait)
+      WAIT_CLOUD_INIT=false
+      shift
+      ;;
     -h|--help)
       usage
       exit 0
@@ -161,15 +170,9 @@ while [[ $# -gt 0 ]]; do
 done
 
 validate_target_os_init
+
 if [[ -z "${TF_DIR:-}" ]]; then
   TF_DIR="$(terraform_dir_for_target "${TARGET}")"
-fi
-
-if [[ "${OS_FAMILY}" != "ubuntu" && "${OS_FAMILY}" != "debian13" && "${OS_FAMILY}" != "debian12" ]]; then
-  if [[ "${OS_FAMILY}" == "gentoo" ]]; then
-    die "Docker bootstrap is not implemented for --os gentoo --init ${INIT_SYSTEM} in v1 (current implementation: ubuntu/debian12/debian13 only)"
-  fi
-  die "Docker bootstrap is not implemented for --os ${OS_FAMILY} in v1 (current implementation: ubuntu/debian12/debian13 only)"
 fi
 
 check_cmd ssh
@@ -183,7 +186,7 @@ fi
 
 SSH_OPTS=(
   -o BatchMode=yes
-  -o ConnectTimeout=10
+  -o ConnectTimeout=5
   -o StrictHostKeyChecking=no
   -o UserKnownHostsFile=/dev/null
 )
@@ -192,80 +195,25 @@ if [[ -n "${IDENTITY_PATH}" ]]; then
   SSH_OPTS+=(-i "${IDENTITY_PATH}")
 fi
 
-log "Bootstrapping Docker on ${ssh_user}@${host_ip}:${SSH_PORT}"
+deadline=$((SECONDS + TIMEOUT_SECONDS))
+variant_note=""
+if [[ "${OS_FAMILY}" == "gentoo" ]]; then
+  variant_note=", init=${INIT_SYSTEM}"
+fi
+log "Waiting for SSH on ${ssh_user}@${host_ip}:${SSH_PORT} (os=${OS_FAMILY}${variant_note}, timeout ${TIMEOUT_SECONDS}s, interval ${INTERVAL_SECONDS}s)"
 
-ssh "${SSH_OPTS[@]}" -p "${SSH_PORT}" "${ssh_user}@${host_ip}" "bash -s -- $(printf '%q' "${ssh_user}")" <<'REMOTE'
-set -euo pipefail
-
-target_user="${1:?missing-target-user}"
-export DEBIAN_FRONTEND=noninteractive
-
-log() {
-  printf '[remote] %s\n' "$*"
-}
-
-run_root() {
-  if command -v sudo >/dev/null 2>&1; then
-    sudo "$@"
-  elif [ "$(id -u)" -eq 0 ]; then
-    "$@"
-  else
-    echo "[remote] ERROR: sudo is required for non-root bootstrap" >&2
-    exit 1
+until ssh "${SSH_OPTS[@]}" -p "${SSH_PORT}" "${ssh_user}@${host_ip}" "echo ssh-ready" >/dev/null 2>&1; do
+  if (( SECONDS >= deadline )); then
+    die "Timed out waiting for SSH on ${ssh_user}@${host_ip}:${SSH_PORT}"
   fi
-}
+  sleep "${INTERVAL_SECONDS}"
+done
 
-arch="$(dpkg --print-architecture)"
-. /etc/os-release
-if [ "${ID:-}" != "ubuntu" ] && [ "${ID:-}" != "debian" ]; then
-  echo "[remote] ERROR: unsupported distro '${ID:-unknown}', expected ubuntu or debian" >&2
-  exit 1
+log "SSH is reachable on ${ssh_user}@${host_ip}:${SSH_PORT}"
+
+if [[ "${WAIT_CLOUD_INIT}" == "true" ]]; then
+  log "Waiting for cloud-init completion"
+  ssh "${SSH_OPTS[@]}" -p "${SSH_PORT}" "${ssh_user}@${host_ip}" \
+    'command -v cloud-init >/dev/null 2>&1 && cloud-init status --wait || true'
+  log "cloud-init completed (or not present)"
 fi
-
-log "Installing prerequisite packages"
-run_root apt-get update -y
-run_root apt-get install -y ca-certificates curl gnupg
-
-log "Configuring Docker apt repository"
-run_root install -m 0755 -d /etc/apt/keyrings
-if [ ! -f /etc/apt/keyrings/docker.asc ]; then
-  run_root curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-  run_root chmod a+r /etc/apt/keyrings/docker.asc
-fi
-
-docker_repo_os="${ID}"
-repo_line="deb [arch=${arch} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/${docker_repo_os} ${VERSION_CODENAME} stable"
-if [ ! -f /etc/apt/sources.list.d/docker.list ] || ! grep -Fxq "${repo_line}" /etc/apt/sources.list.d/docker.list; then
-  printf '%s\n' "${repo_line}" | run_root tee /etc/apt/sources.list.d/docker.list >/dev/null
-fi
-
-log "Installing Docker Engine + Compose plugin"
-run_root apt-get update -y
-run_root apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-run_root systemctl enable --now docker
-
-if ! getent group docker >/dev/null 2>&1; then
-  run_root groupadd docker
-fi
-
-if id "${target_user}" >/dev/null 2>&1; then
-  if id -nG "${target_user}" | tr ' ' '\n' | grep -qx docker; then
-    log "User '${target_user}' already in docker group"
-  else
-    run_root usermod -aG docker "${target_user}"
-    log "Added '${target_user}' to docker group (new SSH session needed to apply group membership)"
-  fi
-else
-  echo "[remote] WARN: target user '${target_user}' not found; skipped docker group membership" >&2
-fi
-
-log "Verifying Docker service and CLI"
-run_root systemctl is-active --quiet docker
-docker --version
-docker compose version
-run_root docker info >/dev/null
-
-log "Docker bootstrap complete"
-REMOTE
-
-log "Bootstrap completed on ${ssh_user}@${host_ip}. If group membership changed, reconnect before running docker commands without sudo."

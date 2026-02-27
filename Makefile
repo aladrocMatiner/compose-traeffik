@@ -46,6 +46,7 @@ COMPOSE_FILES := \
 COMPOSE_PROJECT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 REPO_ROOT := $(abspath $(COMPOSE_PROJECT_DIR))
 SCRIPTS_DIR := $(REPO_ROOT)/scripts
+DEPLOYMENT_SCRIPTS_DIR := $(REPO_ROOT)/deployment/scripts
 COMPOSE_PROJECT_NAME ?= $(PROJECT_NAME)
 ifeq ($(COMPOSE_PROJECT_NAME),)
 COMPOSE_PROJECT_NAME := $(notdir $(abspath $(COMPOSE_PROJECT_DIR)))
@@ -311,50 +312,50 @@ bind-port-check:
 
 deployment:
 	@echo "Provisioning $(DEPLOYMENT_OS) VM on target $(DEPLOYMENT_TARGET)..."
-	@"$(SCRIPTS_DIR)/infra-provision.sh" apply --target "$(DEPLOYMENT_TARGET)" --os "$(DEPLOYMENT_OS)" $(DEPLOYMENT_INIT_ARG)
+	@"$(DEPLOYMENT_SCRIPTS_DIR)/infra-provision.sh" apply --target "$(DEPLOYMENT_TARGET)" --os "$(DEPLOYMENT_OS)" $(DEPLOYMENT_INIT_ARG)
 
 deployment-ubuntu:
 	@$(MAKE) deployment DEPLOYMENT_TARGET=libvirt DEPLOYMENT_OS=ubuntu
 
 deployment-plan:
 	@echo "Planning $(DEPLOYMENT_OS) VM on target $(DEPLOYMENT_TARGET)..."
-	@"$(SCRIPTS_DIR)/infra-provision.sh" plan --target "$(DEPLOYMENT_TARGET)" --os "$(DEPLOYMENT_OS)" $(DEPLOYMENT_INIT_ARG)
+	@"$(DEPLOYMENT_SCRIPTS_DIR)/infra-provision.sh" plan --target "$(DEPLOYMENT_TARGET)" --os "$(DEPLOYMENT_OS)" $(DEPLOYMENT_INIT_ARG)
 
 deployment-destroy:
 	@echo "Destroying deployment VM on target $(DEPLOYMENT_TARGET)..."
-	@"$(SCRIPTS_DIR)/infra-provision.sh" destroy --target "$(DEPLOYMENT_TARGET)" --os "$(DEPLOYMENT_OS)" $(DEPLOYMENT_INIT_ARG)
+	@"$(DEPLOYMENT_SCRIPTS_DIR)/infra-provision.sh" destroy --target "$(DEPLOYMENT_TARGET)" --os "$(DEPLOYMENT_OS)" $(DEPLOYMENT_INIT_ARG)
 
 deployment-output:
-	@"$(SCRIPTS_DIR)/infra-provision.sh" output --target "$(DEPLOYMENT_TARGET)" --os "$(DEPLOYMENT_OS)" $(DEPLOYMENT_INIT_ARG)
+	@"$(DEPLOYMENT_SCRIPTS_DIR)/infra-provision.sh" output --target "$(DEPLOYMENT_TARGET)" --os "$(DEPLOYMENT_OS)" $(DEPLOYMENT_INIT_ARG)
 
 deployment-ssh:
 	@if [[ -n "$(DEPLOYMENT_NAME)" || "$(DEPLOYMENT_TARGET)" == "qemu" ]]; then \
-		"$(SCRIPTS_DIR)/deployment-access.sh" ssh --target "$(DEPLOYMENT_TARGET)" --name "$(DEPLOYMENT_NAME)"; \
+		"$(DEPLOYMENT_SCRIPTS_DIR)/deployment-access.sh" ssh --target "$(DEPLOYMENT_TARGET)" --name "$(DEPLOYMENT_NAME)"; \
 	else \
-		"$(SCRIPTS_DIR)/infra-provision.sh" ssh --target "$(DEPLOYMENT_TARGET)" --os "$(DEPLOYMENT_OS)" $(DEPLOYMENT_INIT_ARG); \
+		"$(DEPLOYMENT_SCRIPTS_DIR)/infra-provision.sh" ssh --target "$(DEPLOYMENT_TARGET)" --os "$(DEPLOYMENT_OS)" $(DEPLOYMENT_INIT_ARG); \
 	fi
 
 deployment-list:
-	@"$(SCRIPTS_DIR)/deployment-access.sh" list --target "$(DEPLOYMENT_TARGET)"
+	@"$(DEPLOYMENT_SCRIPTS_DIR)/deployment-access.sh" list --target "$(DEPLOYMENT_TARGET)"
 
 deployment-wait:
 	@echo "Waiting for deployment VM SSH/cloud-init ($(DEPLOYMENT_TARGET)/$(DEPLOYMENT_OS))..."
-	@"$(SCRIPTS_DIR)/host-wait-ssh.sh" --target "$(DEPLOYMENT_TARGET)" --os "$(DEPLOYMENT_OS)" $(DEPLOYMENT_INIT_ARG)
+	@"$(DEPLOYMENT_SCRIPTS_DIR)/host-wait-ssh.sh" --target "$(DEPLOYMENT_TARGET)" --os "$(DEPLOYMENT_OS)" $(DEPLOYMENT_INIT_ARG)
 
 deployment-bootstrap:
 	@echo "Installing Docker on deployment VM ($(DEPLOYMENT_TARGET)/$(DEPLOYMENT_OS))..."
-	@"$(SCRIPTS_DIR)/host-bootstrap.sh" --target "$(DEPLOYMENT_TARGET)" --os "$(DEPLOYMENT_OS)" $(DEPLOYMENT_INIT_ARG)
+	@"$(DEPLOYMENT_SCRIPTS_DIR)/host-bootstrap.sh" --target "$(DEPLOYMENT_TARGET)" --os "$(DEPLOYMENT_OS)" $(DEPLOYMENT_INIT_ARG)
 
 deployment-bootstrap-check:
 	@echo "Checking deployment VM readiness ($(DEPLOYMENT_TARGET)/$(DEPLOYMENT_OS))..."
-	@"$(SCRIPTS_DIR)/host-bootstrap-check.sh" --target "$(DEPLOYMENT_TARGET)" --os "$(DEPLOYMENT_OS)" $(DEPLOYMENT_INIT_ARG)
+	@"$(DEPLOYMENT_SCRIPTS_DIR)/host-bootstrap-check.sh" --target "$(DEPLOYMENT_TARGET)" --os "$(DEPLOYMENT_OS)" $(DEPLOYMENT_INIT_ARG)
 
 deployment-ready: deployment deployment-wait deployment-bootstrap deployment-bootstrap-check
 	@echo "Deployment VM is provisioned and Docker-ready for Ansible."
 
 deployment-validate:
 	@echo "Validating terraform targets (libvirt + proxmox)..."
-	@"$(SCRIPTS_DIR)/infra-validate.sh"
+	@"$(DEPLOYMENT_SCRIPTS_DIR)/infra-validate.sh"
 
 # --- Help ---
 

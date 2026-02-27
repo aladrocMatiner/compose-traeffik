@@ -26,7 +26,7 @@ Ademas, `Debian 13` es un buen candidato para consolidar un patron reutilizable 
 
 ## Impact
 
-- Affected code (planned): `scripts/infra-provision.sh`, `infra/terraform/targets/libvirt/`, `infra/cloud-init/` (si se requiere branching minimo), `Makefile`, y documentacion operativa.
+- Affected code (planned): `deployment/scripts/infra-provision.sh`, `infra/terraform/targets/libvirt/`, `infra/cloud-init/` (si se requiere branching minimo), `Makefile`, y documentacion operativa.
 - Dependency note: depende del contrato base de `add-vm-bootstrap-targets` y del flujo `qemu/libvirt` ya funcional para Ubuntu/Gentoo.
 - Scope note: esta propuesta se centra en provisionamiento y validacion de VM `qemu/libvirt`; Docker/bootstrap/Compose para Debian 13 queda para un follow-up.
 - Ops note: se definira pinning de imagen (URL versionada + checksum policy) para reducir cambios no deterministas en laboratorios locales.

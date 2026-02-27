@@ -30,9 +30,9 @@
 
 ## 6. Host Bootstrap Scripts (Docker Ready)
 
-- [x] 6.1 Implement a provisioning wrapper script (e.g., `scripts/infra-provision.sh`) to run Terraform by target consistently.
-- [x] 6.2 Implement a host bootstrap script (e.g., `scripts/host-bootstrap.sh`) that installs Docker Engine and Docker Compose plugin on Ubuntu hosts over SSH.
-- [x] 6.3 Implement a readiness verification script (e.g., `scripts/host-bootstrap-check.sh`) to confirm SSH and Docker/Compose availability.
+- [x] 6.1 Implement a provisioning wrapper script (e.g., `deployment/scripts/infra-provision.sh`) to run Terraform by target consistently.
+- [x] 6.2 Implement a host bootstrap script (e.g., `deployment/scripts/host-bootstrap.sh`) that installs Docker Engine and Docker Compose plugin on Ubuntu hosts over SSH.
+- [x] 6.3 Implement a readiness verification script (e.g., `deployment/scripts/host-bootstrap-check.sh`) to confirm SSH and Docker/Compose availability.
 - [x] 6.4 Make the bootstrap workflow safe to re-run or fail clearly when rerun is unsupported for a specific step.
 
 ## 7. Validation and Handoff Readiness

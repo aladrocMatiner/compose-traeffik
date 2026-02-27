@@ -13,7 +13,7 @@
 - Evidence links:
   - `experiments/gentoo-qemu/manifests/gentoo-openrc-stage3-hostkernel-20260222T170100Z.yaml`
   - `experiments/gentoo-qemu/manifests/gentoo-systemd-stage3-hostkernel-20260222T170100Z.yaml`
-  - `scripts/infra-provision.sh` (`validate_gentoo_manifest`)
+  - `deployment/scripts/infra-provision.sh` (`validate_gentoo_manifest`)
 
 ### 2026-02-27 - Use host-kernel builder strategy for v1 qualification
 
@@ -40,6 +40,6 @@
   - `deployment-bootstrap`/`deployment-bootstrap-check` remain unsupported for `os=gentoo`.
   - Messaging stays explicit and avoids overpromising readiness.
 - Evidence links:
-  - `scripts/host-bootstrap.sh`
-  - `scripts/host-bootstrap-check.sh`
+  - `deployment/scripts/host-bootstrap.sh`
+  - `deployment/scripts/host-bootstrap-check.sh`
   - `scripts/README.md`

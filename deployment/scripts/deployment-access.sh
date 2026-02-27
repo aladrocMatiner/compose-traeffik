@@ -2,13 +2,13 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 usage() {
   cat <<'USAGE'
 Usage:
-  scripts/deployment-access.sh list --target <qemu|proxmox>
-  scripts/deployment-access.sh ssh  --target <qemu|proxmox> --name <vm-name>
+  deployment/scripts/deployment-access.sh list --target <qemu|proxmox>
+  deployment/scripts/deployment-access.sh ssh  --target <qemu|proxmox> --name <vm-name>
 
 Notes:
   - target=qemu maps to local libvirt.

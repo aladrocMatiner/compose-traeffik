@@ -2,23 +2,31 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 usage() {
   cat <<'EOF'
 Usage:
-  scripts/host-bootstrap-check.sh [--host IP] [--user USER] [--port PORT] [--identity PATH]
-                                 [--target <libvirt|qemu|proxmox>]
-                                 [--os <ubuntu|debian|debian12|debian13|gentoo|opensuse-leap|almalinux9|rockylinux9|fedora-cloud>]
-                                 [--init <openrc|systemd>] [--terraform-dir DIR]
+  deployment/scripts/host-bootstrap.sh [--host IP] [--user USER] [--port PORT] [--identity PATH]
+                           [--target <libvirt|qemu|proxmox>]
+                           [--os <ubuntu|debian|debian12|debian13|gentoo|opensuse-leap|almalinux9|rockylinux9|fedora-cloud>]
+                           [--init <openrc|systemd>] [--terraform-dir DIR]
 
-Checks SSH reachability and Docker readiness on a provisioned host.
-Current implementation supports Ubuntu and Debian (12/13) Docker checks.
+Defaults:
+  - Resolves host/user from Terraform outputs in infra/terraform/targets/libvirt
+  - Uses current SSH agent / default SSH keys unless --identity is provided
+
+This script installs Docker Engine and Docker Compose plugin on a provisioned host.
+Current implementation supports Ubuntu and Debian (12/13) over apt (Docker CE repo).
 EOF
 }
 
 log() {
   printf 'INFO: %s\n' "$*"
+}
+
+warn() {
+  printf 'WARN: %s\n' "$*" >&2
 }
 
 die() {
@@ -159,9 +167,9 @@ fi
 
 if [[ "${OS_FAMILY}" != "ubuntu" && "${OS_FAMILY}" != "debian13" && "${OS_FAMILY}" != "debian12" ]]; then
   if [[ "${OS_FAMILY}" == "gentoo" ]]; then
-    die "Docker readiness checks are not implemented for --os gentoo --init ${INIT_SYSTEM} in v1 (current implementation: ubuntu/debian12/debian13 only)"
+    die "Docker bootstrap is not implemented for --os gentoo --init ${INIT_SYSTEM} in v1 (current implementation: ubuntu/debian12/debian13 only)"
   fi
-  die "Docker readiness checks are not implemented for --os ${OS_FAMILY} in v1 (current implementation: ubuntu/debian12/debian13 only)"
+  die "Docker bootstrap is not implemented for --os ${OS_FAMILY} in v1 (current implementation: ubuntu/debian12/debian13 only)"
 fi
 
 check_cmd ssh
@@ -184,10 +192,17 @@ if [[ -n "${IDENTITY_PATH}" ]]; then
   SSH_OPTS+=(-i "${IDENTITY_PATH}")
 fi
 
-log "Checking host readiness on ${ssh_user}@${host_ip}:${SSH_PORT}"
+log "Bootstrapping Docker on ${ssh_user}@${host_ip}:${SSH_PORT}"
 
-ssh "${SSH_OPTS[@]}" -p "${SSH_PORT}" "${ssh_user}@${host_ip}" 'bash -s' <<'REMOTE'
+ssh "${SSH_OPTS[@]}" -p "${SSH_PORT}" "${ssh_user}@${host_ip}" "bash -s -- $(printf '%q' "${ssh_user}")" <<'REMOTE'
 set -euo pipefail
+
+target_user="${1:?missing-target-user}"
+export DEBIAN_FRONTEND=noninteractive
+
+log() {
+  printf '[remote] %s\n' "$*"
+}
 
 run_root() {
   if command -v sudo >/dev/null 2>&1; then
@@ -195,17 +210,62 @@ run_root() {
   elif [ "$(id -u)" -eq 0 ]; then
     "$@"
   else
-    echo "[remote] ERROR: sudo is required for non-root checks" >&2
+    echo "[remote] ERROR: sudo is required for non-root bootstrap" >&2
     exit 1
   fi
 }
 
-echo "[remote] SSH OK: $(whoami)@$(hostname -f 2>/dev/null || hostname)"
-python3 --version
+arch="$(dpkg --print-architecture)"
+. /etc/os-release
+if [ "${ID:-}" != "ubuntu" ] && [ "${ID:-}" != "debian" ]; then
+  echo "[remote] ERROR: unsupported distro '${ID:-unknown}', expected ubuntu or debian" >&2
+  exit 1
+fi
+
+log "Installing prerequisite packages"
+run_root apt-get update -y
+run_root apt-get install -y ca-certificates curl gnupg
+
+log "Configuring Docker apt repository"
+run_root install -m 0755 -d /etc/apt/keyrings
+if [ ! -f /etc/apt/keyrings/docker.asc ]; then
+  run_root curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+  run_root chmod a+r /etc/apt/keyrings/docker.asc
+fi
+
+docker_repo_os="${ID}"
+repo_line="deb [arch=${arch} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/${docker_repo_os} ${VERSION_CODENAME} stable"
+if [ ! -f /etc/apt/sources.list.d/docker.list ] || ! grep -Fxq "${repo_line}" /etc/apt/sources.list.d/docker.list; then
+  printf '%s\n' "${repo_line}" | run_root tee /etc/apt/sources.list.d/docker.list >/dev/null
+fi
+
+log "Installing Docker Engine + Compose plugin"
+run_root apt-get update -y
+run_root apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+run_root systemctl enable --now docker
+
+if ! getent group docker >/dev/null 2>&1; then
+  run_root groupadd docker
+fi
+
+if id "${target_user}" >/dev/null 2>&1; then
+  if id -nG "${target_user}" | tr ' ' '\n' | grep -qx docker; then
+    log "User '${target_user}' already in docker group"
+  else
+    run_root usermod -aG docker "${target_user}"
+    log "Added '${target_user}' to docker group (new SSH session needed to apply group membership)"
+  fi
+else
+  echo "[remote] WARN: target user '${target_user}' not found; skipped docker group membership" >&2
+fi
+
+log "Verifying Docker service and CLI"
+run_root systemctl is-active --quiet docker
 docker --version
 docker compose version
-run_root systemctl is-active --quiet docker
-echo "[remote] Docker service active"
+run_root docker info >/dev/null
+
+log "Docker bootstrap complete"
 REMOTE
 
-log "Host is ready for Ansible/bootstrap follow-up"
+log "Bootstrap completed on ${ssh_user}@${host_ip}. If group membership changed, reconnect before running docker commands without sudo."

@@ -14,7 +14,7 @@ SCRIPT_DIR=$(dirname "$0")
 # shellcheck source=scripts/common.sh
 . "$SCRIPT_DIR/../../scripts/common.sh"
 
-INFRA_SCRIPT="$SCRIPT_DIR/../../scripts/infra-provision.sh"
+INFRA_SCRIPT="$SCRIPT_DIR/../../deployment/scripts/infra-provision.sh"
 OPENRC_MANIFEST="$SCRIPT_DIR/../../experiments/gentoo-qemu/manifests/gentoo-openrc-stage3-hostkernel-20260222T170100Z.yaml"
 SYSTEMD_MANIFEST="$SCRIPT_DIR/../../experiments/gentoo-qemu/manifests/gentoo-systemd-stage3-hostkernel-20260222T170100Z.yaml"
 

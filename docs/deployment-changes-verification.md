@@ -15,7 +15,7 @@ This note captures implementation and validation evidence used to close the acti
 
 ## QEMU Profile Metadata and Integrity
 
-Pinned defaults and checksum verification are implemented in `scripts/infra-provision.sh`:
+Pinned defaults and checksum verification are implemented in `deployment/scripts/infra-provision.sh`:
 
 - `debian12`: pinned Debian cloud image + SHA512 sums verification
 - `debian13`: pinned Debian cloud image + SHA512 sums verification
@@ -33,7 +33,7 @@ These defaults and override variables are documented in:
 
 Debian 13 profile is implemented as `os=debian13` (with alias `os=debian`) in:
 
-- `scripts/infra-provision.sh` selector and validation logic
+- `deployment/scripts/infra-provision.sh` selector and validation logic
 - `Makefile` target UX/help text
 - `scripts/README.md` examples/notes
 
@@ -51,7 +51,7 @@ Per-variant manifests are in place:
 - `experiments/gentoo-qemu/manifests/gentoo-openrc-stage3-hostkernel-20260222T170100Z.yaml`
 - `experiments/gentoo-qemu/manifests/gentoo-systemd-stage3-hostkernel-20260222T170100Z.yaml`
 
-`scripts/infra-provision.sh` enforces manifest prerequisites for `os=gentoo`:
+`deployment/scripts/infra-provision.sh` enforces manifest prerequisites for `os=gentoo`:
 
 - required manifest file exists
 - `os=gentoo`

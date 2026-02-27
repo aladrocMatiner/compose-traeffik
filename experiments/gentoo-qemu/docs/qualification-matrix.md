@@ -15,13 +15,13 @@ Baseline policy: `OpenRC` is the default/primary qualified baseline for Gentoo/q
 |---|---|---|---|---|
 | discovery-complete | pass | 2026-02-27 | `manifests/*.yaml` sources + checksums | OpenRC + systemd candidates selected with pinned metadata. |
 | image-qualified | pass | 2026-02-27 | builder scripts + manifest cloud-init fields | Both variants include cloud-init/SSH/python package path in builder contract. |
-| qemu-provisionable | pass (experimental) | 2026-02-27 | `scripts/infra-provision.sh` manifest gate + cloud-init templates | Provisioning is allowed only when manifest marks `qualified_qemu_provisioning=true`. |
+| qemu-provisionable | pass (experimental) | 2026-02-27 | `deployment/scripts/infra-provision.sh` manifest gate + cloud-init templates | Provisioning is allowed only when manifest marks `qualified_qemu_provisioning=true`. |
 | ansible-ready | partial | 2026-02-27 | manifest flags (`qualified_ansible_ready`) | OpenRC marked ready, systemd remains not-ready for ansible gate. |
 | docker-feasibility-assessed | deferred | 2026-02-27 | decision log + manifest flags | Docker parity intentionally out of scope in this change. |
 
 ## Evidence Pointers
 
-- Provisioning integration: `scripts/infra-provision.sh`
+- Provisioning integration: `deployment/scripts/infra-provision.sh`
 - Gentoo builders:
   - `experiments/gentoo-qemu/scripts/build-openrc-cloud-image.sh`
   - `experiments/gentoo-qemu/scripts/build-systemd-cloud-image.sh`

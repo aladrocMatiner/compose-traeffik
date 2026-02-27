@@ -36,7 +36,7 @@ if ! awk '
     in_target && /deployment-access\.sh/ && / list / { found=1 }
     END { exit(found ? 0 : 1) }
 ' "$MAKEFILE"; then
-    log_error "deployment-list is not wired through scripts/deployment-access.sh list"
+    log_error "deployment-list is not wired through deployment/scripts/deployment-access.sh list"
 fi
 
 # deployment-ssh must keep selector path for qemu/name and fallback path to infra-provision.

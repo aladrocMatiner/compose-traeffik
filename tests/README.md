@@ -39,8 +39,8 @@ This directory contains smoke tests that verify Traefik readiness, routing, TLS,
 | `tests/smoke/test_bind_provisioning_validation.sh` | Validate `bind-provision` rejects invalid domain and endpoint labels. | `mktemp`, `scripts/bind-provision.sh`. | Invalid `BASE_DOMAIN` or endpoint labels fail with non-zero exit. |
 | `tests/smoke/test_bind_security_runtime.sh` | Validate runtime DNS security behavior (no recursion, AXFR denied, hidden CHAOS metadata, expected listener). | `dig`, `docker`, `make`, loopback test address. | Security checks pass and BIND responds only on the expected test bind address. |
 | `tests/smoke/test_deployment_make_targets.sh` | Validate deployment Make target wiring (`deployment`, `deployment-list`, selector/fallback SSH path). | `Makefile`, `awk`, `grep`. | Required deployment targets exist and wiring routes through expected scripts. |
-| `tests/smoke/test_deployment_access_cli.sh` | Validate deployment-access CLI guardrails for target parsing and proxmox credential errors. | `scripts/deployment-access.sh`, `grep`. | Invalid targets and missing proxmox credentials fail with clear errors. |
-| `tests/smoke/test_deployment_profile_metadata.sh` | Validate pinned image profile metadata and Gentoo manifest gate wiring in `infra-provision`. | `scripts/infra-provision.sh`, Gentoo manifests, `grep`. | Version-pinned profile metadata and qualification checks are present. |
+| `tests/smoke/test_deployment_access_cli.sh` | Validate deployment-access CLI guardrails for target parsing and proxmox credential errors. | `deployment/scripts/deployment-access.sh`, `grep`. | Invalid targets and missing proxmox credentials fail with clear errors. |
+| `tests/smoke/test_deployment_profile_metadata.sh` | Validate pinned image profile metadata and Gentoo manifest gate wiring in `infra-provision`. | `deployment/scripts/infra-provision.sh`, Gentoo manifests, `grep`. | Version-pinned profile metadata and qualification checks are present. |
 
 ## Configuration
 

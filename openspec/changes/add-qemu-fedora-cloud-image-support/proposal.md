@@ -21,6 +21,6 @@ Queremos ampliar el soporte del target local `qemu` (backend `libvirt`) para ima
 
 ## Impact
 
-- Affected code (planned): `scripts/infra-provision.sh`, `infra/terraform/targets/libvirt/`, plantillas `infra/cloud-init/` (si se requieren ajustes por distro) y documentacion operativa.
+- Affected code (planned): `deployment/scripts/infra-provision.sh`, `infra/terraform/targets/libvirt/`, plantillas `infra/cloud-init/` (si se requieren ajustes por distro) y documentacion operativa.
 - Dependency note: este cambio depende del contrato base definido en `add-vm-bootstrap-targets`.
 - Scope note: esta propuesta se centra en soporte de imagen/provisionamiento `qemu`; la paridad completa de `host-bootstrap` (Docker) puede requerir un follow-up por distro.

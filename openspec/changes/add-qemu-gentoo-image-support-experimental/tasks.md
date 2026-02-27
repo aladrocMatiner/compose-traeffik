@@ -75,7 +75,7 @@
 ## 8. Integration Design Back Into Main `qemu` Flow (Follow-up Implementation Prep)
 
 - [x] 8.1 Define the provisioning interface contract for `make deployment os=<ubuntu|debian|gentoo>` and Gentoo-only `init=<openrc|systemd>` with default `openrc`.
-- [x] 8.2 Define validation behavior for missing/invalid Gentoo manifests in `scripts/infra-provision.sh`.
+- [x] 8.2 Define validation behavior for missing/invalid Gentoo manifests in `deployment/scripts/infra-provision.sh`.
 - [x] 8.3 Define how image metadata will be stored and versioned in the main repo vs isolated workspace.
 - [x] 8.4 Define cloud-init template branching strategy (shared template vs Gentoo-specific override).
 - [x] 8.5 Define guardrails so `deployment-bootstrap` remains disabled or experimental until Docker parity is approved.

@@ -29,7 +29,7 @@ Ademas, el trabajo de Gentoo tiene suficiente complejidad y riesgo como para mer
 
 ## Impact
 
-- Affected code (planned): `scripts/infra-provision.sh`, `infra/terraform/targets/libvirt/`, `infra/cloud-init/` (si se requieren plantillas/branching por distro), `Makefile`, y documentacion de uso.
+- Affected code (planned): `deployment/scripts/infra-provision.sh`, `infra/terraform/targets/libvirt/`, `infra/cloud-init/` (si se requieren plantillas/branching por distro), `Makefile`, y documentacion de uso.
 - New isolated workspace: `experiments/gentoo-qemu/` (docs, manifests, scripts y evidencia) para reducir acoplamiento con el flujo estable.
 - Dependency note: este trabajo depende del contrato base definido en `add-vm-bootstrap-targets` para `qemu/libvirt`.
 - Delivery note: el resultado de esta propuesta **no implica automaticamente** `deployment-ready` con Docker en Gentoo; eso queda gated por evidencia de compatibilidad y follow-up especifico.

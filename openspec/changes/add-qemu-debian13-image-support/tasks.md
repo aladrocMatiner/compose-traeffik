@@ -35,7 +35,7 @@
 
 ## 5. Stage D - Main Flow Integration Prep (`integration-ready` for vm-provisioning)
 
-- [x] 5.1 Define required changes in `scripts/infra-provision.sh` for `os=debian13` image metadata and validation.
+- [x] 5.1 Define required changes in `deployment/scripts/infra-provision.sh` for `os=debian13` image metadata and validation.
 - [x] 5.2 Define whether `Makefile` help/examples need `debian13` examples and exact UX wording.
 - [x] 5.3 Define error messages for unsupported parameters (e.g. `init=` with `os=debian13`).
 - [x] 5.4 Define any minimal `cloud-init` template branching required (if any) and justify it.

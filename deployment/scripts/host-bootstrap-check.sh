@@ -2,18 +2,18 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 usage() {
   cat <<'EOF'
 Usage:
-  scripts/host-wait-ssh.sh [--host IP] [--user USER] [--port PORT] [--identity PATH]
-                           [--target <libvirt|qemu|proxmox>]
-                           [--os <ubuntu|debian|debian12|debian13|gentoo|opensuse-leap|almalinux9|rockylinux9|fedora-cloud>]
-                           [--init <openrc|systemd>] [--terraform-dir DIR]
-                           [--timeout SECONDS] [--interval SECONDS] [--skip-cloud-init-wait]
+  deployment/scripts/host-bootstrap-check.sh [--host IP] [--user USER] [--port PORT] [--identity PATH]
+                                 [--target <libvirt|qemu|proxmox>]
+                                 [--os <ubuntu|debian|debian12|debian13|gentoo|opensuse-leap|almalinux9|rockylinux9|fedora-cloud>]
+                                 [--init <openrc|systemd>] [--terraform-dir DIR]
 
-Waits for SSH reachability and (by default) waits for cloud-init completion.
+Checks SSH reachability and Docker readiness on a provisioned host.
+Current implementation supports Ubuntu and Debian (12/13) Docker checks.
 EOF
 }
 
@@ -99,9 +99,6 @@ TARGET="${DEPLOYMENT_TARGET:-libvirt}"
 OS_FAMILY="${DEPLOYMENT_OS:-ubuntu}"
 INIT_SYSTEM="${DEPLOYMENT_INIT:-}"
 TF_DIR=""
-TIMEOUT_SECONDS="${DEPLOYMENT_WAIT_TIMEOUT_SECONDS:-300}"
-INTERVAL_SECONDS="${DEPLOYMENT_WAIT_INTERVAL_SECONDS:-5}"
-WAIT_CLOUD_INIT=true
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -145,20 +142,6 @@ while [[ $# -gt 0 ]]; do
       TF_DIR="$2"
       shift 2
       ;;
-    --timeout)
-      [[ $# -ge 2 ]] || die "--timeout requires a value"
-      TIMEOUT_SECONDS="$2"
-      shift 2
-      ;;
-    --interval)
-      [[ $# -ge 2 ]] || die "--interval requires a value"
-      INTERVAL_SECONDS="$2"
-      shift 2
-      ;;
-    --skip-cloud-init-wait)
-      WAIT_CLOUD_INIT=false
-      shift
-      ;;
     -h|--help)
       usage
       exit 0
@@ -170,9 +153,15 @@ while [[ $# -gt 0 ]]; do
 done
 
 validate_target_os_init
-
 if [[ -z "${TF_DIR:-}" ]]; then
   TF_DIR="$(terraform_dir_for_target "${TARGET}")"
+fi
+
+if [[ "${OS_FAMILY}" != "ubuntu" && "${OS_FAMILY}" != "debian13" && "${OS_FAMILY}" != "debian12" ]]; then
+  if [[ "${OS_FAMILY}" == "gentoo" ]]; then
+    die "Docker readiness checks are not implemented for --os gentoo --init ${INIT_SYSTEM} in v1 (current implementation: ubuntu/debian12/debian13 only)"
+  fi
+  die "Docker readiness checks are not implemented for --os ${OS_FAMILY} in v1 (current implementation: ubuntu/debian12/debian13 only)"
 fi
 
 check_cmd ssh
@@ -186,7 +175,7 @@ fi
 
 SSH_OPTS=(
   -o BatchMode=yes
-  -o ConnectTimeout=5
+  -o ConnectTimeout=10
   -o StrictHostKeyChecking=no
   -o UserKnownHostsFile=/dev/null
 )
@@ -195,25 +184,28 @@ if [[ -n "${IDENTITY_PATH}" ]]; then
   SSH_OPTS+=(-i "${IDENTITY_PATH}")
 fi
 
-deadline=$((SECONDS + TIMEOUT_SECONDS))
-variant_note=""
-if [[ "${OS_FAMILY}" == "gentoo" ]]; then
-  variant_note=", init=${INIT_SYSTEM}"
-fi
-log "Waiting for SSH on ${ssh_user}@${host_ip}:${SSH_PORT} (os=${OS_FAMILY}${variant_note}, timeout ${TIMEOUT_SECONDS}s, interval ${INTERVAL_SECONDS}s)"
+log "Checking host readiness on ${ssh_user}@${host_ip}:${SSH_PORT}"
 
-until ssh "${SSH_OPTS[@]}" -p "${SSH_PORT}" "${ssh_user}@${host_ip}" "echo ssh-ready" >/dev/null 2>&1; do
-  if (( SECONDS >= deadline )); then
-    die "Timed out waiting for SSH on ${ssh_user}@${host_ip}:${SSH_PORT}"
+ssh "${SSH_OPTS[@]}" -p "${SSH_PORT}" "${ssh_user}@${host_ip}" 'bash -s' <<'REMOTE'
+set -euo pipefail
+
+run_root() {
+  if command -v sudo >/dev/null 2>&1; then
+    sudo "$@"
+  elif [ "$(id -u)" -eq 0 ]; then
+    "$@"
+  else
+    echo "[remote] ERROR: sudo is required for non-root checks" >&2
+    exit 1
   fi
-  sleep "${INTERVAL_SECONDS}"
-done
+}
 
-log "SSH is reachable on ${ssh_user}@${host_ip}:${SSH_PORT}"
+echo "[remote] SSH OK: $(whoami)@$(hostname -f 2>/dev/null || hostname)"
+python3 --version
+docker --version
+docker compose version
+run_root systemctl is-active --quiet docker
+echo "[remote] Docker service active"
+REMOTE
 
-if [[ "${WAIT_CLOUD_INIT}" == "true" ]]; then
-  log "Waiting for cloud-init completion"
-  ssh "${SSH_OPTS[@]}" -p "${SSH_PORT}" "${ssh_user}@${host_ip}" \
-    'command -v cloud-init >/dev/null 2>&1 && cloud-init status --wait || true'
-  log "cloud-init completed (or not present)"
-fi
+log "Host is ready for Ansible/bootstrap follow-up"

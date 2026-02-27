@@ -2,12 +2,12 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 usage() {
   cat <<'EOF'
 Usage:
-  scripts/infra-provision.sh <apply|plan|destroy|output|ssh> [--target <libvirt|qemu|proxmox>]
+  deployment/scripts/infra-provision.sh <apply|plan|destroy|output|ssh> [--target <libvirt|qemu|proxmox>]
                             [--os <ubuntu|debian|debian12|debian13|gentoo|opensuse-leap|almalinux9|rockylinux9|fedora-cloud>]
                             [--init <openrc|systemd>]
 
