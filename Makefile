@@ -22,9 +22,9 @@ SHELL := /bin/bash # Ensure bash is used for shell commands
         stepca-trust-install stepca-trust-uninstall stepca-trust-verify \
         hosts-generate hosts-apply hosts-remove hosts-status \
         bind-up bind-down bind-restart bind-logs bind-status bind-provision bind-provision-dry bind-port-check \
-        deployment deployment-ubuntu deployment-plan deployment-destroy deployment-output deployment-ssh \
+        deployment deployment-ubuntu deployment-plan deployment-destroy deployment-output deployment-ssh deployment-list \
         deployment-wait deployment-bootstrap deployment-bootstrap-check deployment-ready \
-        ubuntu debian debian13 gentoo libvirt
+        ubuntu debian debian12 debian13 gentoo opensuse-leap almalinux9 rockylinux9 fedora-cloud libvirt qemu proxmox
 
 # Include .env for environment variables if it exists.
 # This makes variables in .env available to the Makefile.
@@ -73,10 +73,11 @@ ifneq ($(ENV_FILE),)
 BIND_ENV_ARGS += --env-file $(ENV_FILE)
 endif
 
-# Deployment provisioning options (qemu/libvirt provisioning supports ubuntu, debian13, gentoo)
+# Deployment provisioning options (libvirt/qemu + proxmox targets with multiple OS profiles)
 DEPLOYMENT_TARGET ?= libvirt
 DEPLOYMENT_OS ?= ubuntu
 DEPLOYMENT_INIT ?=
+DEPLOYMENT_NAME ?=
 
 # Lowercase convenience vars (GNU Make CLI style), e.g. `make deployment os=gentoo init=openrc`
 ifneq ($(strip $(target)),)
@@ -87,6 +88,9 @@ DEPLOYMENT_OS := $(os)
 endif
 ifneq ($(strip $(init)),)
 DEPLOYMENT_INIT := $(init)
+endif
+ifneq ($(strip $(name)),)
+DEPLOYMENT_NAME := $(name)
 endif
 
 DEPLOYMENT_INIT_ARG :=
@@ -107,13 +111,41 @@ ifneq (,$(filter debian13,$(MAKECMDGOALS)))
 DEPLOYMENT_OS := debian13
 $(eval debian13:;@:)
 endif
+ifneq (,$(filter debian12,$(MAKECMDGOALS)))
+DEPLOYMENT_OS := debian12
+$(eval debian12:;@:)
+endif
 ifneq (,$(filter gentoo,$(MAKECMDGOALS)))
 DEPLOYMENT_OS := gentoo
 $(eval gentoo:;@:)
 endif
+ifneq (,$(filter opensuse-leap,$(MAKECMDGOALS)))
+DEPLOYMENT_OS := opensuse-leap
+$(eval opensuse-leap:;@:)
+endif
+ifneq (,$(filter almalinux9,$(MAKECMDGOALS)))
+DEPLOYMENT_OS := almalinux9
+$(eval almalinux9:;@:)
+endif
+ifneq (,$(filter rockylinux9,$(MAKECMDGOALS)))
+DEPLOYMENT_OS := rockylinux9
+$(eval rockylinux9:;@:)
+endif
+ifneq (,$(filter fedora-cloud,$(MAKECMDGOALS)))
+DEPLOYMENT_OS := fedora-cloud
+$(eval fedora-cloud:;@:)
+endif
 ifneq (,$(filter libvirt,$(MAKECMDGOALS)))
 DEPLOYMENT_TARGET := libvirt
 $(eval libvirt:;@:)
+endif
+ifneq (,$(filter qemu,$(MAKECMDGOALS)))
+DEPLOYMENT_TARGET := qemu
+$(eval qemu:;@:)
+endif
+ifneq (,$(filter proxmox,$(MAKECMDGOALS)))
+DEPLOYMENT_TARGET := proxmox
+$(eval proxmox:;@:)
 endif
 
 # Start the stack
@@ -296,7 +328,14 @@ deployment-output:
 	@"$(SCRIPTS_DIR)/infra-provision.sh" output --target "$(DEPLOYMENT_TARGET)" --os "$(DEPLOYMENT_OS)" $(DEPLOYMENT_INIT_ARG)
 
 deployment-ssh:
-	@"$(SCRIPTS_DIR)/infra-provision.sh" ssh --target "$(DEPLOYMENT_TARGET)" --os "$(DEPLOYMENT_OS)" $(DEPLOYMENT_INIT_ARG)
+	@if [[ -n "$(DEPLOYMENT_NAME)" || "$(DEPLOYMENT_TARGET)" == "qemu" || "$(DEPLOYMENT_TARGET)" == "proxmox" ]]; then \
+		"$(SCRIPTS_DIR)/deployment-access.sh" ssh --target "$(DEPLOYMENT_TARGET)" --name "$(DEPLOYMENT_NAME)"; \
+	else \
+		"$(SCRIPTS_DIR)/infra-provision.sh" ssh --target "$(DEPLOYMENT_TARGET)" --os "$(DEPLOYMENT_OS)" $(DEPLOYMENT_INIT_ARG); \
+	fi
+
+deployment-list:
+	@"$(SCRIPTS_DIR)/deployment-access.sh" list --target "$(DEPLOYMENT_TARGET)"
 
 deployment-wait:
 	@echo "Waiting for deployment VM SSH/cloud-init ($(DEPLOYMENT_TARGET)/$(DEPLOYMENT_OS))..."
@@ -376,23 +415,27 @@ help:
 	@echo "  bind-provision-dry    Print the generated zone file without writing."
 	@echo "  bind-port-check       Validate host port 53 is free before starting BIND."
 	@echo ""
-	@echo "VM Deployment Provisioning (Phase 1, libvirt target; Ubuntu + Debian13 + Gentoo experimental):"
-	@echo "  deployment            Provision a VM on local libvirt (defaults to os=ubuntu)."
+	@echo "VM Deployment Provisioning (Phase 1: libvirt + proxmox targets):"
+	@echo "  deployment            Provision a VM (default: target=libvirt os=ubuntu)."
 	@echo "  deployment-plan       Run terraform plan for the deployment VM."
 	@echo "  deployment-output     Print terraform outputs (JSON) for the provisioned VM."
 	@echo "  deployment-ssh        SSH into the provisioned VM using terraform outputs."
+	@echo "  deployment-list       List managed deployment VMs by backend target."
 	@echo "  deployment-wait       Wait for SSH and cloud-init completion on the provisioned VM."
-	@echo "  deployment-bootstrap  Install Docker Engine + Compose plugin on the provisioned Ubuntu/Debian13 VM."
+	@echo "  deployment-bootstrap  Install Docker Engine + Compose plugin on the provisioned Ubuntu/Debian(12/13) VM."
 	@echo "  deployment-bootstrap-check  Verify SSH, Python, Docker and Compose on the provisioned VM."
 	@echo "  deployment-ready      End-to-end: provision + wait + Docker bootstrap + readiness check."
 	@echo "  deployment-destroy    Destroy the provisioned VM and related resources."
 	@echo "  deployment-ubuntu     Alias for 'make deployment DEPLOYMENT_TARGET=libvirt DEPLOYMENT_OS=ubuntu'."
 	@echo "                       You can also run: make deployment ubuntu"
 	@echo "                       (GNU Make does not support custom flags like '--ubuntu')."
-	@echo "  New selector syntax:  make deployment os=<ubuntu|debian13|gentoo> [init=<openrc|systemd>]"
-	@echo "                       'debian' is accepted as an alias of 'debian13'."
+	@echo "  New selector syntax:  make deployment target=<libvirt|qemu|proxmox> os=<ubuntu|debian12|debian13|gentoo|opensuse-leap|almalinux9|rockylinux9|fedora-cloud> [init=<openrc|systemd>]"
+	@echo "                       'debian' is accepted as an alias of 'debian13'; qemu maps to libvirt."
 	@echo "                       'init' is only valid for os=gentoo and defaults to openrc."
-	@echo "                       Docker bootstrap/checks currently support ubuntu and debian13; gentoo remains separate/experimental."
+	@echo "                       target=proxmox currently supports os=ubuntu."
+	@echo "                       Docker bootstrap/checks currently support ubuntu, debian12 and debian13; gentoo remains separate/experimental."
+	@echo "  SSH selector syntax:  make deployment-ssh target=<qemu|proxmox> name=<vm-name>"
+	@echo "                       make deployment-list target=<qemu|proxmox>"
 	@echo "  Common overrides: DEPLOYMENT_VM_NAME, DEPLOYMENT_VM_IP, DEPLOYMENT_VM_GATEWAY,"
 	@echo "                    DEPLOYMENT_DNS_SERVERS, DEPLOYMENT_SSH_USER, DEPLOYMENT_SSH_PUBKEY_PATH"
 	@echo ""
