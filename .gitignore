@@ -27,6 +27,9 @@ services/traefik/auth/*.htpasswd
 
 # Rendered Traefik dynamic config
 services/traefik/dynamic-rendered/
+services/gitlab/rendered/
+services/n8n/rendered/
+services/wikijs/rendered/
 
 # Legacy local DNS artifacts from prior branches/runs
 services/dns/
