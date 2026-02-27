@@ -1,0 +1,23 @@
+# Copy to terraform.tfvars (ignored by git) or set values via environment variables.
+proxmox_api_url              = "https://pve.example.com:8006/api2/json"
+proxmox_api_token            = "root@pam!terraform=CHANGE_ME"
+proxmox_tls_insecure         = false
+proxmox_node_name            = "pve"
+proxmox_template_vm_id       = 9000
+proxmox_vm_id                = 0
+proxmox_clone_datastore_id   = "local-lvm"
+proxmox_disk_datastore_id    = "local-lvm"
+proxmox_cloudinit_datastore_id = "local-lvm"
+proxmox_network_bridge       = "vmbr0"
+
+vm_name        = "compose-traeffik-ubuntu"
+hostname       = "compose-traeffik-ubuntu"
+vm_ip          = "192.168.122.50"
+vm_cidr_prefix = 24
+vm_gateway     = "192.168.122.1"
+dns_servers_csv = "1.1.1.1,8.8.8.8"
+ssh_user       = "ubuntu"
+ssh_public_key = "ssh-ed25519 AAAA..."
+vm_cpu         = 2
+vm_memory_mb   = 2048
+vm_disk_gb     = 20
