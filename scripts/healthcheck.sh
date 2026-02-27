@@ -161,6 +161,15 @@ else
     TEST_RESULTS=1
 fi
 
+# --- Test 14: Deployment Access CLI Guardrails (no sudo) ---
+log_info "Running test_deployment_access_cli.sh..."
+if "$TEST_DIR/test_deployment_access_cli.sh"; then
+    log_success "Test: Deployment Access CLI Guardrails"
+else
+    log_warn "Test failed: Deployment Access CLI Guardrails"
+    TEST_RESULTS=1
+fi
+
 if [ "$TEST_RESULTS" -eq 0 ]; then
     log_success "All smoke tests passed!"
 else
