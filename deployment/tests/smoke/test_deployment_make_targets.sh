@@ -23,7 +23,7 @@ fi
 check_command "grep"
 check_command "awk"
 
-for target in deployment deployment-plan deployment-output deployment-ssh deployment-list deployment-list-os deployment-list-targets deployment-validate deployment-destroy; do
+for target in deployment deployment-plan deployment-output deployment-ssh deployment-list deployment-list-os deployment-list-targets deployment-project deployment-project-list deployment-validate deployment-destroy; do
     if ! grep -q "^${target}:" "$MAKEFILE"; then
         log_error "Missing Make target: ${target}"
     fi
@@ -69,6 +69,27 @@ if ! awk '
     END { exit(found ? 0 : 1) }
 ' "$MAKEFILE"; then
     log_error "deployment-list-targets is not wired to DEPLOYMENT_SUPPORTED_TARGET_SELECTORS"
+fi
+
+if ! awk '
+    /^deployment-project-list:/ { in_target=1; next }
+    in_target && /^[a-zA-Z0-9_.-]+:/ { exit }
+    in_target && /deployment-project\.sh/ && / list/ { found=1 }
+    END { exit(found ? 0 : 1) }
+' "$MAKEFILE"; then
+    log_error "deployment-project-list is not wired through deployment/scripts/deployment-project.sh list"
+fi
+
+if ! awk '
+    /^deployment-project:/ { in_target=1; next }
+    in_target && /^[a-zA-Z0-9_.-]+:/ { exit }
+    in_target && /deployment-project\.sh/ && / run / { has_runner=1 }
+    in_target && /--project/ { has_project=1 }
+    in_target && /DEPLOYMENT_PROJECT_TARGET/ { has_target_default=1 }
+    in_target && /DEPLOYMENT_PROJECT_OS/ { has_os_default=1 }
+    END { exit(has_runner && has_project && has_target_default && has_os_default ? 0 : 1) }
+' "$MAKEFILE"; then
+    log_error "deployment-project wiring is missing runner/project/default selectors"
 fi
 
 log_success "Deployment Make target wiring test passed."

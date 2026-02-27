@@ -23,6 +23,7 @@ SHELL := /bin/bash # Ensure bash is used for shell commands
         hosts-generate hosts-apply hosts-remove hosts-status \
         bind-up bind-down bind-restart bind-logs bind-status bind-provision bind-provision-dry bind-port-check \
         deployment deployment-ubuntu deployment-plan deployment-destroy deployment-output deployment-ssh deployment-list deployment-list-os deployment-list-targets \
+        deployment-project deployment-project-list \
         deployment-wait deployment-bootstrap deployment-bootstrap-check deployment-ready deployment-validate deployment-ansible-syntax deployment-ansible-lint \
         ubuntu debian debian12 debian13 gentoo opensuse-leap almalinux9 rockylinux9 fedora-cloud libvirt qemu proxmox
 
@@ -80,6 +81,9 @@ DEPLOYMENT_TARGET ?= libvirt
 DEPLOYMENT_OS ?= ubuntu
 DEPLOYMENT_INIT ?=
 DEPLOYMENT_NAME ?=
+DEPLOYMENT_PROJECT ?=
+DEPLOYMENT_PROJECT_TARGET ?= qemu
+DEPLOYMENT_PROJECT_OS ?= ubuntu
 DEPLOYMENT_SUPPORTED_OS_SELECTORS := ubuntu debian12 debian13 debian gentoo opensuse-leap almalinux9 rockylinux9 fedora-cloud
 DEPLOYMENT_SUPPORTED_TARGET_SELECTORS := qemu
 
@@ -95,6 +99,21 @@ DEPLOYMENT_INIT := $(init)
 endif
 ifneq ($(strip $(name)),)
 DEPLOYMENT_NAME := $(name)
+endif
+ifneq ($(strip $(project)),)
+DEPLOYMENT_PROJECT := $(project)
+endif
+ifneq ($(strip $(project_target)),)
+DEPLOYMENT_PROJECT_TARGET := $(project_target)
+endif
+ifneq ($(strip $(project_os)),)
+DEPLOYMENT_PROJECT_OS := $(project_os)
+endif
+ifneq ($(strip $(target)),)
+DEPLOYMENT_PROJECT_TARGET := $(target)
+endif
+ifneq ($(strip $(os)),)
+DEPLOYMENT_PROJECT_OS := $(os)
 endif
 
 DEPLOYMENT_INIT_ARG :=
@@ -347,6 +366,16 @@ deployment-list-os:
 deployment-list-targets:
 	@printf '%s\n' $(DEPLOYMENT_SUPPORTED_TARGET_SELECTORS)
 
+deployment-project-list:
+	@"$(DEPLOYMENT_SCRIPTS_DIR)/deployment-project.sh" list
+
+deployment-project:
+	@"$(DEPLOYMENT_SCRIPTS_DIR)/deployment-project.sh" run \
+		--project "$(DEPLOYMENT_PROJECT)" \
+		--target "$(DEPLOYMENT_PROJECT_TARGET)" \
+		--os "$(DEPLOYMENT_PROJECT_OS)" \
+		$(DEPLOYMENT_INIT_ARG)
+
 deployment-wait:
 	@echo "Waiting for deployment VM SSH/cloud-init ($(DEPLOYMENT_TARGET)/$(DEPLOYMENT_OS))..."
 	@"$(DEPLOYMENT_SCRIPTS_DIR)/host-wait-ssh.sh" --target "$(DEPLOYMENT_TARGET)" --os "$(DEPLOYMENT_OS)" $(DEPLOYMENT_INIT_ARG)
@@ -371,6 +400,7 @@ deployment-ansible-syntax:
 	@ANSIBLE_CONFIG="$(DEPLOYMENT_ANSIBLE_DIR)/ansible.cfg" ansible-playbook -i "$(DEPLOYMENT_ANSIBLE_DIR)/inventory/localhost.ini" "$(DEPLOYMENT_ANSIBLE_DIR)/playbooks/system_update.yml" --syntax-check
 	@ANSIBLE_CONFIG="$(DEPLOYMENT_ANSIBLE_DIR)/ansible.cfg" ansible-playbook -i "$(DEPLOYMENT_ANSIBLE_DIR)/inventory/localhost.ini" "$(DEPLOYMENT_ANSIBLE_DIR)/playbooks/docker_git.yml" --syntax-check
 	@ANSIBLE_CONFIG="$(DEPLOYMENT_ANSIBLE_DIR)/ansible.cfg" ansible-playbook -i "$(DEPLOYMENT_ANSIBLE_DIR)/inventory/localhost.ini" "$(DEPLOYMENT_ANSIBLE_DIR)/playbooks/system_bootstrap.yml" --syntax-check
+	@ANSIBLE_CONFIG="$(DEPLOYMENT_ANSIBLE_DIR)/ansible.cfg" ansible-playbook -i "$(DEPLOYMENT_ANSIBLE_DIR)/inventory/localhost.ini" "$(DEPLOYMENT_ANSIBLE_DIR)/playbooks/project_deploy.yml" --syntax-check
 
 deployment-ansible-lint:
 	@echo "Running deployment Ansible lint checks..."
@@ -378,8 +408,10 @@ deployment-ansible-lint:
 		"$(DEPLOYMENT_ANSIBLE_DIR)/playbooks/system_update.yml" \
 		"$(DEPLOYMENT_ANSIBLE_DIR)/playbooks/docker_git.yml" \
 		"$(DEPLOYMENT_ANSIBLE_DIR)/playbooks/system_bootstrap.yml" \
+		"$(DEPLOYMENT_ANSIBLE_DIR)/playbooks/project_deploy.yml" \
 		"$(DEPLOYMENT_ANSIBLE_DIR)/roles/system_update" \
-		"$(DEPLOYMENT_ANSIBLE_DIR)/roles/docker_git"
+		"$(DEPLOYMENT_ANSIBLE_DIR)/roles/docker_git" \
+		"$(DEPLOYMENT_ANSIBLE_DIR)/roles/project_deploy"
 
 # --- Help ---
 
@@ -452,6 +484,8 @@ help:
 	@echo "  deployment-list       List managed deployment VMs by backend target."
 	@echo "  deployment-list-os    List supported deployment OS selectors (one per line)."
 	@echo "  deployment-list-targets  List supported deployment targets (one per line)."
+	@echo "  deployment-project-list  List supported deployment project ids (one per line)."
+	@echo "  deployment-project    End-to-end project workflow (provision -> wait -> system_bootstrap -> project deploy)."
 	@echo "  deployment-wait       Wait for SSH and cloud-init completion on the provisioned VM."
 	@echo "  deployment-bootstrap  Install Docker Engine + Compose plugin on the provisioned Ubuntu/Debian(12/13) VM."
 	@echo "  deployment-bootstrap-check  Verify SSH, Python, Docker and Compose on the provisioned VM."
@@ -470,6 +504,8 @@ help:
 	@echo "                       Docker bootstrap/checks currently support ubuntu, debian12 and debian13; gentoo remains separate/experimental."
 	@echo "  SSH selector syntax:  make deployment-ssh target=<qemu|proxmox> name=<vm-name>"
 	@echo "                       make deployment-list target=<qemu|proxmox>"
+	@echo "  Project workflow:     make deployment-project project=<id> [target=<qemu>] [os=<ubuntu>]"
+	@echo "                       make deployment-project-list"
 	@echo "  Discovery commands:   make deployment-list-os"
 	@echo "                       make deployment-list-targets   # current phase output: qemu"
 	@echo "  Common overrides: DEPLOYMENT_VM_NAME, DEPLOYMENT_VM_IP, DEPLOYMENT_VM_GATEWAY,"

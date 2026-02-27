@@ -1,0 +1,421 @@
+---
+- name: Validate deployment_project_manifest input
+  ansible.builtin.assert:
+    that:
+      - deployment_project_manifest | length > 0
+    fail_msg: "deployment_project_manifest is required"
+
+- name: Load project manifest from controller
+  ansible.builtin.set_fact:
+    deployment_project_manifest_data: "{{ lookup('ansible.builtin.file', deployment_project_manifest) | from_json }}"
+
+- name: Validate required manifest fields
+  ansible.builtin.assert:
+    that:
+      - deployment_project_manifest_data.id is string
+      - deployment_project_manifest_data.id | length > 0
+      - deployment_project_manifest_data.description is string
+      - deployment_project_manifest_data.description | length > 0
+      - deployment_project_manifest_data.repo_url is string
+      - deployment_project_manifest_data.repo_url | length > 0
+      - deployment_project_manifest_data.repo_ref is string
+      - deployment_project_manifest_data.repo_ref | length > 0
+      - deployment_project_manifest_data.compose_profile is string
+      - deployment_project_manifest_data.compose_profile | length > 0
+      - deployment_project_manifest_data.services is sequence
+      - deployment_project_manifest_data.services | length > 0
+      - deployment_project_manifest_data.deploy_playbook is string
+      - deployment_project_manifest_data.deploy_playbook | length > 0
+      - deployment_project_manifest_data.required_env is sequence
+      - deployment_project_manifest_data.tls_mode is string
+      - deployment_project_manifest_data.tls_mode | length > 0
+    fail_msg: "Invalid project manifest contract"
+
+- name: Validate optional manifest fields
+  ansible.builtin.assert:
+    that:
+      - >-
+        (deployment_project_manifest_data.public_host is not defined)
+        or (
+          deployment_project_manifest_data.public_host is string
+          and deployment_project_manifest_data.public_host | length > 0
+        )
+      - >-
+        (deployment_project_manifest_data.depends_on_projects is not defined)
+        or (deployment_project_manifest_data.depends_on_projects is sequence)
+    fail_msg: "Invalid optional manifest fields"
+
+- name: Resolve project repository destination
+  ansible.builtin.set_fact:
+    deployment_project_repo_dir: "{{ deployment_project_workspace_dir }}/{{ deployment_project_manifest_data.id }}"
+
+- name: Ensure project workspace directory exists
+  ansible.builtin.file:
+    path: "{{ deployment_project_workspace_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Clone or update project repository pinned ref
+  ansible.builtin.git:
+    repo: "{{ deployment_project_manifest_data.repo_url }}"
+    dest: "{{ deployment_project_repo_dir }}"
+    version: "{{ deployment_project_manifest_data.repo_ref }}"
+    update: true
+    force: true
+
+- name: Backport stepca bootstrap script from controller workspace
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../../scripts/{{ item }}"
+    dest: "{{ deployment_project_repo_dir }}/scripts/{{ item }}"
+    mode: "0755"
+  loop:
+    - stepca-bootstrap.sh
+    - traefik-render-static.sh
+  when: deployment_project_manifest_data.tls_mode == "stepca-acme"
+
+- name: Backport step-ca compose definition from controller workspace
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../../services/step-ca/compose.yml"
+    dest: "{{ deployment_project_repo_dir }}/services/step-ca/compose.yml"
+    mode: "0644"
+  when: deployment_project_manifest_data.tls_mode == "stepca-acme"
+
+- name: Backport traefik compose definition from controller workspace
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../../services/traefik/compose.yml"
+    dest: "{{ deployment_project_repo_dir }}/services/traefik/compose.yml"
+    mode: "0644"
+  when: "'traefik' in deployment_project_manifest_data.services"
+
+- name: Check if project .env exists
+  ansible.builtin.stat:
+    path: "{{ deployment_project_repo_dir }}/.env"
+  register: deployment_project_env_stat
+
+- name: Bootstrap project environment file when absent
+  ansible.builtin.command:
+    cmd: ./scripts/env-generate.sh --mode=prod
+    chdir: "{{ deployment_project_repo_dir }}"
+  changed_when: true
+  when: not deployment_project_env_stat.stat.exists
+
+- name: Ensure step-ca bootstrap directories are writable
+  ansible.builtin.file:
+    path: "{{ deployment_project_repo_dir }}/services/step-ca/{{ item }}"
+    state: directory
+    mode: "0777"
+    recurse: true
+  loop:
+    - config
+    - secrets
+    - certs
+  when: "'step-ca' in deployment_project_manifest_data.services"
+
+- name: Read BASE_DOMAIN from project .env
+  ansible.builtin.command:
+    cmd: "bash -lc \"awk -F= '$1==\\\"BASE_DOMAIN\\\" {print $2}' .env | tail -n1 | tr -d '\\\"' | xargs\""
+  args:
+    chdir: "{{ deployment_project_repo_dir }}"
+  register: deployment_project_base_domain_cmd
+  changed_when: false
+
+- name: Resolve project public host from manifest override or BASE_DOMAIN
+  ansible.builtin.set_fact:
+    deployment_project_public_host: >-
+      {{
+        deployment_project_manifest_data.public_host
+          | default(deployment_project_manifest_data.id ~ '.' ~ (deployment_project_base_domain_cmd.stdout | trim), true)
+      }}
+
+- name: Validate resolved project public host
+  ansible.builtin.assert:
+    that:
+      - deployment_project_public_host | length > 0
+    fail_msg: "BASE_DOMAIN missing in .env and no public_host override provided"
+
+- name: Validate required environment variables declared by manifest
+  ansible.builtin.command:
+    cmd: "bash -lc \"grep -Eq '^{{ item }}=.+' .env\""
+  args:
+    chdir: "{{ deployment_project_repo_dir }}"
+  loop: "{{ deployment_project_manifest_data.required_env }}"
+  loop_control:
+    label: "{{ item }}"
+  changed_when: false
+  when: deployment_project_manifest_data.required_env | length > 0
+
+- name: Resolve TLS cert resolver from tls_mode
+  ansible.builtin.set_fact:
+    deployment_project_tls_resolver: "{{ deployment_project_tls_resolver_map[deployment_project_manifest_data.tls_mode] | default('') }}"
+
+- name: Enforce tls_mode support
+  ansible.builtin.assert:
+    that:
+      - deployment_project_tls_resolver | length > 0
+    fail_msg: >-
+      Unsupported tls_mode '{{ deployment_project_manifest_data.tls_mode }}'.
+      Supported modes: {{ deployment_project_tls_resolver_map.keys() | list | join(', ') }}.
+
+- name: Apply TLS resolver in project .env
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^TLS_CERT_RESOLVER="
+    line: "TLS_CERT_RESOLVER={{ deployment_project_tls_resolver }}"
+
+- name: Set compose project identifiers from manifest id
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^{{ item.key }}="
+    line: "{{ item.key }}={{ deployment_project_manifest_data.id }}"
+  loop:
+    - { key: "PROJECT_NAME" }
+    - { key: "COMPOSE_PROJECT_NAME" }
+
+- name: Ensure Traefik dashboard auth file exists for project defaults
+  ansible.builtin.copy:
+    src: "{{ deployment_project_repo_dir }}/services/traefik/auth/traefik-dashboard.htpasswd.example"
+    dest: "{{ deployment_project_repo_dir }}/services/traefik/auth/traefik-dashboard.htpasswd"
+    remote_src: true
+    mode: "0644"
+  when: deployment_project_manifest_data.id == "traefik-stepca"
+
+- name: Enable Traefik dashboard by default for traefik-stepca project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^TRAEFIK_DASHBOARD="
+    line: "TRAEFIK_DASHBOARD=true"
+  when: deployment_project_manifest_data.id == "traefik-stepca"
+
+- name: Set Traefik dashboard auth path for traefik-stepca project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH="
+    line: "TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH=/etc/traefik/auth/traefik-dashboard.htpasswd"
+  when: deployment_project_manifest_data.id == "traefik-stepca"
+
+- name: Set internal Step-CA ACME directory URL for traefik-stepca project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^STEP_CA_CA_SERVER="
+    line: "STEP_CA_CA_SERVER=https://step-ca:9000/acme/acme/directory"
+  when: deployment_project_manifest_data.id == "traefik-stepca"
+
+- name: Set Step-CA issuer identity defaults for stepca-acme projects
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^{{ item.key }}="
+    line: "{{ item.key }}={{ item.value }}"
+  loop:
+    - { key: "CA_NAME", value: "\"aladroc.io\"" }
+    - { key: "CA_SUBJECT_O", value: "\"AMOU\"" }
+    - { key: "CA_SUBJECT_OU", value: "infra" }
+    - { key: "CA_SUBJECT_CN", value: "aladroc.io" }
+  when: deployment_project_manifest_data.tls_mode == "stepca-acme"
+
+- name: Render Traefik dynamic configuration from project env
+  ansible.builtin.command:
+    cmd: ./scripts/traefik-render-dynamic.sh
+    chdir: "{{ deployment_project_repo_dir }}"
+  changed_when: true
+  when: "'traefik' in deployment_project_manifest_data.services"
+
+- name: Render Traefik static configuration from project env
+  ansible.builtin.command:
+    cmd: ./scripts/traefik-render-static.sh
+    chdir: "{{ deployment_project_repo_dir }}"
+  changed_when: true
+  when: "'traefik' in deployment_project_manifest_data.services"
+
+- name: Check whether step-ca is already initialized
+  ansible.builtin.stat:
+    path: "{{ deployment_project_repo_dir }}/services/step-ca/config/ca.json"
+  register: deployment_project_stepca_ca_json_stat
+  when:
+    - "'step-ca' in deployment_project_manifest_data.services"
+    - deployment_project_manifest_data.tls_mode == "stepca-acme"
+
+- name: Check whether step-ca intermediate cert is present
+  ansible.builtin.stat:
+    path: "{{ deployment_project_repo_dir }}/services/step-ca/certs/intermediate_ca.crt"
+  register: deployment_project_stepca_intermediate_cert_stat
+  when:
+    - "'step-ca' in deployment_project_manifest_data.services"
+    - deployment_project_manifest_data.tls_mode == "stepca-acme"
+
+- name: Check whether step-ca root cert is present
+  ansible.builtin.stat:
+    path: "{{ deployment_project_repo_dir }}/services/step-ca/certs/root_ca.crt"
+  register: deployment_project_stepca_root_cert_stat
+  when:
+    - "'step-ca' in deployment_project_manifest_data.services"
+    - deployment_project_manifest_data.tls_mode == "stepca-acme"
+
+- name: Resolve step-ca bootstrap requirement
+  ansible.builtin.set_fact:
+    deployment_project_stepca_bootstrap_required: >-
+      {{
+        not (
+          (deployment_project_stepca_ca_json_stat.stat.exists | default(false))
+          and
+          (deployment_project_stepca_intermediate_cert_stat.stat.exists | default(false))
+          and
+          (deployment_project_stepca_root_cert_stat.stat.exists | default(false))
+        )
+      }}
+  when:
+    - "'step-ca' in deployment_project_manifest_data.services"
+    - deployment_project_manifest_data.tls_mode == "stepca-acme"
+
+- name: Ensure step-ca runtime password file exists from .env
+  ansible.builtin.shell: |
+    set -euo pipefail
+    step_ca_password="$(grep -E '^STEP_CA_PASSWORD=' .env | tail -n1 | cut -d= -f2-)"
+    [ -n "${step_ca_password}" ]
+    printf '%s' "${step_ca_password}" > services/step-ca/secrets/password
+    chmod 644 services/step-ca/secrets/password
+  args:
+    chdir: "{{ deployment_project_repo_dir }}"
+    executable: /bin/bash
+  changed_when: true
+  when:
+    - "'step-ca' in deployment_project_manifest_data.services"
+    - deployment_project_manifest_data.tls_mode == "stepca-acme"
+
+- name: Start step-ca service prior to bootstrap
+  ansible.builtin.command:
+    cmd: ./scripts/compose.sh --profile {{ deployment_project_manifest_data.compose_profile }} up -d step-ca
+    chdir: "{{ deployment_project_repo_dir }}"
+  environment:
+    COMPOSE_PROJECT_NAME: "{{ deployment_project_manifest_data.id }}"
+  changed_when: true
+  when:
+    - "'step-ca' in deployment_project_manifest_data.services"
+    - deployment_project_manifest_data.tls_mode == "stepca-acme"
+    - not (deployment_project_stepca_bootstrap_required | default(true))
+
+- name: Bootstrap step-ca for first-run project deployment (non-interactive)
+  ansible.builtin.shell: |
+    set -euo pipefail
+    set -a
+    . ./.env
+    set +a
+
+    ca_name="${CA_NAME:-${STEP_CA_NAME:-${CA_SUBJECT_CN:-}}}"
+    if [ -z "${ca_name}" ]; then
+      echo "CA_NAME, STEP_CA_NAME, or CA_SUBJECT_CN must be set in .env" >&2
+      exit 1
+    fi
+
+    ca_dns_raw="${CA_DNS:-}"
+    ca_ips_raw="${CA_IPS:-}"
+    step_ca_dns="${STEP_CA_DNS:-}"
+    if [ -z "${ca_dns_raw}" ] && [ -z "${ca_ips_raw}" ]; then
+      if [ -z "${step_ca_dns}" ]; then
+        step_ca_dns="step-ca,localhost,127.0.0.1,step-ca.${DEV_DOMAIN}"
+      fi
+      ca_dns_list="${step_ca_dns}"
+    else
+      ca_dns_list="${ca_dns_raw}"
+      if [ -n "${ca_ips_raw}" ]; then
+        if [ -n "${ca_dns_list}" ]; then
+          ca_dns_list="${ca_dns_list},${ca_ips_raw}"
+        else
+          ca_dns_list="${ca_ips_raw}"
+        fi
+      fi
+    fi
+
+    rm -rf services/step-ca/config/* services/step-ca/certs/* services/step-ca/secrets/*
+    mkdir -p services/step-ca/config services/step-ca/certs services/step-ca/secrets
+
+    printf '%s' "${STEP_CA_PASSWORD}" > services/step-ca/secrets/password
+    printf '%s' "${STEP_CA_ADMIN_PROVISIONER_PASSWORD}" > services/step-ca/secrets/admin_password
+    chmod 644 services/step-ca/secrets/password services/step-ca/secrets/admin_password
+
+    ./scripts/compose.sh --profile stepca run --rm --no-deps --entrypoint /bin/sh step-ca -c "
+      set -euo pipefail
+      step ca init \
+        --name \"${ca_name}\" \
+        --dns \"${ca_dns_list}\" \
+        --address ':9000' \
+        --provisioner admin \
+        --password-file /home/step/secrets/password \
+        --provisioner-password-file /home/step/secrets/admin_password
+    "
+
+    ./scripts/compose.sh --profile stepca up -d step-ca
+    ./scripts/compose.sh --profile stepca exec -T step-ca \
+      step ca provisioner add acme --type ACME --ca-url "https://step-ca.${DEV_DOMAIN}:9000"
+  args:
+    chdir: "{{ deployment_project_repo_dir }}"
+    executable: /bin/bash
+  environment:
+    COMPOSE_PROJECT_NAME: "{{ deployment_project_manifest_data.id }}"
+  register: deployment_project_stepca_bootstrap_cmd
+  changed_when: >-
+    (deployment_project_stepca_bootstrap_cmd.stdout | default('')) is not search('already initialized')
+    and
+    (deployment_project_stepca_bootstrap_cmd.stderr | default('')) is not search('already initialized')
+  when:
+    - "'step-ca' in deployment_project_manifest_data.services"
+    - deployment_project_manifest_data.tls_mode == "stepca-acme"
+    - deployment_project_stepca_bootstrap_required | default(true)
+
+- name: Apply docker compose stack for project manifest contract
+  ansible.builtin.command:
+    cmd: >-
+      ./scripts/compose.sh --profile {{ deployment_project_manifest_data.compose_profile }} up -d
+      {{ deployment_project_manifest_data.services | join(' ') }}
+  args:
+    chdir: "{{ deployment_project_repo_dir }}"
+  environment:
+    COMPOSE_PROJECT_NAME: "{{ deployment_project_manifest_data.id }}"
+  changed_when: true
+
+- name: Ensure deployment-project state directory exists for remote user
+  ansible.builtin.file:
+    path: "{{ deployment_project_state_home }}/{{ deployment_project_state_relpath | dirname }}"
+    state: directory
+    mode: "0755"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+  become: false
+
+- name: Read current deployment-project state
+  ansible.builtin.stat:
+    path: "{{ deployment_project_state_home }}/{{ deployment_project_state_relpath }}"
+  register: deployment_project_state_stat
+  become: false
+
+- name: Read current deployment-project state payload
+  ansible.builtin.slurp:
+    src: "{{ deployment_project_state_stat.stat.path }}"
+  register: deployment_project_state_raw
+  become: false
+  when: deployment_project_state_stat.stat.exists
+
+- name: Build updated deployment-project state payload
+  ansible.builtin.set_fact:
+    deployment_project_current_state: "{{ {'deployed_projects': []} }}"
+
+- name: Parse existing deployment-project state payload
+  ansible.builtin.set_fact:
+    deployment_project_current_state: "{{ deployment_project_state_raw.content | b64decode | from_json }}"
+  when:
+    - deployment_project_state_stat.stat.exists
+    - deployment_project_state_raw.content is defined
+    - deployment_project_state_raw.content | b64decode | trim | length > 0
+
+- name: Compose updated deployment-project state payload
+  ansible.builtin.set_fact:
+    deployment_project_state_payload:
+      deployed_projects: "{{ ((deployment_project_current_state.deployed_projects | default([])) + [deployment_project_manifest_data.id]) | unique | sort }}"
+
+- name: Persist deployment-project state payload
+  ansible.builtin.copy:
+    dest: "{{ deployment_project_state_home }}/{{ deployment_project_state_relpath }}"
+    content: "{{ deployment_project_state_payload | to_nice_json }}"
+    mode: "0644"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+  become: false

@@ -7,6 +7,7 @@ This directory contains baseline multi-OS Ansible roles for deployment hosts.
 - `system_update`: refresh package metadata and apply system updates.
 - `docker_git`: install Docker and Git and ensure Docker service state.
 - `system_bootstrap` playbook: runs `system_update` first and then `docker_git`.
+- `project_deploy`: deploys a catalog project manifest (repo sync + required env checks + compose apply).
 
 Supported selectors:
 
@@ -35,6 +36,7 @@ Manual syntax checks:
 ansible-playbook -i deployment/ansible/inventory/localhost.ini deployment/ansible/playbooks/system_update.yml --syntax-check
 ansible-playbook -i deployment/ansible/inventory/localhost.ini deployment/ansible/playbooks/docker_git.yml --syntax-check
 ansible-playbook -i deployment/ansible/inventory/localhost.ini deployment/ansible/playbooks/system_bootstrap.yml --syntax-check
+ansible-playbook -i deployment/ansible/inventory/localhost.ini deployment/ansible/playbooks/project_deploy.yml --syntax-check
 ```
 
 Example execution:
@@ -43,6 +45,7 @@ Example execution:
 ansible-playbook -i deployment/ansible/inventory/localhost.ini deployment/ansible/playbooks/system_update.yml --limit local
 ansible-playbook -i deployment/ansible/inventory/localhost.ini deployment/ansible/playbooks/docker_git.yml --limit local
 ansible-playbook -i deployment/ansible/inventory/localhost.ini deployment/ansible/playbooks/system_bootstrap.yml --limit local
+ansible-playbook -i deployment/ansible/inventory/localhost.ini deployment/ansible/playbooks/project_deploy.yml --limit local --extra-vars "deployment_project_manifest=/path/to/manifest.json"
 ```
 
 ## Role variables

@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Project `traefik-stepca` is registered with explicit immutable deployment intent
-The system SHALL provide a predefined project `traefik-stepca` with an explicit manifest that declares `repo_url`, pinned `repo_ref`, `compose_profile=stepca`, `services=[traefik, step-ca]`, `tls_mode`, and `required_env`.
+The system SHALL provide a predefined project `traefik-stepca` with an explicit manifest that declares `repo_url`, pinned `repo_ref`, `compose_profile=stepca`, `services=[traefik, step-ca, whoami]`, `tls_mode`, and `required_env`.
 
 #### Scenario: Project manifest is inspected
 - **WHEN** an operator or automation inspects the `traefik-stepca` manifest
@@ -43,3 +43,12 @@ The system SHALL allow repeated execution of `project=traefik-stepca` on the sam
 - **WHEN** project deployment is executed again for the same host
 - **THEN** repository sync and compose apply run in-place
 - **AND** the host remains aligned with the manifest-declared profile/services without creating duplicate stack intent
+
+### Requirement: Project `traefik-stepca` enables Traefik dashboard by default
+The system SHALL enable the Traefik dashboard by default for `traefik-stepca` and SHALL configure a valid dashboard auth users file path for this project.
+
+#### Scenario: Project defaults are applied
+- **WHEN** `project=traefik-stepca` is deployed
+- **THEN** `TRAEFIK_DASHBOARD=true` is set in project environment
+- **AND** `TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH` points to a non-example path under `/etc/traefik/auth/`
+- **AND** dynamic Traefik config is rendered so the dashboard route is active

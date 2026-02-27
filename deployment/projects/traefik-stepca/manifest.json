@@ -1,0 +1,21 @@
+{
+  "id": "traefik-stepca",
+  "description": "Deploy Traefik edge with internal ACME via Smallstep step-ca.",
+  "repo_url": "https://github.com/aladrocMatiner/compose-traeffik.git",
+  "repo_ref": "e39f79af6e37d0fb05e4f540739f9a6a5e12d106",
+  "compose_profile": "stepca",
+  "services": [
+    "traefik",
+    "step-ca",
+    "whoami"
+  ],
+  "deploy_playbook": "deployment/ansible/playbooks/project_deploy.yml",
+  "required_env": [
+    "BASE_DOMAIN",
+    "DEV_DOMAIN",
+    "STEP_CA_ADMIN_PROVISIONER_PASSWORD",
+    "STEP_CA_PASSWORD"
+  ],
+  "tls_mode": "stepca-acme",
+  "depends_on_projects": []
+}

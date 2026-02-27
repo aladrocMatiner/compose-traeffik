@@ -1,0 +1,8 @@
+---
+deployment_project_manifest: ""
+deployment_project_workspace_dir: /opt/deployment-projects
+deployment_project_state_relpath: .compose-traeffik/deployment-project-state.json
+deployment_project_state_home: "/home/{{ ansible_user | default('ubuntu') }}"
+deployment_project_tls_resolver_map:
+  stepca-acme: stepca-resolver
+  letsencrypt-acme: le-resolver

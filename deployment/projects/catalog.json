@@ -1,0 +1,8 @@
+{
+  "projects": [
+    {
+      "id": "traefik-stepca",
+      "manifest": "deployment/projects/traefik-stepca/manifest.json"
+    }
+  ]
+}

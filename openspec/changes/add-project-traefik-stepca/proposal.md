@@ -28,4 +28,4 @@ Tras definir el sistema general de proyectos, necesitamos un primer proyecto rea
 
 - Affected code (planned): `deployment/projects/traefik-stepca/*`, playbooks de proyecto en `deployment/ansible`, wiring de catálogo y documentación.
 - Operación: primer blueprint reutilizable para exponer Traefik y ACME interno de Smallstep en hosts de pruebas.
-- Riesgo: drift de servicios/profiles o ref de repositorio; se mitiga fijando en manifiesto `services=[traefik, step-ca]`, `profile=stepca` y `repo_ref` pinneada.
+- Riesgo: drift de servicios/profiles o ref de repositorio; se mitiga fijando en manifiesto `services=[traefik, step-ca, whoami]`, `profile=stepca` y `repo_ref` pinneada.
