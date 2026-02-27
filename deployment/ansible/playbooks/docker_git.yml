@@ -1,0 +1,7 @@
+---
+- name: Install docker and git baseline
+  hosts: all
+  gather_facts: true
+  become: true
+  roles:
+    - role: docker_git

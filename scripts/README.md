@@ -88,6 +88,8 @@ make deployment os=almalinux9
 make deployment os=rockylinux9
 make deployment os=fedora-cloud
 make deployment target=proxmox os=ubuntu  # proxmox target (requires PROXMOX_* vars)
+make deployment-list-os       # list supported OS selectors (one per line)
+make deployment-list-targets  # list supported targets (one per line; current phase: qemu)
 make deployment-wait           # wait for SSH + cloud-init
 make deployment-output         # inspect outputs (IP, SSH user, metadata)
 make deployment-ssh            # connect to the VM
@@ -105,6 +107,7 @@ Notes:
 - `init=` is only valid with `os=gentoo`.
 - `target=qemu` is a UX alias for `target=libvirt`.
 - `target=proxmox` currently supports `os=ubuntu` in the provisioning wrapper.
+- `deployment-list-targets` is intentionally scoped to the currently supported target list and returns `qemu` in this phase.
 - `deployment-access.sh` for `target=proxmox` requires API credentials (`PROXMOX_API_URL`, `PROXMOX_API_TOKEN`) and resolves IP via guest-agent when possible.
 - Docker bootstrap/check scripts currently support `ubuntu`, `debian12` and `debian13`.
 - Gentoo provisioning is experimental; Docker bootstrap/check for Gentoo are not implemented in these scripts.

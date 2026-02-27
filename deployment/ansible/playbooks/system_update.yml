@@ -1,0 +1,7 @@
+---
+- name: Apply base system updates
+  hosts: all
+  gather_facts: true
+  become: true
+  roles:
+    - role: system_update

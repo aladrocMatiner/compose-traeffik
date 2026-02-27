@@ -1,0 +1,69 @@
+---
+- name: Resolve deployment OS selector from gathered facts
+  ansible.builtin.set_fact:
+    docker_git_selector: >-
+      {% set distro = ansible_distribution | lower %}
+      {% set major = ansible_distribution_major_version | default('') %}
+      {% if distro == 'ubuntu' %}
+      ubuntu
+      {% elif distro == 'debian' and major == '12' %}
+      debian12
+      {% elif distro == 'debian' and major == '13' %}
+      debian13
+      {% elif distro == 'debian' %}
+      debian
+      {% elif distro == 'gentoo' %}
+      gentoo
+      {% elif distro in ['opensuse leap', 'opensuse-leap'] %}
+      opensuse-leap
+      {% elif distro == 'almalinux' and major == '9' %}
+      almalinux9
+      {% elif distro == 'rocky' and major == '9' %}
+      rockylinux9
+      {% elif distro == 'fedora' %}
+      fedora-cloud
+      {% else %}
+      unsupported
+      {% endif %}
+
+- name: Fail fast on unsupported platforms
+  ansible.builtin.fail:
+    msg: >-
+      Unsupported platform for role docker_git:
+      distribution={{ ansible_distribution }} major={{ ansible_distribution_major_version | default('n/a') }}.
+      Supported selectors: {{ docker_git_supported_selectors | join(', ') }}.
+  when: docker_git_selector not in docker_git_supported_selectors
+
+- name: Resolve package list for selector
+  ansible.builtin.set_fact:
+    docker_git_packages: "{{ docker_git_packages_by_selector[docker_git_selector] | default([]) }}"
+
+- name: Fail when package mapping is missing
+  ansible.builtin.fail:
+    msg: "No package mapping defined for selector '{{ docker_git_selector }}'."
+  when: docker_git_packages | length == 0
+
+- name: Refresh apt metadata cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: "{{ docker_git_apt_cache_valid_time }}"
+  when: ansible_os_family == "Debian"
+
+- name: Install docker and git packages
+  ansible.builtin.package:
+    name: "{{ docker_git_packages }}"
+    state: present
+
+- name: Resolve docker service name
+  ansible.builtin.set_fact:
+    docker_git_service_name: "{{ docker_git_service_name_by_selector[docker_git_selector] | default(docker_git_service_name_by_selector.default) }}"
+  when: docker_git_manage_service | bool
+
+- name: Ensure docker service state
+  ansible.builtin.service:
+    name: "{{ docker_git_service_name }}"
+    enabled: "{{ docker_git_enable_service | bool }}"
+    state: "{{ 'started' if (docker_git_start_service | bool) else 'stopped' }}"
+  when:
+    - docker_git_manage_service | bool
+    - ansible_service_mgr != "unknown"

@@ -1,9 +1,9 @@
 #!/bin/bash
-# File: tests/smoke/test_deployment_profile_metadata.sh
+# File: deployment/tests/smoke/test_deployment_profile_metadata.sh
 #
 # Smoke test: Validate deployment image profile pinning/metadata wiring.
 #
-# Usage: ./tests/smoke/test_deployment_profile_metadata.sh
+# Usage: ./deployment/tests/smoke/test_deployment_profile_metadata.sh
 #
 # Returns 0 on success, 1 on failure.
 #
@@ -12,11 +12,11 @@ set -euo pipefail
 
 SCRIPT_DIR=$(dirname "$0")
 # shellcheck source=scripts/common.sh
-. "$SCRIPT_DIR/../../scripts/common.sh"
+. "$SCRIPT_DIR/../../../scripts/common.sh"
 
-INFRA_SCRIPT="$SCRIPT_DIR/../../deployment/scripts/infra-provision.sh"
-OPENRC_MANIFEST="$SCRIPT_DIR/../../experiments/gentoo-qemu/manifests/gentoo-openrc-stage3-hostkernel-20260222T170100Z.yaml"
-SYSTEMD_MANIFEST="$SCRIPT_DIR/../../experiments/gentoo-qemu/manifests/gentoo-systemd-stage3-hostkernel-20260222T170100Z.yaml"
+INFRA_SCRIPT="$SCRIPT_DIR/../../../deployment/scripts/infra-provision.sh"
+OPENRC_MANIFEST="$SCRIPT_DIR/../../../experiments/gentoo-qemu/manifests/gentoo-openrc-stage3-hostkernel-20260222T170100Z.yaml"
+SYSTEMD_MANIFEST="$SCRIPT_DIR/../../../experiments/gentoo-qemu/manifests/gentoo-systemd-stage3-hostkernel-20260222T170100Z.yaml"
 
 if [ ! -f "$INFRA_SCRIPT" ]; then
     log_error "infra-provision script not found."

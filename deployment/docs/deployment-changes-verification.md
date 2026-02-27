@@ -64,6 +64,22 @@ Workspace evidence and decisions are updated in:
 - `experiments/gentoo-qemu/docs/qualification-matrix.md`
 - `experiments/gentoo-qemu/docs/decision-log.md`
 
+## Deployment Ansible Baseline Roles
+
+Baseline multi-OS Ansible roles are implemented under `deployment/ansible`:
+
+- `roles/system_update`: package metadata refresh + host updates by OS family
+- `roles/docker_git`: Docker + Git install and Docker service state
+
+Support selectors are aligned with deployment discovery output:
+
+- `ubuntu`, `debian12`, `debian13`, `debian`, `gentoo`, `opensuse-leap`, `almalinux9`, `rockylinux9`, `fedora-cloud`
+
+Local execution/lint entrypoints:
+
+- `make deployment-ansible-syntax`
+- `make deployment-ansible-lint`
+
 ## Validation Commands
 
 Executed in this branch:
@@ -78,7 +94,10 @@ openspec validate add-qemu-almalinux9-image-support --strict
 openspec validate add-qemu-rockylinux9-image-support --strict
 openspec validate add-qemu-fedora-cloud-image-support --strict
 openspec validate add-qemu-gentoo-image-support-experimental --strict
-tests/smoke/test_deployment_make_targets.sh
-tests/smoke/test_deployment_access_cli.sh
-tests/smoke/test_deployment_profile_metadata.sh
+openspec validate add-ansible-multi-os-update-modules --strict
+deployment/tests/smoke/test_deployment_make_targets.sh
+deployment/tests/smoke/test_deployment_access_cli.sh
+deployment/tests/smoke/test_deployment_profile_metadata.sh
+deployment/tests/smoke/test_deployment_list_commands.sh
+deployment/tests/smoke/test_deployment_ansible_roles.sh
 ```

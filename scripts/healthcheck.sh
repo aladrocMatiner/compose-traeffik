@@ -39,6 +39,7 @@ check_command "openssl" # For TLS handshake test
 
 TEST_RESULTS=0
 TEST_DIR="${SCRIPT_DIR}/../tests/smoke"
+DEPLOYMENT_TEST_DIR="${SCRIPT_DIR}/../deployment/tests/smoke"
 
 # --- Test 1: Traefik Readiness ---
 log_info "Running test_traefik_ready.sh..."
@@ -154,7 +155,7 @@ fi
 
 # --- Test 13: Deployment Make Target Wiring (no sudo) ---
 log_info "Running test_deployment_make_targets.sh..."
-if "$TEST_DIR/test_deployment_make_targets.sh"; then
+if "$DEPLOYMENT_TEST_DIR/test_deployment_make_targets.sh"; then
     log_success "Test: Deployment Make Target Wiring"
 else
     log_warn "Test failed: Deployment Make Target Wiring"
@@ -163,7 +164,7 @@ fi
 
 # --- Test 14: Deployment Access CLI Guardrails (no sudo) ---
 log_info "Running test_deployment_access_cli.sh..."
-if "$TEST_DIR/test_deployment_access_cli.sh"; then
+if "$DEPLOYMENT_TEST_DIR/test_deployment_access_cli.sh"; then
     log_success "Test: Deployment Access CLI Guardrails"
 else
     log_warn "Test failed: Deployment Access CLI Guardrails"
@@ -172,10 +173,28 @@ fi
 
 # --- Test 15: Deployment Profile Metadata (no sudo) ---
 log_info "Running test_deployment_profile_metadata.sh..."
-if "$TEST_DIR/test_deployment_profile_metadata.sh"; then
+if "$DEPLOYMENT_TEST_DIR/test_deployment_profile_metadata.sh"; then
     log_success "Test: Deployment Profile Metadata"
 else
     log_warn "Test failed: Deployment Profile Metadata"
+    TEST_RESULTS=1
+fi
+
+# --- Test 16: Deployment List Command Outputs (no sudo) ---
+log_info "Running test_deployment_list_commands.sh..."
+if "$DEPLOYMENT_TEST_DIR/test_deployment_list_commands.sh"; then
+    log_success "Test: Deployment List Commands"
+else
+    log_warn "Test failed: Deployment List Commands"
+    TEST_RESULTS=1
+fi
+
+# --- Test 17: Deployment Ansible Roles Syntax/Lint (no sudo) ---
+log_info "Running test_deployment_ansible_roles.sh..."
+if "$DEPLOYMENT_TEST_DIR/test_deployment_ansible_roles.sh"; then
+    log_success "Test: Deployment Ansible Roles"
+else
+    log_warn "Test failed: Deployment Ansible Roles"
     TEST_RESULTS=1
 fi
 

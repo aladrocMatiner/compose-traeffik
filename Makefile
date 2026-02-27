@@ -22,8 +22,8 @@ SHELL := /bin/bash # Ensure bash is used for shell commands
         stepca-trust-install stepca-trust-uninstall stepca-trust-verify \
         hosts-generate hosts-apply hosts-remove hosts-status \
         bind-up bind-down bind-restart bind-logs bind-status bind-provision bind-provision-dry bind-port-check \
-        deployment deployment-ubuntu deployment-plan deployment-destroy deployment-output deployment-ssh deployment-list \
-        deployment-wait deployment-bootstrap deployment-bootstrap-check deployment-ready deployment-validate \
+        deployment deployment-ubuntu deployment-plan deployment-destroy deployment-output deployment-ssh deployment-list deployment-list-os deployment-list-targets \
+        deployment-wait deployment-bootstrap deployment-bootstrap-check deployment-ready deployment-validate deployment-ansible-syntax deployment-ansible-lint \
         ubuntu debian debian12 debian13 gentoo opensuse-leap almalinux9 rockylinux9 fedora-cloud libvirt qemu proxmox
 
 # Include .env for environment variables if it exists.
@@ -47,6 +47,7 @@ COMPOSE_PROJECT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 REPO_ROOT := $(abspath $(COMPOSE_PROJECT_DIR))
 SCRIPTS_DIR := $(REPO_ROOT)/scripts
 DEPLOYMENT_SCRIPTS_DIR := $(REPO_ROOT)/deployment/scripts
+DEPLOYMENT_ANSIBLE_DIR := $(REPO_ROOT)/deployment/ansible
 COMPOSE_PROJECT_NAME ?= $(PROJECT_NAME)
 ifeq ($(COMPOSE_PROJECT_NAME),)
 COMPOSE_PROJECT_NAME := $(notdir $(abspath $(COMPOSE_PROJECT_DIR)))
@@ -79,6 +80,8 @@ DEPLOYMENT_TARGET ?= libvirt
 DEPLOYMENT_OS ?= ubuntu
 DEPLOYMENT_INIT ?=
 DEPLOYMENT_NAME ?=
+DEPLOYMENT_SUPPORTED_OS_SELECTORS := ubuntu debian12 debian13 debian gentoo opensuse-leap almalinux9 rockylinux9 fedora-cloud
+DEPLOYMENT_SUPPORTED_TARGET_SELECTORS := qemu
 
 # Lowercase convenience vars (GNU Make CLI style), e.g. `make deployment os=gentoo init=openrc`
 ifneq ($(strip $(target)),)
@@ -338,6 +341,12 @@ deployment-ssh:
 deployment-list:
 	@"$(DEPLOYMENT_SCRIPTS_DIR)/deployment-access.sh" list --target "$(DEPLOYMENT_TARGET)"
 
+deployment-list-os:
+	@printf '%s\n' $(DEPLOYMENT_SUPPORTED_OS_SELECTORS)
+
+deployment-list-targets:
+	@printf '%s\n' $(DEPLOYMENT_SUPPORTED_TARGET_SELECTORS)
+
 deployment-wait:
 	@echo "Waiting for deployment VM SSH/cloud-init ($(DEPLOYMENT_TARGET)/$(DEPLOYMENT_OS))..."
 	@"$(DEPLOYMENT_SCRIPTS_DIR)/host-wait-ssh.sh" --target "$(DEPLOYMENT_TARGET)" --os "$(DEPLOYMENT_OS)" $(DEPLOYMENT_INIT_ARG)
@@ -356,6 +365,19 @@ deployment-ready: deployment deployment-wait deployment-bootstrap deployment-boo
 deployment-validate:
 	@echo "Validating terraform targets (libvirt + proxmox)..."
 	@"$(DEPLOYMENT_SCRIPTS_DIR)/infra-validate.sh"
+
+deployment-ansible-syntax:
+	@echo "Running deployment Ansible syntax checks..."
+	@ANSIBLE_CONFIG="$(DEPLOYMENT_ANSIBLE_DIR)/ansible.cfg" ansible-playbook -i "$(DEPLOYMENT_ANSIBLE_DIR)/inventory/localhost.ini" "$(DEPLOYMENT_ANSIBLE_DIR)/playbooks/system_update.yml" --syntax-check
+	@ANSIBLE_CONFIG="$(DEPLOYMENT_ANSIBLE_DIR)/ansible.cfg" ansible-playbook -i "$(DEPLOYMENT_ANSIBLE_DIR)/inventory/localhost.ini" "$(DEPLOYMENT_ANSIBLE_DIR)/playbooks/docker_git.yml" --syntax-check
+
+deployment-ansible-lint:
+	@echo "Running deployment Ansible lint checks..."
+	@ANSIBLE_CONFIG="$(DEPLOYMENT_ANSIBLE_DIR)/ansible.cfg" ansible-lint -p \
+		"$(DEPLOYMENT_ANSIBLE_DIR)/playbooks/system_update.yml" \
+		"$(DEPLOYMENT_ANSIBLE_DIR)/playbooks/docker_git.yml" \
+		"$(DEPLOYMENT_ANSIBLE_DIR)/roles/system_update" \
+		"$(DEPLOYMENT_ANSIBLE_DIR)/roles/docker_git"
 
 # --- Help ---
 
@@ -426,11 +448,15 @@ help:
 	@echo "  deployment-output     Print terraform outputs (JSON) for the provisioned VM."
 	@echo "  deployment-ssh        SSH into the provisioned VM using terraform outputs."
 	@echo "  deployment-list       List managed deployment VMs by backend target."
+	@echo "  deployment-list-os    List supported deployment OS selectors (one per line)."
+	@echo "  deployment-list-targets  List supported deployment targets (one per line)."
 	@echo "  deployment-wait       Wait for SSH and cloud-init completion on the provisioned VM."
 	@echo "  deployment-bootstrap  Install Docker Engine + Compose plugin on the provisioned Ubuntu/Debian(12/13) VM."
 	@echo "  deployment-bootstrap-check  Verify SSH, Python, Docker and Compose on the provisioned VM."
 	@echo "  deployment-ready      End-to-end: provision + wait + Docker bootstrap + readiness check."
 	@echo "  deployment-validate   Run terraform fmt/validate checks for libvirt and proxmox targets."
+	@echo "  deployment-ansible-syntax  Run Ansible syntax checks for deployment roles/playbooks."
+	@echo "  deployment-ansible-lint    Run ansible-lint for deployment roles/playbooks."
 	@echo "  deployment-destroy    Destroy the provisioned VM and related resources."
 	@echo "  deployment-ubuntu     Alias for 'make deployment DEPLOYMENT_TARGET=libvirt DEPLOYMENT_OS=ubuntu'."
 	@echo "                       You can also run: make deployment ubuntu"
@@ -442,6 +468,8 @@ help:
 	@echo "                       Docker bootstrap/checks currently support ubuntu, debian12 and debian13; gentoo remains separate/experimental."
 	@echo "  SSH selector syntax:  make deployment-ssh target=<qemu|proxmox> name=<vm-name>"
 	@echo "                       make deployment-list target=<qemu|proxmox>"
+	@echo "  Discovery commands:   make deployment-list-os"
+	@echo "                       make deployment-list-targets   # current phase output: qemu"
 	@echo "  Common overrides: DEPLOYMENT_VM_NAME, DEPLOYMENT_VM_IP, DEPLOYMENT_VM_GATEWAY,"
 	@echo "                    DEPLOYMENT_DNS_SERVERS, DEPLOYMENT_SSH_USER, DEPLOYMENT_SSH_PUBKEY_PATH"
 	@echo ""

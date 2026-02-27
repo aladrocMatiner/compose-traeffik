@@ -1,9 +1,9 @@
 #!/bin/bash
-# File: tests/smoke/test_deployment_access_cli.sh
+# File: deployment/tests/smoke/test_deployment_access_cli.sh
 #
 # Smoke test: Validate deployment-access CLI guardrails.
 #
-# Usage: ./tests/smoke/test_deployment_access_cli.sh
+# Usage: ./deployment/tests/smoke/test_deployment_access_cli.sh
 #
 # Returns 0 on success, 1 on failure.
 #
@@ -12,9 +12,9 @@ set -euo pipefail
 
 SCRIPT_DIR=$(dirname "$0")
 # shellcheck source=scripts/common.sh
-. "$SCRIPT_DIR/../../scripts/common.sh"
+. "$SCRIPT_DIR/../../../scripts/common.sh"
 
-ACCESS_SCRIPT="$SCRIPT_DIR/../../deployment/scripts/deployment-access.sh"
+ACCESS_SCRIPT="$SCRIPT_DIR/../../../deployment/scripts/deployment-access.sh"
 
 if [ ! -x "$ACCESS_SCRIPT" ]; then
     log_error "deployment-access script not found or not executable."

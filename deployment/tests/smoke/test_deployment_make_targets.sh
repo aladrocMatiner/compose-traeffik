@@ -1,9 +1,9 @@
 #!/bin/bash
-# File: tests/smoke/test_deployment_make_targets.sh
+# File: deployment/tests/smoke/test_deployment_make_targets.sh
 #
 # Smoke test: Validate deployment selector Make target wiring.
 #
-# Usage: ./tests/smoke/test_deployment_make_targets.sh
+# Usage: ./deployment/tests/smoke/test_deployment_make_targets.sh
 #
 # Returns 0 on success, 1 on failure.
 #
@@ -12,9 +12,9 @@ set -euo pipefail
 
 SCRIPT_DIR=$(dirname "$0")
 # shellcheck source=scripts/common.sh
-. "$SCRIPT_DIR/../../scripts/common.sh"
+. "$SCRIPT_DIR/../../../scripts/common.sh"
 
-MAKEFILE="$SCRIPT_DIR/../../Makefile"
+MAKEFILE="$SCRIPT_DIR/../../../Makefile"
 
 if [ ! -f "$MAKEFILE" ]; then
     log_error "Makefile not found."
@@ -23,7 +23,7 @@ fi
 check_command "grep"
 check_command "awk"
 
-for target in deployment deployment-plan deployment-output deployment-ssh deployment-list deployment-validate deployment-destroy; do
+for target in deployment deployment-plan deployment-output deployment-ssh deployment-list deployment-list-os deployment-list-targets deployment-validate deployment-destroy; do
     if ! grep -q "^${target}:" "$MAKEFILE"; then
         log_error "Missing Make target: ${target}"
     fi
@@ -50,6 +50,25 @@ if ! awk '
     END { exit(has_qemu_cond && has_name_cond && has_selector_path && has_fallback_path ? 0 : 1) }
 ' "$MAKEFILE"; then
     log_error "deployment-ssh wiring is missing selector/fallback branches"
+fi
+
+# list commands should print canonical selector lists.
+if ! awk '
+    /^deployment-list-os:/ { in_target=1; next }
+    in_target && /^[a-zA-Z0-9_.-]+:/ { exit }
+    in_target && /DEPLOYMENT_SUPPORTED_OS_SELECTORS/ { found=1 }
+    END { exit(found ? 0 : 1) }
+' "$MAKEFILE"; then
+    log_error "deployment-list-os is not wired to DEPLOYMENT_SUPPORTED_OS_SELECTORS"
+fi
+
+if ! awk '
+    /^deployment-list-targets:/ { in_target=1; next }
+    in_target && /^[a-zA-Z0-9_.-]+:/ { exit }
+    in_target && /DEPLOYMENT_SUPPORTED_TARGET_SELECTORS/ { found=1 }
+    END { exit(found ? 0 : 1) }
+' "$MAKEFILE"; then
+    log_error "deployment-list-targets is not wired to DEPLOYMENT_SUPPORTED_TARGET_SELECTORS"
 fi
 
 log_success "Deployment Make target wiring test passed."

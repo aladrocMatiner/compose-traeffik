@@ -1,0 +1,15 @@
+---
+system_update_supported_selectors:
+  - ubuntu
+  - debian12
+  - debian13
+  - debian
+  - gentoo
+  - opensuse-leap
+  - almalinux9
+  - rockylinux9
+  - fedora-cloud
+
+system_update_apply_upgrades: true
+system_update_apt_upgrade_mode: dist
+system_update_apt_cache_valid_time: 3600
