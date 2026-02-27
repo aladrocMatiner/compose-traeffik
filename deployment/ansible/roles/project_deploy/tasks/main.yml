@@ -197,7 +197,7 @@
   ansible.builtin.lineinfile:
     path: "{{ deployment_project_repo_dir }}/.env"
     regexp: "^STEP_CA_CA_SERVER="
-    line: "STEP_CA_CA_SERVER=https://step-ca:9000/acme/acme/directory"
+    line: "STEP_CA_CA_SERVER=https://step-ca:9000/acme/{{ deployment_project_stepca_acme_provisioner }}/directory"
   when: deployment_project_manifest_data.id == "traefik-stepca"
 
 - name: Set Step-CA issuer identity defaults for stepca-acme projects
@@ -344,8 +344,6 @@
     "
 
     ./scripts/compose.sh --profile stepca up -d step-ca
-    ./scripts/compose.sh --profile stepca exec -T step-ca \
-      step ca provisioner add acme --type ACME --ca-url "https://step-ca.${DEV_DOMAIN}:9000"
   args:
     chdir: "{{ deployment_project_repo_dir }}"
     executable: /bin/bash
@@ -361,6 +359,83 @@
     - deployment_project_manifest_data.tls_mode == "stepca-acme"
     - deployment_project_stepca_bootstrap_required | default(true)
 
+- name: Read step-ca admin password from project .env
+  ansible.builtin.command:
+    cmd: "bash -lc \"awk -F= '$1==\\\"STEP_CA_ADMIN_PROVISIONER_PASSWORD\\\" {print $2}' .env | tail -n1 | tr -d '\\\"' | xargs\""
+  args:
+    chdir: "{{ deployment_project_repo_dir }}"
+  register: deployment_project_stepca_admin_password_cmd
+  changed_when: false
+  when:
+    - "'step-ca' in deployment_project_manifest_data.services"
+    - deployment_project_manifest_data.tls_mode == "stepca-acme"
+
+- name: Assert step-ca admin password is available
+  ansible.builtin.assert:
+    that:
+      - deployment_project_stepca_admin_password_cmd.stdout | trim | length > 0
+    fail_msg: "STEP_CA_ADMIN_PROVISIONER_PASSWORD must be set in project .env for step-ca ACME provisioning."
+  when:
+    - "'step-ca' in deployment_project_manifest_data.services"
+    - deployment_project_manifest_data.tls_mode == "stepca-acme"
+
+- name: Ensure step-ca ACME provisioner exists
+  ansible.builtin.shell: |
+    set -euo pipefail
+    set -a
+    . ./.env
+    set +a
+
+    acme_name="{{ deployment_project_stepca_acme_provisioner }}"
+    admin_name="{{ deployment_project_stepca_admin_provisioner }}"
+    admin_password="{{ deployment_project_stepca_admin_password_cmd.stdout | trim }}"
+
+    set +e
+    output="$(
+      ./scripts/compose.sh --profile stepca exec -T step-ca \
+        step ca provisioner add "${acme_name}" --type ACME \
+        --ca-url "https://step-ca:9000" \
+        --root /home/step/certs/root_ca.crt \
+        --admin-subject "${admin_name}" \
+        --admin-provisioner "${admin_name}" \
+        --admin-password-file /home/step/secrets/admin_password 2>&1
+    )"
+    rc=$?
+    set -e
+    echo "${output}"
+    if [ "${rc}" -eq 0 ]; then
+      exit 0
+    fi
+    if echo "${output}" | grep -q "already exists"; then
+      exit 0
+    fi
+    exit "${rc}"
+  args:
+    chdir: "{{ deployment_project_repo_dir }}"
+    executable: /bin/bash
+  environment:
+    COMPOSE_PROJECT_NAME: "{{ deployment_project_manifest_data.id }}"
+  register: deployment_project_stepca_provisioner_cmd
+  changed_when: >-
+    (deployment_project_stepca_provisioner_cmd.stdout | default('')) is search('Create') or
+    (deployment_project_stepca_provisioner_cmd.stdout | default('')) is search('created') or
+    (deployment_project_stepca_provisioner_cmd.stderr | default('')) is search('Create') or
+    (deployment_project_stepca_provisioner_cmd.stderr | default('')) is search('created')
+  when:
+    - "'step-ca' in deployment_project_manifest_data.services"
+    - deployment_project_manifest_data.tls_mode == "stepca-acme"
+
+- name: Restart step-ca to load current provisioner configuration
+  ansible.builtin.command:
+    cmd: ./scripts/compose.sh --profile {{ deployment_project_manifest_data.compose_profile }} up -d --force-recreate step-ca
+    chdir: "{{ deployment_project_repo_dir }}"
+  environment:
+    COMPOSE_PROJECT_NAME: "{{ deployment_project_manifest_data.id }}"
+  changed_when: true
+  when:
+    - "'step-ca' in deployment_project_manifest_data.services"
+    - deployment_project_manifest_data.tls_mode == "stepca-acme"
+
 - name: Apply docker compose stack for project manifest contract
   ansible.builtin.command:
     cmd: >-
@@ -371,6 +446,31 @@
   environment:
     COMPOSE_PROJECT_NAME: "{{ deployment_project_manifest_data.id }}"
   changed_when: true
+
+- name: Verify traefik serves non-default TLS certificate for whoami (stepca-acme)
+  ansible.builtin.shell: |
+    set -euo pipefail
+    set -a
+    . ./.env
+    set +a
+    host="whoami.${BASE_DOMAIN}"
+    issuer="$(echo | openssl s_client -connect 127.0.0.1:443 -servername "${host}" 2>/dev/null | openssl x509 -noout -issuer)"
+    echo "${issuer}"
+    if echo "${issuer}" | grep -q "TRAEFIK DEFAULT CERT"; then
+      exit 1
+    fi
+  args:
+    chdir: "{{ deployment_project_repo_dir }}"
+    executable: /bin/bash
+  register: deployment_project_tls_issuer_check
+  changed_when: false
+  retries: 10
+  delay: 6
+  until: deployment_project_tls_issuer_check.rc == 0
+  when:
+    - deployment_project_manifest_data.id == "traefik-stepca"
+    - "'whoami' in deployment_project_manifest_data.services"
+    - deployment_project_manifest_data.tls_mode == "stepca-acme"
 
 - name: Ensure deployment-project state directory exists for remote user
   ansible.builtin.file:

@@ -6,3 +6,5 @@ deployment_project_state_home: "/home/{{ ansible_user | default('ubuntu') }}"
 deployment_project_tls_resolver_map:
   stepca-acme: stepca-resolver
   letsencrypt-acme: le-resolver
+deployment_project_stepca_acme_provisioner: traefik-acme
+deployment_project_stepca_admin_provisioner: admin
