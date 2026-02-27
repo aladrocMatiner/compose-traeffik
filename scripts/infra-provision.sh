@@ -7,8 +7,9 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 usage() {
   cat <<'EOF'
 Usage:
-  scripts/infra-provision.sh <apply|plan|destroy|output|ssh> [--target libvirt]
-                            [--os <ubuntu|debian|debian13|gentoo>] [--init <openrc|systemd>]
+  scripts/infra-provision.sh <apply|plan|destroy|output|ssh> [--target <libvirt|qemu|proxmox>]
+                            [--os <ubuntu|debian|debian12|debian13|gentoo|opensuse-leap|almalinux9|rockylinux9|fedora-cloud>]
+                            [--init <openrc|systemd>]
 
 Environment overrides (selected):
   DEPLOYMENT_VM_NAME
@@ -22,10 +23,22 @@ Environment overrides (selected):
   DEPLOYMENT_INIT
   DEPLOYMENT_UBUNTU_IMAGE_URL
   DEPLOYMENT_UBUNTU_IMAGE_PATH
+  DEPLOYMENT_DEBIAN12_IMAGE_URL
+  DEPLOYMENT_DEBIAN12_IMAGE_PATH
+  DEPLOYMENT_DEBIAN12_IMAGE_SHA512
+  DEPLOYMENT_DEBIAN12_SHA512SUMS_URL
   DEPLOYMENT_DEBIAN13_IMAGE_URL
   DEPLOYMENT_DEBIAN13_IMAGE_PATH
   DEPLOYMENT_DEBIAN13_IMAGE_SHA512
   DEPLOYMENT_DEBIAN13_SHA512SUMS_URL
+  DEPLOYMENT_OPENSUSE_LEAP_IMAGE_URL
+  DEPLOYMENT_OPENSUSE_LEAP_IMAGE_PATH
+  DEPLOYMENT_ALMALINUX9_IMAGE_URL
+  DEPLOYMENT_ALMALINUX9_IMAGE_PATH
+  DEPLOYMENT_ROCKYLINUX9_IMAGE_URL
+  DEPLOYMENT_ROCKYLINUX9_IMAGE_PATH
+  DEPLOYMENT_FEDORA_CLOUD_IMAGE_URL
+  DEPLOYMENT_FEDORA_CLOUD_IMAGE_PATH
   DEPLOYMENT_GENTOO_SYSTEMD_IMAGE_URL
   DEPLOYMENT_GENTOO_SYSTEMD_IMAGE_PATH
   DEPLOYMENT_GENTOO_OPENRC_IMAGE_URL
@@ -39,11 +52,23 @@ Environment overrides (selected):
   DEPLOYMENT_LIBVIRT_MACHINE
   DEPLOYMENT_LIBVIRT_ATTACH_CLOUDINIT_AS_SCSI
   DEPLOYMENT_LIBVIRT_REMOVE_IDE_CONTROLLER
+  PROXMOX_API_URL
+  PROXMOX_API_TOKEN
+  PROXMOX_TLS_INSECURE
+  PROXMOX_NODE_NAME
+  PROXMOX_TEMPLATE_VM_ID
+  PROXMOX_VM_ID
+  PROXMOX_CLONE_DATASTORE
+  PROXMOX_DISK_DATASTORE
+  PROXMOX_CLOUDINIT_DATASTORE
+  PROXMOX_NETWORK_BRIDGE
 
 Notes:
-  - Interface supports --os ubuntu|debian|debian13|gentoo.
+  - Interface supports --target libvirt|qemu|proxmox (`qemu` maps to `libvirt`).
+  - Interface supports --os ubuntu|debian|debian12|debian13|gentoo|opensuse-leap|almalinux9|rockylinux9|fedora-cloud.
   - --os debian is treated as an alias of debian13 (current Debian profile).
   - --init is only valid with --os gentoo and defaults to openrc.
+  - --target proxmox currently supports --os ubuntu.
   - Gentoo/openrc and Gentoo/systemd use project-built experimental qcow2 images (built on demand if missing).
   - The wrapper auto-detects a local SSH public key if DEPLOYMENT_SSH_PUBKEY_PATH is not set.
 EOF
@@ -131,10 +156,16 @@ validate_target_os_init() {
     INIT_SYSTEM="${INIT_SYSTEM,,}"
   fi
 
-  [[ "${TARGET}" == "libvirt" ]] || die "Unsupported --target '${TARGET}'. Supported values: libvirt"
+  if [[ "${TARGET}" == "qemu" ]]; then
+    TARGET="libvirt"
+  fi
+  case "${TARGET}" in
+    libvirt|proxmox) ;;
+    *) die "Unsupported --target '${TARGET}'. Supported values: libvirt, qemu, proxmox" ;;
+  esac
   case "${OS_FAMILY}" in
-    ubuntu|debian|debian13|gentoo) ;;
-    *) die "Unsupported --os '${OS_FAMILY}'. Supported values: ubuntu, debian, debian13, gentoo" ;;
+    ubuntu|debian|debian12|debian13|gentoo|opensuse-leap|almalinux9|rockylinux9|fedora-cloud) ;;
+    *) die "Unsupported --os '${OS_FAMILY}'. Supported values: ubuntu, debian, debian12, debian13, gentoo, opensuse-leap, almalinux9, rockylinux9, fedora-cloud" ;;
   esac
 
   if [[ "${OS_FAMILY}" == "debian" ]]; then
@@ -153,6 +184,10 @@ validate_target_os_init() {
   elif [[ -n "${INIT_SYSTEM}" ]]; then
     die "--init is only valid with --os gentoo (got --os ${OS_FAMILY}, --init ${INIT_SYSTEM})"
   fi
+
+  if [[ "${TARGET}" == "proxmox" && "${OS_FAMILY}" != "ubuntu" ]]; then
+    die "Unsupported --os '${OS_FAMILY}' for --target proxmox in v1 (supported: ubuntu)"
+  fi
 }
 
 resolve_base_image_config() {
@@ -170,6 +205,15 @@ resolve_base_image_config() {
       BASE_IMAGE_URL="${DEPLOYMENT_UBUNTU_IMAGE_URL:-https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img}"
       BASE_IMAGE_PATH="${DEPLOYMENT_UBUNTU_IMAGE_PATH:-${REPO_ROOT}/infra/images/ubuntu/noble-server-cloudimg-amd64.img}"
       ;;
+    debian12)
+      BASE_IMAGE_LABEL="Debian 12 (genericcloud, pinned)"
+      BASE_IMAGE_URL="${DEPLOYMENT_DEBIAN12_IMAGE_URL:-https://cloud.debian.org/images/cloud/bookworm/20260129-2372/debian-12-genericcloud-amd64-20260129-2372.qcow2}"
+      BASE_IMAGE_PATH="${DEPLOYMENT_DEBIAN12_IMAGE_PATH:-${REPO_ROOT}/infra/images/debian/debian-12-genericcloud-amd64-20260129-2372.qcow2}"
+      BASE_IMAGE_SHA512="${DEPLOYMENT_DEBIAN12_IMAGE_SHA512:-89ea4eb8f4c07f91ce4d7814e76d04b4beaa1385f8806899bc2918ec7f6bb2dfddf1f4861f72bcb0820392a29f390d3f2f0064cc9510464dce9f0d89f03843e4}"
+      BASE_IMAGE_SHA512SUMS_URL="${DEPLOYMENT_DEBIAN12_SHA512SUMS_URL:-https://cloud.debian.org/images/cloud/bookworm/20260129-2372/SHA512SUMS}"
+      BASE_IMAGE_EXPECTED_NAME="$(basename "${BASE_IMAGE_URL}")"
+      TEMPLATE_OS_FAMILY="debian"
+      ;;
     debian13)
       BASE_IMAGE_LABEL="Debian 13 (genericcloud, pinned)"
       BASE_IMAGE_URL="${DEPLOYMENT_DEBIAN13_IMAGE_URL:-https://cloud.debian.org/images/cloud/trixie/20260220-2394/debian-13-genericcloud-amd64-20260220-2394.qcow2}"
@@ -178,6 +222,30 @@ resolve_base_image_config() {
       BASE_IMAGE_SHA512SUMS_URL="${DEPLOYMENT_DEBIAN13_SHA512SUMS_URL:-https://cloud.debian.org/images/cloud/trixie/20260220-2394/SHA512SUMS}"
       BASE_IMAGE_EXPECTED_NAME="$(basename "${BASE_IMAGE_URL}")"
       TEMPLATE_OS_FAMILY="debian"
+      ;;
+    opensuse-leap)
+      BASE_IMAGE_LABEL="openSUSE Leap (cloud image)"
+      BASE_IMAGE_URL="${DEPLOYMENT_OPENSUSE_LEAP_IMAGE_URL:-https://download.opensuse.org/distribution/leap/15.6/appliances/openSUSE-Leap-15.6-Minimal-VM.x86_64-Cloud.qcow2}"
+      BASE_IMAGE_PATH="${DEPLOYMENT_OPENSUSE_LEAP_IMAGE_PATH:-${REPO_ROOT}/infra/images/opensuse/openSUSE-Leap-15.6-Minimal-VM.x86_64-Cloud.qcow2}"
+      TEMPLATE_OS_FAMILY="opensuse"
+      ;;
+    almalinux9)
+      BASE_IMAGE_LABEL="AlmaLinux 9 (GenericCloud)"
+      BASE_IMAGE_URL="${DEPLOYMENT_ALMALINUX9_IMAGE_URL:-https://repo.almalinux.org/almalinux/9/cloud/x86_64/images/AlmaLinux-9-GenericCloud-latest.x86_64.qcow2}"
+      BASE_IMAGE_PATH="${DEPLOYMENT_ALMALINUX9_IMAGE_PATH:-${REPO_ROOT}/infra/images/almalinux/AlmaLinux-9-GenericCloud-latest.x86_64.qcow2}"
+      TEMPLATE_OS_FAMILY="rhel"
+      ;;
+    rockylinux9)
+      BASE_IMAGE_LABEL="Rocky Linux 9 (GenericCloud)"
+      BASE_IMAGE_URL="${DEPLOYMENT_ROCKYLINUX9_IMAGE_URL:-https://dl.rockylinux.org/pub/rocky/9/images/x86_64/Rocky-9-GenericCloud.latest.x86_64.qcow2}"
+      BASE_IMAGE_PATH="${DEPLOYMENT_ROCKYLINUX9_IMAGE_PATH:-${REPO_ROOT}/infra/images/rocky/Rocky-9-GenericCloud.latest.x86_64.qcow2}"
+      TEMPLATE_OS_FAMILY="rhel"
+      ;;
+    fedora-cloud)
+      BASE_IMAGE_LABEL="Fedora Cloud (qcow2)"
+      BASE_IMAGE_URL="${DEPLOYMENT_FEDORA_CLOUD_IMAGE_URL:-https://download.fedoraproject.org/pub/fedora/linux/releases/41/Cloud/x86_64/images/Fedora-Cloud-Base-Generic.x86_64-41-1.4.qcow2}"
+      BASE_IMAGE_PATH="${DEPLOYMENT_FEDORA_CLOUD_IMAGE_PATH:-${REPO_ROOT}/infra/images/fedora/Fedora-Cloud-Base-Generic.x86_64-41-1.4.qcow2}"
+      TEMPLATE_OS_FAMILY="fedora"
       ;;
     gentoo)
       if [[ "${INIT_SYSTEM}" == "systemd" ]]; then
@@ -306,17 +374,33 @@ esac
 
 check_cmd terraform
 
-TF_DIR="${REPO_ROOT}/infra/terraform/targets/libvirt"
+TF_DIR="${REPO_ROOT}/infra/terraform/targets/${TARGET}"
 [[ -d "${TF_DIR}" ]] || die "Missing Terraform target dir: ${TF_DIR}"
 
+if [[ "${TARGET}" == "proxmox" && ("${ACTION}" == "apply" || "${ACTION}" == "plan") ]]; then
+  [[ -n "${PROXMOX_API_URL:-${DEPLOYMENT_PROXMOX_API_URL:-}}" ]] || die "Missing Proxmox API URL (set PROXMOX_API_URL or DEPLOYMENT_PROXMOX_API_URL)"
+  [[ -n "${PROXMOX_API_TOKEN:-${DEPLOYMENT_PROXMOX_API_TOKEN:-}}" ]] || die "Missing Proxmox API token (set PROXMOX_API_TOKEN or DEPLOYMENT_PROXMOX_API_TOKEN)"
+  [[ -n "${PROXMOX_NODE_NAME:-${DEPLOYMENT_PROXMOX_NODE_NAME:-}}" ]] || die "Missing Proxmox node name (set PROXMOX_NODE_NAME or DEPLOYMENT_PROXMOX_NODE_NAME)"
+  local_template_vm_id="${PROXMOX_TEMPLATE_VM_ID:-${DEPLOYMENT_PROXMOX_TEMPLATE_VM_ID:-0}}"
+  [[ "${local_template_vm_id}" =~ ^[0-9]+$ ]] || die "Invalid PROXMOX_TEMPLATE_VM_ID value: ${local_template_vm_id}"
+  (( local_template_vm_id > 0 )) || die "Missing Proxmox template VM id (set PROXMOX_TEMPLATE_VM_ID or DEPLOYMENT_PROXMOX_TEMPLATE_VM_ID)"
+fi
+
 if [[ "${ACTION}" == "apply" || "${ACTION}" == "plan" ]]; then
-  check_cmd curl
+  if [[ "${TARGET}" == "libvirt" ]]; then
+    check_cmd curl
+  fi
 fi
 
 if [[ -z "${DEPLOYMENT_VM_NAME:-}" ]]; then
   case "${OS_FAMILY}" in
     ubuntu) DEPLOYMENT_VM_NAME="compose-traeffik-ubuntu" ;;
+    debian12) DEPLOYMENT_VM_NAME="compose-traeffik-debian12" ;;
     debian13) DEPLOYMENT_VM_NAME="compose-traeffik-debian13" ;;
+    opensuse-leap) DEPLOYMENT_VM_NAME="compose-traeffik-opensuse-leap" ;;
+    almalinux9) DEPLOYMENT_VM_NAME="compose-traeffik-almalinux9" ;;
+    rockylinux9) DEPLOYMENT_VM_NAME="compose-traeffik-rockylinux9" ;;
+    fedora-cloud) DEPLOYMENT_VM_NAME="compose-traeffik-fedora-cloud" ;;
     gentoo)
       if [[ "${INIT_SYSTEM}" == "systemd" ]]; then
         DEPLOYMENT_VM_NAME="compose-traeffik-gentoo-systemd"
@@ -334,7 +418,12 @@ DEPLOYMENT_DNS_SERVERS="${DEPLOYMENT_DNS_SERVERS:-1.1.1.1,8.8.8.8}"
 if [[ -z "${DEPLOYMENT_SSH_USER:-}" ]]; then
   case "${OS_FAMILY}" in
     ubuntu) DEPLOYMENT_SSH_USER="ubuntu" ;;
+    debian12) DEPLOYMENT_SSH_USER="debian" ;;
     debian13) DEPLOYMENT_SSH_USER="debian" ;;
+    opensuse-leap) DEPLOYMENT_SSH_USER="opensuse" ;;
+    almalinux9) DEPLOYMENT_SSH_USER="cloud-user" ;;
+    rockylinux9) DEPLOYMENT_SSH_USER="rocky" ;;
+    fedora-cloud) DEPLOYMENT_SSH_USER="fedora" ;;
     gentoo) DEPLOYMENT_SSH_USER="gentoo" ;;
   esac
 fi
@@ -355,7 +444,9 @@ DEPLOYMENT_LIBVIRT_REMOVE_IDE_CONTROLLER="${DEPLOYMENT_LIBVIRT_REMOVE_IDE_CONTRO
 DEPLOYMENT_UBUNTU_IMAGE_URL="${DEPLOYMENT_UBUNTU_IMAGE_URL:-https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img}"
 DEPLOYMENT_UBUNTU_IMAGE_PATH="${DEPLOYMENT_UBUNTU_IMAGE_PATH:-${REPO_ROOT}/infra/images/ubuntu/noble-server-cloudimg-amd64.img}"
 
-resolve_base_image_config
+if [[ "${TARGET}" == "libvirt" ]]; then
+  resolve_base_image_config
+fi
 
 if [[ -z "${DEPLOYMENT_VM_MAC:-}" ]]; then
   DEPLOYMENT_VM_MAC="$(derive_mac_from_ip "${DEPLOYMENT_VM_IP}")" || die "Unable to derive MAC from DEPLOYMENT_VM_IP=${DEPLOYMENT_VM_IP}"
@@ -373,7 +464,7 @@ else
   SSH_PUBKEY_CONTENT=""
 fi
 
-if [[ ("${ACTION}" == "apply" || "${ACTION}" == "plan") && "${SKIP_IMAGE_FETCH}" != "true" ]]; then
+if [[ "${TARGET}" == "libvirt" && ("${ACTION}" == "apply" || "${ACTION}" == "plan") && "${SKIP_IMAGE_FETCH}" != "true" ]]; then
   if [[ "${OS_FAMILY}" == "gentoo" && "${INIT_SYSTEM}" == "openrc" ]]; then
     ensure_gentoo_openrc_image_built
   elif [[ "${OS_FAMILY}" == "gentoo" && "${INIT_SYSTEM}" == "systemd" ]]; then
@@ -390,40 +481,67 @@ if [[ ("${ACTION}" == "apply" || "${ACTION}" == "plan") && "${SKIP_IMAGE_FETCH}"
   verify_base_image_integrity
 fi
 
-if [[ "${ACTION}" == "apply" || "${ACTION}" == "plan" ]]; then
+if [[ "${TARGET}" == "libvirt" && ("${ACTION}" == "apply" || "${ACTION}" == "plan") ]]; then
   verify_base_image_integrity
 fi
 
 terraform -chdir="${TF_DIR}" init -upgrade=false >/dev/null
 
-TF_VARS=(
-  "-var=libvirt_uri=${DEPLOYMENT_LIBVIRT_URI}"
-  "-var=libvirt_pool=${DEPLOYMENT_LIBVIRT_POOL}"
-  "-var=libvirt_pool_path=${DEPLOYMENT_LIBVIRT_POOL_PATH}"
-  "-var=libvirt_network_name=${DEPLOYMENT_LIBVIRT_NETWORK}"
-  "-var=vm_name=${DEPLOYMENT_VM_NAME}"
-  "-var=hostname=${DEPLOYMENT_HOSTNAME}"
-  "-var=vm_ip=${DEPLOYMENT_VM_IP}"
-  "-var=vm_cidr_prefix=${DEPLOYMENT_VM_CIDR_PREFIX}"
-  "-var=vm_gateway=${DEPLOYMENT_VM_GATEWAY}"
-  "-var=dns_servers_csv=${DEPLOYMENT_DNS_SERVERS}"
-  "-var=vm_mac=${DEPLOYMENT_VM_MAC}"
-  "-var=guest_interface_name=${DEPLOYMENT_GUEST_INTERFACE}"
-  "-var=ssh_user=${DEPLOYMENT_SSH_USER}"
-  "-var=ssh_public_key=${SSH_PUBKEY_CONTENT}"
-  "-var=os_family=${TEMPLATE_OS_FAMILY}"
-  "-var=init_system=${INIT_SYSTEM}"
-  "-var=ubuntu_image_path=${BASE_IMAGE_PATH}"
-  "-var=vm_cpu=${DEPLOYMENT_VM_CPU}"
-  "-var=vm_memory_mb=${DEPLOYMENT_VM_MEMORY_MB}"
-  "-var=vm_disk_gb=${DEPLOYMENT_VM_DISK_GB}"
-  "-var=autostart=${DEPLOYMENT_LIBVIRT_AUTOSTART}"
-  "-var=libvirt_cpu_mode=${DEPLOYMENT_LIBVIRT_CPU_MODE}"
-  "-var=libvirt_firmware=${DEPLOYMENT_LIBVIRT_FIRMWARE}"
-  "-var=libvirt_machine=${DEPLOYMENT_LIBVIRT_MACHINE}"
-  "-var=libvirt_attach_cloudinit_as_scsi=${DEPLOYMENT_LIBVIRT_ATTACH_CLOUDINIT_AS_SCSI}"
-  "-var=libvirt_remove_ide_controller=${DEPLOYMENT_LIBVIRT_REMOVE_IDE_CONTROLLER}"
-)
+TF_VARS=()
+if [[ "${TARGET}" == "libvirt" ]]; then
+  TF_VARS=(
+    "-var=libvirt_uri=${DEPLOYMENT_LIBVIRT_URI}"
+    "-var=libvirt_pool=${DEPLOYMENT_LIBVIRT_POOL}"
+    "-var=libvirt_pool_path=${DEPLOYMENT_LIBVIRT_POOL_PATH}"
+    "-var=libvirt_network_name=${DEPLOYMENT_LIBVIRT_NETWORK}"
+    "-var=vm_name=${DEPLOYMENT_VM_NAME}"
+    "-var=hostname=${DEPLOYMENT_HOSTNAME}"
+    "-var=vm_ip=${DEPLOYMENT_VM_IP}"
+    "-var=vm_cidr_prefix=${DEPLOYMENT_VM_CIDR_PREFIX}"
+    "-var=vm_gateway=${DEPLOYMENT_VM_GATEWAY}"
+    "-var=dns_servers_csv=${DEPLOYMENT_DNS_SERVERS}"
+    "-var=vm_mac=${DEPLOYMENT_VM_MAC}"
+    "-var=guest_interface_name=${DEPLOYMENT_GUEST_INTERFACE}"
+    "-var=ssh_user=${DEPLOYMENT_SSH_USER}"
+    "-var=ssh_public_key=${SSH_PUBKEY_CONTENT}"
+    "-var=os_family=${TEMPLATE_OS_FAMILY}"
+    "-var=init_system=${INIT_SYSTEM}"
+    "-var=ubuntu_image_path=${BASE_IMAGE_PATH}"
+    "-var=vm_cpu=${DEPLOYMENT_VM_CPU}"
+    "-var=vm_memory_mb=${DEPLOYMENT_VM_MEMORY_MB}"
+    "-var=vm_disk_gb=${DEPLOYMENT_VM_DISK_GB}"
+    "-var=autostart=${DEPLOYMENT_LIBVIRT_AUTOSTART}"
+    "-var=libvirt_cpu_mode=${DEPLOYMENT_LIBVIRT_CPU_MODE}"
+    "-var=libvirt_firmware=${DEPLOYMENT_LIBVIRT_FIRMWARE}"
+    "-var=libvirt_machine=${DEPLOYMENT_LIBVIRT_MACHINE}"
+    "-var=libvirt_attach_cloudinit_as_scsi=${DEPLOYMENT_LIBVIRT_ATTACH_CLOUDINIT_AS_SCSI}"
+    "-var=libvirt_remove_ide_controller=${DEPLOYMENT_LIBVIRT_REMOVE_IDE_CONTROLLER}"
+  )
+else
+  TF_VARS=(
+    "-var=vm_name=${DEPLOYMENT_VM_NAME}"
+    "-var=hostname=${DEPLOYMENT_HOSTNAME}"
+    "-var=vm_ip=${DEPLOYMENT_VM_IP}"
+    "-var=vm_cidr_prefix=${DEPLOYMENT_VM_CIDR_PREFIX}"
+    "-var=vm_gateway=${DEPLOYMENT_VM_GATEWAY}"
+    "-var=dns_servers_csv=${DEPLOYMENT_DNS_SERVERS}"
+    "-var=ssh_user=${DEPLOYMENT_SSH_USER}"
+    "-var=ssh_public_key=${SSH_PUBKEY_CONTENT}"
+    "-var=vm_cpu=${DEPLOYMENT_VM_CPU}"
+    "-var=vm_memory_mb=${DEPLOYMENT_VM_MEMORY_MB}"
+    "-var=vm_disk_gb=${DEPLOYMENT_VM_DISK_GB}"
+    "-var=proxmox_api_url=${PROXMOX_API_URL:-${DEPLOYMENT_PROXMOX_API_URL:-}}"
+    "-var=proxmox_api_token=${PROXMOX_API_TOKEN:-${DEPLOYMENT_PROXMOX_API_TOKEN:-}}"
+    "-var=proxmox_tls_insecure=${PROXMOX_TLS_INSECURE:-${DEPLOYMENT_PROXMOX_TLS_INSECURE:-false}}"
+    "-var=proxmox_node_name=${PROXMOX_NODE_NAME:-${DEPLOYMENT_PROXMOX_NODE_NAME:-}}"
+    "-var=proxmox_template_vm_id=${PROXMOX_TEMPLATE_VM_ID:-${DEPLOYMENT_PROXMOX_TEMPLATE_VM_ID:-0}}"
+    "-var=proxmox_vm_id=${PROXMOX_VM_ID:-${DEPLOYMENT_PROXMOX_VM_ID:-0}}"
+    "-var=proxmox_clone_datastore_id=${PROXMOX_CLONE_DATASTORE:-${DEPLOYMENT_PROXMOX_CLONE_DATASTORE:-local-lvm}}"
+    "-var=proxmox_disk_datastore_id=${PROXMOX_DISK_DATASTORE:-${DEPLOYMENT_PROXMOX_DISK_DATASTORE:-local-lvm}}"
+    "-var=proxmox_cloudinit_datastore_id=${PROXMOX_CLOUDINIT_DATASTORE:-${DEPLOYMENT_PROXMOX_CLOUDINIT_DATASTORE:-local-lvm}}"
+    "-var=proxmox_network_bridge=${PROXMOX_NETWORK_BRIDGE:-${DEPLOYMENT_PROXMOX_NETWORK_BRIDGE:-vmbr0}}"
+  )
+fi
 
 case "${ACTION}" in
   plan)

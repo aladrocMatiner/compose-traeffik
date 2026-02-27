@@ -8,7 +8,8 @@ usage() {
   cat <<'EOF'
 Usage:
   scripts/host-bootstrap.sh [--host IP] [--user USER] [--port PORT] [--identity PATH]
-                           [--target libvirt] [--os <ubuntu|debian|debian13|gentoo>]
+                           [--target <libvirt|qemu|proxmox>]
+                           [--os <ubuntu|debian|debian12|debian13|gentoo|opensuse-leap|almalinux9|rockylinux9|fedora-cloud>]
                            [--init <openrc|systemd>] [--terraform-dir DIR]
 
 Defaults:
@@ -16,7 +17,7 @@ Defaults:
   - Uses current SSH agent / default SSH keys unless --identity is provided
 
 This script installs Docker Engine and Docker Compose plugin on a provisioned host.
-Current implementation supports Ubuntu and Debian 13 (Docker CE repo).
+Current implementation supports Ubuntu and Debian (12/13) over apt (Docker CE repo).
 EOF
 }
 
@@ -50,10 +51,16 @@ validate_target_os_init() {
     INIT_SYSTEM="${INIT_SYSTEM,,}"
   fi
 
-  [[ "${TARGET}" == "libvirt" ]] || die "Unsupported --target '${TARGET}'. Supported values: libvirt"
+  if [[ "${TARGET}" == "qemu" ]]; then
+    TARGET="libvirt"
+  fi
+  case "${TARGET}" in
+    libvirt|proxmox) ;;
+    *) die "Unsupported --target '${TARGET}'. Supported values: libvirt, qemu, proxmox" ;;
+  esac
   case "${OS_FAMILY}" in
-    ubuntu|debian|debian13|gentoo) ;;
-    *) die "Unsupported --os '${OS_FAMILY}'. Supported values: ubuntu, debian, debian13, gentoo" ;;
+    ubuntu|debian|debian12|debian13|gentoo|opensuse-leap|almalinux9|rockylinux9|fedora-cloud) ;;
+    *) die "Unsupported --os '${OS_FAMILY}'. Supported values: ubuntu, debian, debian12, debian13, gentoo, opensuse-leap, almalinux9, rockylinux9, fedora-cloud" ;;
   esac
 
   if [[ "${OS_FAMILY}" == "debian" ]]; then
@@ -73,6 +80,15 @@ validate_target_os_init() {
   fi
 }
 
+terraform_dir_for_target() {
+  local t="$1"
+  case "${t}" in
+    libvirt) printf '%s\n' "${REPO_ROOT}/infra/terraform/targets/libvirt" ;;
+    proxmox) printf '%s\n' "${REPO_ROOT}/infra/terraform/targets/proxmox" ;;
+    *) die "Unsupported target for terraform resolution: ${t}" ;;
+  esac
+}
+
 resolve_from_terraform() {
   local tf_dir="$1"
   check_cmd terraform
@@ -90,7 +106,7 @@ IDENTITY_PATH="${DEPLOYMENT_SSH_PRIVATE_KEY_PATH:-}"
 TARGET="${DEPLOYMENT_TARGET:-libvirt}"
 OS_FAMILY="${DEPLOYMENT_OS:-ubuntu}"
 INIT_SYSTEM="${DEPLOYMENT_INIT:-}"
-TF_DIR="${REPO_ROOT}/infra/terraform/targets/libvirt"
+TF_DIR=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -145,11 +161,15 @@ while [[ $# -gt 0 ]]; do
 done
 
 validate_target_os_init
-if [[ "${OS_FAMILY}" != "ubuntu" && "${OS_FAMILY}" != "debian13" ]]; then
+if [[ -z "${TF_DIR:-}" ]]; then
+  TF_DIR="$(terraform_dir_for_target "${TARGET}")"
+fi
+
+if [[ "${OS_FAMILY}" != "ubuntu" && "${OS_FAMILY}" != "debian13" && "${OS_FAMILY}" != "debian12" ]]; then
   if [[ "${OS_FAMILY}" == "gentoo" ]]; then
-    die "Docker bootstrap is not implemented for --os gentoo --init ${INIT_SYSTEM} in v1 (current implementation: ubuntu/debian13 only)"
+    die "Docker bootstrap is not implemented for --os gentoo --init ${INIT_SYSTEM} in v1 (current implementation: ubuntu/debian12/debian13 only)"
   fi
-  die "Docker bootstrap is not implemented for --os ${OS_FAMILY} in v1 (current implementation: ubuntu/debian13 only)"
+  die "Docker bootstrap is not implemented for --os ${OS_FAMILY} in v1 (current implementation: ubuntu/debian12/debian13 only)"
 fi
 
 check_cmd ssh

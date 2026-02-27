@@ -17,6 +17,14 @@ users:
     sudo: ALL=(ALL) NOPASSWD:ALL
     groups: [sudo]
 %{ endif ~}
+%{ if os_family == "opensuse" ~}
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    groups: [wheel]
+%{ endif ~}
+%{ if os_family == "rhel" || os_family == "fedora" ~}
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    groups: [wheel]
+%{ endif ~}
 %{ if os_family == "gentoo" ~}
     sudo: ALL=(ALL) NOPASSWD:ALL
     groups: [wheel]
@@ -41,6 +49,21 @@ packages:
 
 runcmd:
   - [ sh, -c, "systemctl enable --now ssh || systemctl enable --now sshd || true" ]
+  - [ sh, -c, "systemctl enable --now qemu-guest-agent || true" ]
+%{ endif ~}
+
+%{ if os_family == "opensuse" || os_family == "rhel" || os_family == "fedora" ~}
+package_update: true
+package_upgrade: false
+packages:
+  - openssh-server
+  - qemu-guest-agent
+  - python3
+  - curl
+  - ca-certificates
+
+runcmd:
+  - [ sh, -c, "systemctl enable --now sshd || systemctl enable --now ssh || true" ]
   - [ sh, -c, "systemctl enable --now qemu-guest-agent || true" ]
 %{ endif ~}
 
