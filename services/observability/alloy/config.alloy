@@ -12,7 +12,7 @@ discovery.relabel "logs_targets" {
 
   rule {
     source_labels = ["__meta_docker_container_name"]
-    regex         = "/(traefik|ctfd.*)"
+    regex         = "/(traefik)"
     action        = "keep"
   }
 

@@ -13,7 +13,7 @@ if COMPOSE_PROFILES=observability TRAEFIK_DASHBOARD=false GRAFANA_HOSTNAME=grafa
     log_error "validate-env accepted observability profile with missing GRAFANA_ADMIN_PASSWORD."
 fi
 
-log_info "Checking observability guardrails pass without ctfd (warn-only)..."
+log_info "Checking observability guardrails pass with observability-only settings..."
 if ! output=$(COMPOSE_PROFILES=observability TRAEFIK_DASHBOARD=false \
     GRAFANA_HOSTNAME=grafana GRAFANA_ADMIN_PASSWORD=secret123 \
     PROMETHEUS_RETENTION_TIME=7d LOKI_RETENTION_PERIOD=168h TEMPO_RETENTION_PERIOD=168h PYROSCOPE_RETENTION_PERIOD=168h \
@@ -21,7 +21,7 @@ if ! output=$(COMPOSE_PROFILES=observability TRAEFIK_DASHBOARD=false \
     log_error "validate-env rejected observability-only mode."
 fi
 
-echo "$output" | grep -qi 'ctfd' || log_error "Expected warn-only guidance about missing ctfd profile."
+[ -z "$output" ] || log_error "validate-env should not emit unrelated warnings for observability-only mode."
 
 log_info "Checking observability guardrails reject invalid k6 URL..."
 if COMPOSE_PROFILES=observability TRAEFIK_DASHBOARD=false \

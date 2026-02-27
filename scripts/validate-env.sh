@@ -255,10 +255,6 @@ if is_profile_enabled "observability"; then
     validate_duration_token "${LOKI_RETENTION_PERIOD:-168h}" "LOKI_RETENTION_PERIOD"
     validate_duration_token "${TEMPO_RETENTION_PERIOD:-168h}" "TEMPO_RETENTION_PERIOD"
     validate_duration_token "${PYROSCOPE_RETENTION_PERIOD:-168h}" "PYROSCOPE_RETENTION_PERIOD"
-
-    if ! is_profile_enabled "ctfd"; then
-        echo "WARN: observability profile enabled without ctfd profile. Traefik telemetry will work, but CTFd dashboards/log queries may be empty." >&2
-    fi
 fi
 
 if [ -n "${K6_TARGET_URL:-}" ] || [ -n "${K6_ITERATIONS:-}" ] || [ -n "${K6_SLEEP_SECONDS:-}" ]; then

@@ -14,7 +14,7 @@ This optional module provides a reusable observability stack for Traefik-routed 
 - Alloy (collection/forwarding)
 - k6 (on-demand synthetic checks)
 
-Traefik telemetry (Prometheus metrics + JSON access logs) is the baseline. CTFd log dashboards/queries are included as the initial app-specific pack.
+Traefik telemetry (Prometheus metrics + JSON access logs) is the baseline.
 
 <a id="location"></a>
 ## Where it lives
@@ -101,7 +101,6 @@ Generate/persist Grafana secrets with `make observability-bootstrap`.
 - If Traefik metrics are empty, verify:
   - `services/traefik/traefik.yml` has `metrics.prometheus`
   - `prometheus` is attached to `proxy`
-- If CTFd panels are empty, this is expected when `ctfd` is not running; Traefik-only mode is supported.
 - If traces are empty, verify clients send OTLP to `alloy:4317` (gRPC) or `alloy:4318` (HTTP).
 - If profiles are empty, verify clients send profiles to `alloy:9999` (Pyroscope HTTP ingest).
 
@@ -114,4 +113,3 @@ Hosts mapping note:
 
 - [Root README](../../README.md)
 - [Traefik](../traefik/README.md)
-- [CTFd](../ctfd/README.md)

@@ -14,7 +14,7 @@ Modulo opcional de observabilidad reusable para despliegues detras de Traefik:
 - Alloy (coleccion/forwarding)
 - k6 (synthetic checks on-demand)
 
-La base reusable es la telemetria de Traefik (metricas + access logs JSON). Se incluye un pack inicial para logs de CTFd.
+La base reusable es la telemetria de Traefik (metricas + access logs JSON).
 
 <a id="location"></a>
 ## Donde vive
@@ -101,7 +101,6 @@ Genera/persiste secretos de Grafana con `make observability-bootstrap`.
 - Si faltan metricas de Traefik, verifica:
   - `services/traefik/traefik.yml` con `metrics.prometheus`
   - `prometheus` unido a `proxy`
-- Si paneles CTFd salen vacios, es normal si `ctfd` no esta corriendo; Traefik-only mode esta soportado.
 - Si trazas salen vacias, verifica que clientes envian OTLP a `alloy:4317` (gRPC) o `alloy:4318` (HTTP).
 - Si perfiles salen vacios, verifica que clientes envian perfiles a `alloy:9999` (Pyroscope HTTP ingest).
 
@@ -114,4 +113,3 @@ Nota hosts:
 
 - [Root README](../../README.es.md)
 - [Traefik](../traefik/README.es.md)
-- [CTFd](../ctfd/README.es.md)

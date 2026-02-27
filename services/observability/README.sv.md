@@ -14,7 +14,7 @@ Valfri observability-modul som kan ateranvandas for deployment bakom Traefik:
 - Alloy (insamling/forwarding)
 - k6 (on-demand synthetic checks)
 
-Baslinjen ar Traefik-telemetri (Prometheus-metrics + JSON access logs). CTFd-loggar ar inkluderade som forsta app-pack.
+Baslinjen ar Traefik-telemetri (Prometheus-metrics + JSON access logs).
 
 <a id="location"></a>
 ## Var den finns
@@ -101,7 +101,6 @@ Generera/persistera Grafana-hemligheter med `make observability-bootstrap`.
 - Om Traefik-metrics saknas, verifiera:
   - `services/traefik/traefik.yml` har `metrics.prometheus`
   - `prometheus` ar ansluten till `proxy`
-- Tomma CTFd-paneler ar normalt om `ctfd` inte kor; Traefik-only mode ar stott.
 - Om traces ar tomma, verifiera att klienter skickar OTLP till `alloy:4317` (gRPC) eller `alloy:4318` (HTTP).
 - Om profiler ar tomma, verifiera att klienter skickar profiler till `alloy:9999` (Pyroscope HTTP ingest).
 
@@ -114,4 +113,3 @@ Hosts-not:
 
 - [Root README](../../README.sv.md)
 - [Traefik](../traefik/README.sv.md)
-- [CTFd](../ctfd/README.sv.md)
