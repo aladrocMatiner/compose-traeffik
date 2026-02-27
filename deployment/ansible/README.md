@@ -6,6 +6,7 @@ This directory contains baseline multi-OS Ansible roles for deployment hosts.
 
 - `system_update`: refresh package metadata and apply system updates.
 - `docker_git`: install Docker and Git and ensure Docker service state.
+- `system_bootstrap` playbook: runs `system_update` first and then `docker_git`.
 
 Supported selectors:
 
@@ -33,6 +34,7 @@ Manual syntax checks:
 ```bash
 ansible-playbook -i deployment/ansible/inventory/localhost.ini deployment/ansible/playbooks/system_update.yml --syntax-check
 ansible-playbook -i deployment/ansible/inventory/localhost.ini deployment/ansible/playbooks/docker_git.yml --syntax-check
+ansible-playbook -i deployment/ansible/inventory/localhost.ini deployment/ansible/playbooks/system_bootstrap.yml --syntax-check
 ```
 
 Example execution:
@@ -40,6 +42,7 @@ Example execution:
 ```bash
 ansible-playbook -i deployment/ansible/inventory/localhost.ini deployment/ansible/playbooks/system_update.yml --limit local
 ansible-playbook -i deployment/ansible/inventory/localhost.ini deployment/ansible/playbooks/docker_git.yml --limit local
+ansible-playbook -i deployment/ansible/inventory/localhost.ini deployment/ansible/playbooks/system_bootstrap.yml --limit local
 ```
 
 ## Role variables
@@ -62,3 +65,4 @@ ansible-playbook -i deployment/ansible/inventory/localhost.ini deployment/ansibl
 - `docker_git` uses distro package names from `docker_git_packages_by_selector`.
 - For environments where Docker package naming differs, override `docker_git_packages_by_selector` at playbook or inventory level.
 - `system_update` handles Gentoo updates through `emerge` commands and skips those commands in `check_mode`.
+- `system_bootstrap` is the recommended entrypoint for initial host baseline because it enforces the role order.

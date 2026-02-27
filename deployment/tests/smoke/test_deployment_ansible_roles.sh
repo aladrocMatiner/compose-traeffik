@@ -20,6 +20,7 @@ SYSTEM_UPDATE_DEFAULTS="$ANSIBLE_DIR/roles/system_update/defaults/main.yml"
 DOCKER_GIT_DEFAULTS="$ANSIBLE_DIR/roles/docker_git/defaults/main.yml"
 SYSTEM_UPDATE_PLAYBOOK="$ANSIBLE_DIR/playbooks/system_update.yml"
 DOCKER_GIT_PLAYBOOK="$ANSIBLE_DIR/playbooks/docker_git.yml"
+SYSTEM_BOOTSTRAP_PLAYBOOK="$ANSIBLE_DIR/playbooks/system_bootstrap.yml"
 LOCAL_INVENTORY="$ANSIBLE_DIR/inventory/localhost.ini"
 
 check_command "ansible-playbook"
@@ -32,6 +33,7 @@ for path in \
     "$DOCKER_GIT_DEFAULTS" \
     "$SYSTEM_UPDATE_PLAYBOOK" \
     "$DOCKER_GIT_PLAYBOOK" \
+    "$SYSTEM_BOOTSTRAP_PLAYBOOK" \
     "$LOCAL_INVENTORY"; do
     if [ ! -f "$path" ]; then
         log_error "Required Ansible artifact not found: ${path}"
@@ -45,11 +47,15 @@ ansible-playbook -i "$LOCAL_INVENTORY" "$SYSTEM_UPDATE_PLAYBOOK" --syntax-check 
 ANSIBLE_CONFIG="$ANSIBLE_DIR/ansible.cfg" \
 ansible-playbook -i "$LOCAL_INVENTORY" "$DOCKER_GIT_PLAYBOOK" --syntax-check >/dev/null
 
+ANSIBLE_CONFIG="$ANSIBLE_DIR/ansible.cfg" \
+ansible-playbook -i "$LOCAL_INVENTORY" "$SYSTEM_BOOTSTRAP_PLAYBOOK" --syntax-check >/dev/null
+
 # Validate lint for both roles and playbooks.
 ANSIBLE_CONFIG="$ANSIBLE_DIR/ansible.cfg" \
 ansible-lint -p \
     "$SYSTEM_UPDATE_PLAYBOOK" \
     "$DOCKER_GIT_PLAYBOOK" \
+    "$SYSTEM_BOOTSTRAP_PLAYBOOK" \
     "$ANSIBLE_DIR/roles/system_update" \
     "$ANSIBLE_DIR/roles/docker_git" >/dev/null
 
@@ -69,5 +75,19 @@ for os_family in Debian RedHat Suse Gentoo; do
         log_error "system_update task flow missing os family branch: ${os_family}"
     fi
 done
+
+# Validate composed bootstrap order.
+if ! grep -Eq "^[[:space:]]*-[[:space:]]*role:[[:space:]]*system_update$" "$SYSTEM_BOOTSTRAP_PLAYBOOK"; then
+    log_error "system_bootstrap playbook missing system_update role."
+fi
+if ! grep -Eq "^[[:space:]]*-[[:space:]]*role:[[:space:]]*docker_git$" "$SYSTEM_BOOTSTRAP_PLAYBOOK"; then
+    log_error "system_bootstrap playbook missing docker_git role."
+fi
+
+system_update_line="$(grep -n -E "^[[:space:]]*-[[:space:]]*role:[[:space:]]*system_update$" "$SYSTEM_BOOTSTRAP_PLAYBOOK" | head -n1 | cut -d: -f1)"
+docker_git_line="$(grep -n -E "^[[:space:]]*-[[:space:]]*role:[[:space:]]*docker_git$" "$SYSTEM_BOOTSTRAP_PLAYBOOK" | head -n1 | cut -d: -f1)"
+if [ "$system_update_line" -ge "$docker_git_line" ]; then
+    log_error "system_bootstrap role order must be system_update then docker_git."
+fi
 
 log_success "Deployment Ansible roles smoke test passed."

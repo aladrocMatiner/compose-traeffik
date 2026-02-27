@@ -370,12 +370,14 @@ deployment-ansible-syntax:
 	@echo "Running deployment Ansible syntax checks..."
 	@ANSIBLE_CONFIG="$(DEPLOYMENT_ANSIBLE_DIR)/ansible.cfg" ansible-playbook -i "$(DEPLOYMENT_ANSIBLE_DIR)/inventory/localhost.ini" "$(DEPLOYMENT_ANSIBLE_DIR)/playbooks/system_update.yml" --syntax-check
 	@ANSIBLE_CONFIG="$(DEPLOYMENT_ANSIBLE_DIR)/ansible.cfg" ansible-playbook -i "$(DEPLOYMENT_ANSIBLE_DIR)/inventory/localhost.ini" "$(DEPLOYMENT_ANSIBLE_DIR)/playbooks/docker_git.yml" --syntax-check
+	@ANSIBLE_CONFIG="$(DEPLOYMENT_ANSIBLE_DIR)/ansible.cfg" ansible-playbook -i "$(DEPLOYMENT_ANSIBLE_DIR)/inventory/localhost.ini" "$(DEPLOYMENT_ANSIBLE_DIR)/playbooks/system_bootstrap.yml" --syntax-check
 
 deployment-ansible-lint:
 	@echo "Running deployment Ansible lint checks..."
 	@ANSIBLE_CONFIG="$(DEPLOYMENT_ANSIBLE_DIR)/ansible.cfg" ansible-lint -p \
 		"$(DEPLOYMENT_ANSIBLE_DIR)/playbooks/system_update.yml" \
 		"$(DEPLOYMENT_ANSIBLE_DIR)/playbooks/docker_git.yml" \
+		"$(DEPLOYMENT_ANSIBLE_DIR)/playbooks/system_bootstrap.yml" \
 		"$(DEPLOYMENT_ANSIBLE_DIR)/roles/system_update" \
 		"$(DEPLOYMENT_ANSIBLE_DIR)/roles/docker_git"
 
