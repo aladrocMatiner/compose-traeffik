@@ -53,11 +53,14 @@ This directory contains smoke tests that verify Traefik readiness, routing, TLS,
 | `tests/smoke/test_ctfd_make_targets.sh` | Validate CTFd Make target wiring and compose wrapper usage. | `Makefile`, `awk`, `grep`. | `ctfd-*` targets exist and lifecycle targets use `scripts/compose.sh --profile ctfd`. |
 | `tests/smoke/test_ctfd_bootstrap_env.sh` | Validate `ctfd-bootstrap` secret generation and idempotency. | `.env.example`, `scripts/ctfd-bootstrap.sh`, `mktemp`. | Missing CTFd secrets are generated and preserved on rerun. |
 | `tests/smoke/test_observability_service_config.sh` | Validate observability compose wiring, exposure rules, and Prometheus internal reachability to Traefik. | `services/observability/compose.yml`, `grep`, `awk`. | Grafana is routed, Prometheus/Loki are internal-only, Prometheus joins `proxy`, Alloy mounts are read-only. |
+| `tests/smoke/test_observability_advanced_service_config.sh` | Validate advanced observability services (`tempo`, `pyroscope`, `k6`) and internal-only exposure defaults. | `services/observability/compose.yml`, `grep`, `awk`. | Tempo/Pyroscope are present, internal-only, and retention/synthetic env wiring exists. |
+| `tests/smoke/test_observability_alloy_signal_pipelines.sh` | Validate Alloy multi-signal configuration for logs, traces, and profiles. | `services/observability/alloy/config.alloy`, `grep`. | Loki log pipeline and OTLP-to-Tempo/Pyroscope pipelines are present. |
 | `tests/smoke/test_observability_traefik_config.sh` | Validate Traefik metrics + JSON access logs configuration and sensitive-header redaction settings. | `services/traefik/traefik.yml`, `grep`. | Metrics and access log settings exist with header drops for auth/cookies. |
 | `tests/smoke/test_observability_guardrails.sh` | Validate observability preflight guardrails and warn-only behavior without CTFd. | `scripts/validate-env.sh`. | Missing Grafana password fails; observability-only mode passes with warning. |
 | `tests/smoke/test_observability_make_targets.sh` | Validate observability Make target wiring and compose wrapper usage. | `Makefile`, `awk`, `grep`. | `observability-*` targets exist and lifecycle targets use `scripts/compose.sh --profile observability`. |
 | `tests/smoke/test_observability_bootstrap_env.sh` | Validate `observability-bootstrap` secret generation and idempotency. | `.env.example`, `scripts/observability-bootstrap.sh`, `mktemp`. | Missing Grafana secrets are generated and preserved on rerun. |
-| `tests/smoke/test_observability_grafana_provisioning.sh` | Validate Grafana datasources and dashboard provisioning assets for core + CTFd pack. | Grafana provisioning files and dashboard JSON. | Prometheus/Loki datasources and dashboard paths/queries are present. |
+| `tests/smoke/test_observability_grafana_provisioning.sh` | Validate Grafana datasources and dashboard provisioning assets for core + CTFd + tracing/profiling packs. | Grafana provisioning files and dashboard JSON. | Prometheus/Loki/Tempo/Pyroscope datasources and dashboard paths/queries are present. |
+| `tests/smoke/test_observability_k6_wiring.sh` | Validate k6 target wiring and script availability for synthetic checks. | `Makefile`, `services/observability/compose.yml`, `services/observability/k6/smoke.js`. | `observability-k6` exists and runs `k6` via compose profile wiring. |
 | `tests/smoke/test_observability_app_pack_tolerance.sh` | Validate app-specific observability assets do not create a hard dependency on CTFd being enabled. | Alloy config, `scripts/validate-env.sh`. | Discovery-based CTFd log targeting is present and observability-only preflight still passes. |
 
 ## Configuration
@@ -71,6 +74,7 @@ Smoke tests use environment variables loaded from `.env` via `scripts/healthchec
 - `BIND_SECURITY_TEST_ADDRESS` (optional loopback override for runtime security smoke)
 - `CTFD_*` (used by CTFd guardrail/bootstrap tests when provided inline)
 - `GRAFANA_*` (used by observability guardrail/bootstrap tests when provided inline)
+- `K6_*` (used by observability synthetic-check and validation tests when provided inline)
 
 Ensure `.env` exists (prefer `make bootstrap`) before running tests. Optional profiles
 are enabled by default via `COMPOSE_PROFILES` in `.env`; edit it if you want a smaller stack.

@@ -10,7 +10,7 @@ SCRIPT_DIR=$(dirname "$0")
 MAKEFILE="$SCRIPT_DIR/../../Makefile"
 [ -f "$MAKEFILE" ] || log_error "Makefile not found."
 
-for target in observability-bootstrap observability-up observability-down observability-restart observability-logs observability-status; do
+for target in observability-bootstrap observability-up observability-down observability-restart observability-logs observability-status observability-k6; do
     grep -q "^${target}:" "$MAKEFILE" || log_error "Missing Make target: ${target}"
 done
 
@@ -27,6 +27,17 @@ for target in observability-up observability-down observability-logs observabili
         log_error "Target ${target} is not wired through scripts/compose.sh with profile observability."
     fi
 done
+
+if ! awk '
+    $0 ~ "^observability-k6:" { in_target=1; next }
+    in_target && $0 ~ /^[a-zA-Z0-9_.-]+:/ { exit }
+    in_target && $0 ~ /run --rm k6/ &&
+      $0 ~ /--profile observability/ &&
+      ($0 ~ /scripts\/compose\.sh/ || $0 ~ /\$\(SCRIPTS_DIR\)\/compose\.sh/) { found=1 }
+    END { exit(found ? 0 : 1) }
+' "$MAKEFILE"; then
+    log_error "Target observability-k6 is not wired through scripts/compose.sh with profile observability."
+fi
 
 grep -q 'services/observability/compose.yml' "$MAKEFILE" || log_error "Observability compose fragment missing from COMPOSE_FILES"
 

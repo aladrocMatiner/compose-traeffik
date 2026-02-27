@@ -15,7 +15,7 @@ Prerequisites:
 Preflight validation:
 - `scripts/validate-env.sh` runs before `make up` and any `scripts/compose.sh` call.
 - It enforces safe defaults for admin UIs (Traefik dashboard) and validates profile syntax.
-- It also validates module-specific requirements for `ctfd` and `observability` when those profiles are enabled.
+- It also validates module-specific requirements for `ctfd` and `observability` when those profiles are enabled, including observability retention and `k6` synthetic-check inputs.
 - Create htpasswd files under `services/traefik/auth/`, for example:
   - `htpasswd -nbB admin 'change-me' > services/traefik/auth/traefik-dashboard.htpasswd`
 - Set the container paths in `.env`:
@@ -84,6 +84,7 @@ make observability-bootstrap
 make observability-up
 make observability-status
 make observability-logs
+make observability-k6
 ```
 
 ### Certificates

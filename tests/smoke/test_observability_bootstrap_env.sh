@@ -19,6 +19,11 @@ for key in GRAFANA_ADMIN_PASSWORD GRAFANA_SECRET_KEY; do
     [ -n "$value" ] || log_error "${key} was not generated."
 done
 
+for key in TEMPO_IMAGE PYROSCOPE_IMAGE K6_IMAGE TEMPO_RETENTION_PERIOD PYROSCOPE_RETENTION_PERIOD; do
+    value=$(grep -E "^${key}=" "$ENV_FILE" | tail -n1 | cut -d= -f2-)
+    [ -n "$value" ] || log_error "${key} was not defaulted."
+done
+
 before=$(grep -E '^GRAFANA_ADMIN_PASSWORD=' "$ENV_FILE" | tail -n1)
 "$SCRIPT_DIR/../../scripts/observability-bootstrap.sh" --env-file "$ENV_FILE" >/dev/null
 after=$(grep -E '^GRAFANA_ADMIN_PASSWORD=' "$ENV_FILE" | tail -n1)

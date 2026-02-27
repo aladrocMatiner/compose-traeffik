@@ -9,7 +9,10 @@ Modulo opcional de observabilidad reusable para despliegues detras de Traefik:
 - Prometheus (metricas)
 - Grafana (UI)
 - Loki (logs)
-- Alloy (coleccion de logs)
+- Tempo (trazas)
+- Pyroscope (profiles)
+- Alloy (coleccion/forwarding)
+- k6 (synthetic checks on-demand)
 
 La base reusable es la telemetria de Traefik (metricas + access logs JSON). Se incluye un pack inicial para logs de CTFd.
 
@@ -19,7 +22,9 @@ La base reusable es la telemetria de Traefik (metricas + access logs JSON). Se i
 - `services/observability/compose.yml`
 - `services/observability/prometheus/`
 - `services/observability/loki/`
+- `services/observability/tempo/`
 - `services/observability/alloy/`
+- `services/observability/k6/`
 - `services/observability/grafana/`
 
 <a id="run"></a>
@@ -29,6 +34,7 @@ La base reusable es la telemetria de Traefik (metricas + access logs JSON). Se i
 make observability-bootstrap
 make observability-up
 make observability-status
+make observability-k6
 ```
 
 URL de Grafana (via Traefik): `https://grafana.${DEV_DOMAIN}`
@@ -42,11 +48,17 @@ Variables relevantes en `.env.example`:
 - `PROMETHEUS_IMAGE`
 - `LOKI_IMAGE`
 - `ALLOY_IMAGE`
+- `TEMPO_IMAGE`
+- `PYROSCOPE_IMAGE`
+- `K6_IMAGE`
 - `GRAFANA_ADMIN_USER`
 - `GRAFANA_ADMIN_PASSWORD`
 - `GRAFANA_SECRET_KEY`
 - `PROMETHEUS_RETENTION_TIME`
 - `LOKI_RETENTION_PERIOD`
+- `TEMPO_RETENTION_PERIOD`
+- `PYROSCOPE_RETENTION_PERIOD`
+- `K6_TARGET_URL`
 
 Genera/persiste secretos de Grafana con `make observability-bootstrap`.
 
@@ -58,6 +70,8 @@ Genera/persiste secretos de Grafana con `make observability-bootstrap`.
 - Internos por defecto:
   - Prometheus
   - Loki
+  - Tempo
+  - Pyroscope
 - Redes:
   - `proxy` (Grafana y Prometheus para scraping interno de Traefik)
   - `observability-internal`
@@ -65,14 +79,18 @@ Genera/persiste secretos de Grafana con `make observability-bootstrap`.
   - `grafana-data`
   - `prometheus-data`
   - `loki-data`
+  - `tempo-data`
+  - `pyroscope-data`
   - `alloy-data`
 
 <a id="security"></a>
 ## Notas de seguridad
 
-- Prometheus y Loki no se exponen publicamente por defecto.
+- Prometheus, Loki, Tempo y Pyroscope no se exponen publicamente por defecto.
 - Las metricas de Traefik se scrapean internamente (Prometheus en `proxy` solo para reachability interna).
 - Los access logs de Traefik van en JSON con headers sensibles descartados por defecto.
+- Alloy envia trazas OTLP a Tempo y mantiene la coleccion de logs Docker hacia Loki.
+- Alloy recibe perfiles por `pyroscope.receive_http` en el puerto `9999` y los envia a Pyroscope.
 - Alloy necesita lectura de metadata/logs Docker; mounts en read-only cuando es posible.
 
 <a id="troubleshooting"></a>
@@ -84,6 +102,8 @@ Genera/persiste secretos de Grafana con `make observability-bootstrap`.
   - `services/traefik/traefik.yml` con `metrics.prometheus`
   - `prometheus` unido a `proxy`
 - Si paneles CTFd salen vacios, es normal si `ctfd` no esta corriendo; Traefik-only mode esta soportado.
+- Si trazas salen vacias, verifica que clientes envian OTLP a `alloy:4317` (gRPC) o `alloy:4318` (HTTP).
+- Si perfiles salen vacios, verifica que clientes envian perfiles a `alloy:9999` (Pyroscope HTTP ingest).
 
 Nota hosts:
 - Si gestionas `ENDPOINTS` manualmente, anyade `grafana` antes de `make hosts-apply`.

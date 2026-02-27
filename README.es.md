@@ -76,7 +76,7 @@ Guias de TLS:
 - **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (perfil `stepca`; habilitado por defecto)
 - **CTFd**: `https://ctfd.${DEV_DOMAIN}` (perfil `ctfd`; opcional)
 - **Grafana**: `https://grafana.${DEV_DOMAIN}` (perfil `observability`; opcional)
-- **Prometheus/Loki**: internos por defecto (perfil `observability`; sin endpoint publico)
+- **Prometheus/Loki/Tempo/Pyroscope**: internos por defecto (perfil `observability`; sin endpoint publico)
 
 <a id="services"></a>
 ## Servicios
@@ -87,7 +87,7 @@ Guias de TLS:
 - [Certbot](services/certbot/README.es.md) - perfil opcional `le`.
 - [Step-CA](services/step-ca/README.es.md) - perfil opcional `stepca`.
 - [CTFd](services/ctfd/README.es.md) - perfil opcional `ctfd` (plataforma CTF + DB + Redis).
-- [Observability](services/observability/README.es.md) - perfil opcional `observability` (Grafana/Prometheus/Loki/Alloy).
+- [Observability](services/observability/README.es.md) - perfil opcional `observability` (Grafana/Prometheus/Loki/Tempo/Pyroscope/Alloy + synthetic checks con k6).
 
 <a id="docs-map"></a>
 ## Mapa de documentos
@@ -110,7 +110,7 @@ Comandos comunes:
 - `make stepca-up`, `make stepca-bootstrap`, `make stepca-trust-install`
 - `make bind-up`, `make bind-status`, `make bind-restart`, `make bind-provision`
 - `make ctfd-bootstrap`, `make ctfd-up`, `make ctfd-status`
-- `make observability-bootstrap`, `make observability-up`, `make observability-status`
+- `make observability-bootstrap`, `make observability-up`, `make observability-status`, `make observability-k6`
 - `make hosts-generate`, `make hosts-apply`, `make hosts-status`
 
 Archivos auth:
