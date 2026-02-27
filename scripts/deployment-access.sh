@@ -13,7 +13,7 @@ Usage:
 Notes:
   - target=qemu maps to local libvirt.
   - target=proxmox is currently a placeholder and returns a clear unsupported message.
-  - For backward-compatible Terraform-state SSH, use: make deployment-ssh
+  - For Terraform-state SSH (including proxmox today), use: make deployment-ssh [target=proxmox]
 USAGE
 }
 

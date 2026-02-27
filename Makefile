@@ -328,7 +328,7 @@ deployment-output:
 	@"$(SCRIPTS_DIR)/infra-provision.sh" output --target "$(DEPLOYMENT_TARGET)" --os "$(DEPLOYMENT_OS)" $(DEPLOYMENT_INIT_ARG)
 
 deployment-ssh:
-	@if [[ -n "$(DEPLOYMENT_NAME)" || "$(DEPLOYMENT_TARGET)" == "qemu" || "$(DEPLOYMENT_TARGET)" == "proxmox" ]]; then \
+	@if [[ -n "$(DEPLOYMENT_NAME)" || "$(DEPLOYMENT_TARGET)" == "qemu" ]]; then \
 		"$(SCRIPTS_DIR)/deployment-access.sh" ssh --target "$(DEPLOYMENT_TARGET)" --name "$(DEPLOYMENT_NAME)"; \
 	else \
 		"$(SCRIPTS_DIR)/infra-provision.sh" ssh --target "$(DEPLOYMENT_TARGET)" --os "$(DEPLOYMENT_OS)" $(DEPLOYMENT_INIT_ARG); \
