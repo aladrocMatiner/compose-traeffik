@@ -1,0 +1,48 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "content": "Use Explore with datasource **Tempo** to inspect traces.\\n\\nCurrent stack exposes OTLP via Alloy (`4317`/`4318`) and forwards to Tempo.",
+        "mode": "markdown"
+      },
+      "pluginVersion": "12.3.2",
+      "title": "Tempo Usage",
+      "type": "text"
+    }
+  ],
+  "schemaVersion": 41,
+  "style": "dark",
+  "tags": [
+    "tempo",
+    "tracing",
+    "core"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Tracing - Tempo Overview",
+  "uid": "tempo-traces-overview",
+  "version": 1,
+  "weekStart": ""
+}

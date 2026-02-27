@@ -23,7 +23,7 @@ SHELL := /bin/bash # Ensure bash is used for shell commands
         hosts-generate hosts-apply hosts-remove hosts-status \
         bind-up bind-down bind-restart bind-logs bind-status bind-provision bind-provision-dry \
         ctfd-bootstrap ctfd-up ctfd-down ctfd-restart ctfd-logs ctfd-status \
-        observability-bootstrap observability-up observability-down observability-restart observability-logs observability-status
+        observability-bootstrap observability-up observability-down observability-restart observability-logs observability-status observability-k6
 
 # Include .env for environment variables if it exists.
 # This makes variables in .env available to the Makefile.
@@ -110,11 +110,14 @@ CTFD_SMOKE_TESTS := \
 
 OBSERVABILITY_SMOKE_TESTS := \
 	test_observability_service_config.sh \
+	test_observability_advanced_service_config.sh \
+	test_observability_alloy_signal_pipelines.sh \
 	test_observability_traefik_config.sh \
 	test_observability_guardrails.sh \
 	test_observability_make_targets.sh \
 	test_observability_bootstrap_env.sh \
 	test_observability_grafana_provisioning.sh \
+	test_observability_k6_wiring.sh \
 	test_observability_app_pack_tolerance.sh
 
 # Start the stack
@@ -347,22 +350,27 @@ observability-bootstrap:
 
 observability-up:
 	@echo "Starting observability module (profile: observability)..."
-	COMPOSE_PROFILES=observability "$(SCRIPTS_DIR)/compose.sh" --profile observability $(COMPOSE_OPTS) up -d grafana prometheus loki alloy
+	COMPOSE_PROFILES=observability "$(SCRIPTS_DIR)/compose.sh" --profile observability $(COMPOSE_OPTS) up -d grafana prometheus loki tempo pyroscope alloy
 
 observability-down:
 	@echo "Stopping observability module..."
-	COMPOSE_PROFILES=observability "$(SCRIPTS_DIR)/compose.sh" --profile observability $(COMPOSE_OPTS) stop grafana prometheus loki alloy || true
-	COMPOSE_PROFILES=observability "$(SCRIPTS_DIR)/compose.sh" --profile observability $(COMPOSE_OPTS) rm -f grafana prometheus loki alloy || true
+	COMPOSE_PROFILES=observability "$(SCRIPTS_DIR)/compose.sh" --profile observability $(COMPOSE_OPTS) stop grafana prometheus loki tempo pyroscope alloy || true
+	COMPOSE_PROFILES=observability "$(SCRIPTS_DIR)/compose.sh" --profile observability $(COMPOSE_OPTS) rm -f grafana prometheus loki tempo pyroscope alloy || true
 
 observability-restart: observability-down observability-up
 
 observability-logs:
 	@echo "Showing observability module logs..."
-	COMPOSE_PROFILES=observability "$(SCRIPTS_DIR)/compose.sh" --profile observability $(COMPOSE_OPTS) logs -f grafana prometheus loki alloy
+	COMPOSE_PROFILES=observability "$(SCRIPTS_DIR)/compose.sh" --profile observability $(COMPOSE_OPTS) logs -f grafana prometheus loki tempo pyroscope alloy
 
 observability-status:
 	@echo "Observability module status:"
-	COMPOSE_PROFILES=observability "$(SCRIPTS_DIR)/compose.sh" --profile observability $(COMPOSE_OPTS) ps grafana prometheus loki alloy
+	COMPOSE_PROFILES=observability "$(SCRIPTS_DIR)/compose.sh" --profile observability $(COMPOSE_OPTS) ps grafana prometheus loki tempo pyroscope alloy
+
+observability-k6:
+	@if [ -z "$(K6_TARGET_URL)" ]; then echo "Error: K6_TARGET_URL is required."; exit 1; fi
+	@echo "Running observability synthetic check with k6 against $(K6_TARGET_URL)..."
+	COMPOSE_PROFILES=observability "$(SCRIPTS_DIR)/compose.sh" --profile observability $(COMPOSE_OPTS) run --rm k6
 
 # --- Help ---
 
@@ -445,6 +453,7 @@ help:
 	@echo "  observability-restart    Restart the observability module."
 	@echo "  observability-logs       Follow observability module logs."
 	@echo "  observability-status     Show observability module status."
+	@echo "  observability-k6         Run on-demand synthetic HTTP checks with k6."
 	@echo ""
 	@echo "Profiles:"
 	@echo "  Use COMPOSE_PROFILES=<profile_name> before make commands to activate profiles."

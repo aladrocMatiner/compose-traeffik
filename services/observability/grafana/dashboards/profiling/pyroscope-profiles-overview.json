@@ -1,0 +1,48 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "content": "Use Explore with datasource **Pyroscope** to inspect profiles.\\n\\nAlloy forwards OTLP profiles to Pyroscope.",
+        "mode": "markdown"
+      },
+      "pluginVersion": "12.3.2",
+      "title": "Pyroscope Usage",
+      "type": "text"
+    }
+  ],
+  "schemaVersion": 41,
+  "style": "dark",
+  "tags": [
+    "pyroscope",
+    "profiling",
+    "core"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Profiling - Pyroscope Overview",
+  "uid": "pyroscope-profiles-overview",
+  "version": 1,
+  "weekStart": ""
+}

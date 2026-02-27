@@ -196,6 +196,33 @@ require_non_placeholder() {
     fi
 }
 
+validate_duration_token() {
+    local value="$1"
+    local var_name="$2"
+    if [ -z "$value" ]; then
+        log_error "${var_name} is required."
+    fi
+    if [[ ! "$value" =~ ^[0-9]+[smhdw]$ ]]; then
+        log_error "${var_name} must match <integer><unit> where unit is one of s,m,h,d,w. Got: ${value}"
+    fi
+}
+
+validate_positive_int() {
+    local value="$1"
+    local var_name="$2"
+    if [[ ! "$value" =~ ^[0-9]+$ ]] || [ "$value" -le 0 ]; then
+        log_error "${var_name} must be a positive integer. Got: ${value}"
+    fi
+}
+
+validate_http_url() {
+    local value="$1"
+    local var_name="$2"
+    if [[ ! "$value" =~ ^https?:// ]]; then
+        log_error "${var_name} must start with http:// or https://. Got: ${value}"
+    fi
+}
+
 if [ "${TRAEFIK_DASHBOARD:-false}" = "true" ]; then
     require_auth_file "Traefik dashboard" "${TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH:-}"
 fi
@@ -224,8 +251,18 @@ fi
 if is_profile_enabled "observability"; then
     validate_subdomain_label "${GRAFANA_HOSTNAME:-grafana}" "GRAFANA_HOSTNAME"
     require_non_placeholder "GRAFANA_ADMIN_PASSWORD" "${GRAFANA_ADMIN_PASSWORD:-}" "make observability-bootstrap"
+    validate_duration_token "${PROMETHEUS_RETENTION_TIME:-7d}" "PROMETHEUS_RETENTION_TIME"
+    validate_duration_token "${LOKI_RETENTION_PERIOD:-168h}" "LOKI_RETENTION_PERIOD"
+    validate_duration_token "${TEMPO_RETENTION_PERIOD:-168h}" "TEMPO_RETENTION_PERIOD"
+    validate_duration_token "${PYROSCOPE_RETENTION_PERIOD:-168h}" "PYROSCOPE_RETENTION_PERIOD"
 
     if ! is_profile_enabled "ctfd"; then
         echo "WARN: observability profile enabled without ctfd profile. Traefik telemetry will work, but CTFd dashboards/log queries may be empty." >&2
     fi
+fi
+
+if [ -n "${K6_TARGET_URL:-}" ] || [ -n "${K6_ITERATIONS:-}" ] || [ -n "${K6_SLEEP_SECONDS:-}" ]; then
+    validate_http_url "${K6_TARGET_URL:-}" "K6_TARGET_URL"
+    validate_positive_int "${K6_ITERATIONS:-0}" "K6_ITERATIONS"
+    validate_positive_int "${K6_SLEEP_SECONDS:-0}" "K6_SLEEP_SECONDS"
 fi

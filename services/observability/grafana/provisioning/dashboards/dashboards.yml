@@ -18,3 +18,21 @@ providers:
     editable: true
     options:
       path: /var/lib/grafana/dashboards/ctfd
+
+  - name: "Tracing"
+    orgId: 1
+    folder: "Tracing"
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards/tracing
+
+  - name: "Profiling"
+    orgId: 1
+    folder: "Profiling"
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards/profiling

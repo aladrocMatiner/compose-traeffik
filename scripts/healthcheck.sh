@@ -89,7 +89,7 @@ fi
 if service_running "ctfd"; then
     RUN_CTFD_TESTS=true
 fi
-if service_running "grafana" || service_running "prometheus" || service_running "loki" || service_running "alloy"; then
+if service_running "grafana" || service_running "prometheus" || service_running "loki" || service_running "tempo" || service_running "pyroscope" || service_running "alloy"; then
     RUN_OBSERVABILITY_TESTS=true
 fi
 
@@ -269,7 +269,25 @@ if [ "${RUN_OBSERVABILITY_TESTS}" = "true" ]; then
         TEST_RESULTS=1
     fi
 
-    # --- Test 18: Observability Traefik Config (no sudo) ---
+    # --- Test 18: Observability Advanced Service Config (no sudo) ---
+    log_info "Running test_observability_advanced_service_config.sh..."
+    if "$TEST_DIR/test_observability_advanced_service_config.sh"; then
+        log_success "Test: Observability Advanced Service Config"
+    else
+        log_warn "Test failed: Observability Advanced Service Config"
+        TEST_RESULTS=1
+    fi
+
+    # --- Test 19: Observability Alloy Signal Pipelines (no sudo) ---
+    log_info "Running test_observability_alloy_signal_pipelines.sh..."
+    if "$TEST_DIR/test_observability_alloy_signal_pipelines.sh"; then
+        log_success "Test: Observability Alloy Signal Pipelines"
+    else
+        log_warn "Test failed: Observability Alloy Signal Pipelines"
+        TEST_RESULTS=1
+    fi
+
+    # --- Test 20: Observability Traefik Config (no sudo) ---
     log_info "Running test_observability_traefik_config.sh..."
     if "$TEST_DIR/test_observability_traefik_config.sh"; then
         log_success "Test: Observability Traefik Config"
@@ -278,7 +296,7 @@ if [ "${RUN_OBSERVABILITY_TESTS}" = "true" ]; then
         TEST_RESULTS=1
     fi
 
-    # --- Test 19: Observability Guardrails (no sudo) ---
+    # --- Test 21: Observability Guardrails (no sudo) ---
     log_info "Running test_observability_guardrails.sh..."
     if "$TEST_DIR/test_observability_guardrails.sh"; then
         log_success "Test: Observability Guardrails"
@@ -287,7 +305,7 @@ if [ "${RUN_OBSERVABILITY_TESTS}" = "true" ]; then
         TEST_RESULTS=1
     fi
 
-    # --- Test 20: Observability Make Targets (no sudo) ---
+    # --- Test 22: Observability Make Targets (no sudo) ---
     log_info "Running test_observability_make_targets.sh..."
     if "$TEST_DIR/test_observability_make_targets.sh"; then
         log_success "Test: Observability Make Targets"
@@ -296,7 +314,7 @@ if [ "${RUN_OBSERVABILITY_TESTS}" = "true" ]; then
         TEST_RESULTS=1
     fi
 
-    # --- Test 21: Observability Bootstrap Env (no sudo) ---
+    # --- Test 23: Observability Bootstrap Env (no sudo) ---
     log_info "Running test_observability_bootstrap_env.sh..."
     if "$TEST_DIR/test_observability_bootstrap_env.sh"; then
         log_success "Test: Observability Bootstrap Env"
@@ -305,7 +323,7 @@ if [ "${RUN_OBSERVABILITY_TESTS}" = "true" ]; then
         TEST_RESULTS=1
     fi
 
-    # --- Test 22: Observability Grafana Provisioning (no sudo) ---
+    # --- Test 24: Observability Grafana Provisioning (no sudo) ---
     log_info "Running test_observability_grafana_provisioning.sh..."
     if "$TEST_DIR/test_observability_grafana_provisioning.sh"; then
         log_success "Test: Observability Grafana Provisioning"
@@ -314,7 +332,16 @@ if [ "${RUN_OBSERVABILITY_TESTS}" = "true" ]; then
         TEST_RESULTS=1
     fi
 
-    # --- Test 23: Observability App-Pack Tolerance (no sudo) ---
+    # --- Test 25: Observability k6 Wiring (no sudo) ---
+    log_info "Running test_observability_k6_wiring.sh..."
+    if "$TEST_DIR/test_observability_k6_wiring.sh"; then
+        log_success "Test: Observability k6 Wiring"
+    else
+        log_warn "Test failed: Observability k6 Wiring"
+        TEST_RESULTS=1
+    fi
+
+    # --- Test 26: Observability App-Pack Tolerance (no sudo) ---
     log_info "Running test_observability_app_pack_tolerance.sh..."
     if "$TEST_DIR/test_observability_app_pack_tolerance.sh"; then
         log_success "Test: Observability App-Pack Tolerance"
@@ -323,7 +350,7 @@ if [ "${RUN_OBSERVABILITY_TESTS}" = "true" ]; then
         TEST_RESULTS=1
     fi
 else
-    log_warn "Skipping observability smoke suite (none of grafana/prometheus/loki/alloy running)."
+    log_warn "Skipping observability smoke suite (none of grafana/prometheus/loki/tempo/pyroscope/alloy running)."
 fi
 
 if [ "$TEST_RESULTS" -eq 0 ]; then

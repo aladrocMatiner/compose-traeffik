@@ -43,6 +43,7 @@ services:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
       - --storage.tsdb.retention.time=${PROMETHEUS_RETENTION_TIME:-7d}
+      - --web.enable-remote-write-receiver
     networks:
       - observability-internal
       - proxy
@@ -67,6 +68,43 @@ services:
       - ./services/observability/loki/local-config.yaml:/etc/loki/local-config.yaml:ro
       - loki-data:/loki
 
+  tempo:
+    image: ${TEMPO_IMAGE:-grafana/tempo:2.6.1}
+    container_name: tempo
+    profiles:
+      - observability
+    restart: unless-stopped
+    command:
+      - -config.expand-env=true
+      - -config.file=/etc/tempo/tempo.yml
+    networks:
+      - observability-internal
+    environment:
+      - TEMPO_RETENTION_PERIOD=${TEMPO_RETENTION_PERIOD:-168h}
+    volumes:
+      - ./services/observability/tempo/tempo.yml:/etc/tempo/tempo.yml:ro
+      - tempo-data:/var/tempo
+
+  pyroscope:
+    image: ${PYROSCOPE_IMAGE:-grafana/pyroscope:1.12.0}
+    container_name: pyroscope
+    profiles:
+      - observability
+    restart: unless-stopped
+    command:
+      - -target=all
+      - -log.level=info
+      - -server.http-listen-port=4040
+      - -server.grpc-listen-port=4041
+      - -auth.multitenancy-enabled=false
+      - -storage.backend=filesystem
+      - -storage.filesystem.dir=/var/lib/pyroscope
+      - -compactor.blocks-retention-period=${PYROSCOPE_RETENTION_PERIOD:-168h}
+    networks:
+      - observability-internal
+    volumes:
+      - pyroscope-data:/var/lib/pyroscope
+
   alloy:
     image: ${ALLOY_IMAGE:-grafana/alloy:v1.11.2}
     container_name: alloy
@@ -75,6 +113,7 @@ services:
     restart: unless-stopped
     command:
       - run
+      - --stability.level=public-preview
       - /etc/alloy/config.alloy
     networks:
       - observability-internal
@@ -83,6 +122,28 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - alloy-data:/var/lib/alloy
+
+  k6:
+    image: ${K6_IMAGE:-grafana/k6:0.49.0}
+    container_name: k6
+    profiles:
+      - observability
+    restart: "no"
+    command:
+      - run
+      - /scripts/smoke.js
+    networks:
+      - observability-internal
+      - proxy
+    environment:
+      - K6_TARGET_URL=${K6_TARGET_URL:-https://whoami.${DEV_DOMAIN}}
+      - K6_ITERATIONS=${K6_ITERATIONS:-10}
+      - K6_SLEEP_SECONDS=${K6_SLEEP_SECONDS:-1}
+      - K6_OUT=${K6_OUT:-experimental-prometheus-rw}
+      - K6_PROMETHEUS_RW_SERVER_URL=${K6_PROMETHEUS_RW_SERVER_URL:-http://prometheus:9090/api/v1/write}
+      - K6_PROMETHEUS_RW_TREND_STATS=${K6_PROMETHEUS_RW_TREND_STATS:-p(50),p(90),p(95),p(99),min,max,avg}
+    volumes:
+      - ./services/observability/k6:/scripts:ro
 
 networks:
   observability-internal:
@@ -96,5 +157,9 @@ volumes:
     name: prometheus-data
   loki-data:
     name: loki-data
+  tempo-data:
+    name: tempo-data
+  pyroscope-data:
+    name: pyroscope-data
   alloy-data:
     name: alloy-data
