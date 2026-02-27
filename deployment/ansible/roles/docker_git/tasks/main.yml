@@ -26,6 +26,10 @@
       unsupported
       {% endif %}
 
+- name: Normalize deployment OS selector
+  ansible.builtin.set_fact:
+    docker_git_selector: "{{ docker_git_selector | trim }}"
+
 - name: Fail fast on unsupported platforms
   ansible.builtin.fail:
     msg: >-

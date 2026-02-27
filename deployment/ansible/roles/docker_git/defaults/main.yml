@@ -13,30 +13,43 @@ docker_git_supported_selectors:
 docker_git_packages_by_selector:
   ubuntu:
     - git
+    - make
     - docker.io
+    - docker-compose-v2
   debian12:
     - git
+    - make
     - docker.io
+    - docker-compose-v2
   debian13:
     - git
+    - make
     - docker.io
+    - docker-compose-v2
   debian:
     - git
+    - make
     - docker.io
+    - docker-compose-v2
   gentoo:
     - dev-vcs/git
+    - sys-devel/make
     - app-containers/docker
   opensuse-leap:
     - git
+    - make
     - docker
   almalinux9:
     - git
+    - make
     - moby-engine
   rockylinux9:
     - git
+    - make
     - moby-engine
   fedora-cloud:
     - git
+    - make
     - moby-engine
 
 docker_git_service_name_by_selector:
