@@ -308,6 +308,18 @@
     line: "TRAEFIK_DASHBOARD_HOST={{ deployment_project_public_host }}"
   when: deployment_project_manifest_data.id == "traefik-stepca"
 
+- name: Resolve whoami host suffix from project id
+  ansible.builtin.set_fact:
+    deployment_project_id_suffix: "{{ deployment_project_manifest_data.id | regex_replace('^traefik-', '') }}"
+  when: "'whoami' in deployment_project_manifest_data.services"
+
+- name: Set whoami host for project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^WHOAMI_HOST="
+    line: "WHOAMI_HOST=whoami-{{ deployment_project_id_suffix }}.{{ deployment_project_base_domain_cmd.stdout | trim }}"
+  when: "'whoami' in deployment_project_manifest_data.services"
+
 - name: Regenerate project managed environment artifacts from .env
   ansible.builtin.command:
     cmd: ./scripts/env-generate.sh --mode=full
@@ -694,7 +706,7 @@
     set -a
     . ./.env
     set +a
-    host="whoami.${BASE_DOMAIN}"
+    host="${WHOAMI_HOST:-whoami.${BASE_DOMAIN}}"
     issuer="$(echo | openssl s_client -connect 127.0.0.1:443 -servername "${host}" 2>/dev/null | openssl x509 -noout -issuer)"
     echo "${issuer}"
     if echo "${issuer}" | grep -q "TRAEFIK DEFAULT CERT"; then

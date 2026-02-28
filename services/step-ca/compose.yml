@@ -10,7 +10,7 @@ services:
       - stepca-internal
       - proxy
     extra_hosts:
-      - "whoami.${DEV_DOMAIN}:host-gateway"
+      - "${WHOAMI_HOST:-whoami.${DEV_DOMAIN}}:host-gateway"
       - "traefik.${DEV_DOMAIN}:host-gateway"
       - "traefik-stepca.${DEV_DOMAIN}:host-gateway"
       - "step-ca.${DEV_DOMAIN}:host-gateway"

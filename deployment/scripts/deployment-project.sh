@@ -394,8 +394,16 @@ run_project() {
     else
       project_public_host="${PROJECT_ID}.local.test"
     fi
+    local project_domain project_id_suffix whoami_public_host
+    project_domain="${project_public_host#*.}"
+    project_id_suffix="${PROJECT_ID#traefik-}"
+    whoami_public_host="whoami-${project_id_suffix}.${project_domain}"
     sync_stepca_container_host_alias "${stepca_dependency_host_ip}" "${stepca_dependency_ssh_user}" "${project_public_host}" "${host_ip}"
     log "Synced StepCA container host alias ${project_public_host} -> ${host_ip}"
+    if [[ "${manifest_services}" == *"whoami"* ]]; then
+      sync_stepca_container_host_alias "${stepca_dependency_host_ip}" "${stepca_dependency_ssh_user}" "${whoami_public_host}" "${host_ip}"
+      log "Synced StepCA container host alias ${whoami_public_host} -> ${host_ip}"
+    fi
   fi
 
   run_stage system_bootstrap run_ansible_playbook "${REPO_ROOT}/deployment/ansible/playbooks/system_bootstrap.yml"
