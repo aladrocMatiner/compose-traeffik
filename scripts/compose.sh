@@ -49,6 +49,7 @@ append_compose_file_if_exists "${REPO_ROOT}/services/dns-bind/compose.yml"
 append_compose_file_if_exists "${REPO_ROOT}/services/certbot/compose.yml"
 append_compose_file_if_exists "${REPO_ROOT}/services/keycloak/compose.yml"
 append_compose_file_if_exists "${REPO_ROOT}/services/observability/compose.yml"
+append_compose_file_if_exists "${REPO_ROOT}/services/wikijs/compose.yml"
 
 COMPOSE_INCLUDE_STEPCA="${COMPOSE_INCLUDE_STEPCA:-true}"
 if [ "${COMPOSE_INCLUDE_STEPCA}" = "true" ]; then

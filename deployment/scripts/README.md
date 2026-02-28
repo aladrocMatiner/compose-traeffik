@@ -22,12 +22,19 @@ Current catalog projects:
 - `traefik-stepca`
 - `traefik-keycloak`
 - `traefik-observability`
+- `traefik-wikijs`
 
 `traefik-observability` contract highlights:
 
 - defaults to `tls_mode=stepca-acme` (override allowed with `tls_mode=...`)
 - depends on `traefik-stepca` and `traefik-keycloak`
 - requires `KEYCLOAK_FORWARDAUTH_ADDRESS` to wire Keycloak-based forward auth for Grafana
+
+`traefik-wikijs` contract highlights:
+
+- defaults to `tls_mode=stepca-acme` (override allowed with `tls_mode=...`)
+- depends on `traefik-stepca` and `traefik-keycloak`
+- configures Keycloak OIDC contract for Wiki.js (`realm=local.test`, `client_id=wikijs`) during deployment
 
 Hostname contract for web projects:
 

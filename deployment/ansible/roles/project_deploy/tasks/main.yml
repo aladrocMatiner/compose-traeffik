@@ -128,6 +128,20 @@
     mode: "0644"
   when: "'whoami' in deployment_project_manifest_data.services"
 
+- name: Backport wikijs compose definition from controller workspace
+  ansible.builtin.file:
+    path: "{{ deployment_project_repo_dir }}/services/wikijs"
+    state: directory
+    mode: "0755"
+  when: "'wikijs' in deployment_project_manifest_data.services"
+
+- name: Backport wikijs compose definition from controller workspace
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../../services/wikijs/compose.yml"
+    dest: "{{ deployment_project_repo_dir }}/services/wikijs/compose.yml"
+    mode: "0644"
+  when: "'wikijs' in deployment_project_manifest_data.services"
+
 - name: Backport keycloak compose definition from controller workspace
   ansible.builtin.file:
     path: "{{ deployment_project_repo_dir }}/services/keycloak"
@@ -380,6 +394,285 @@
     create: false
   when:
     - deployment_project_manifest_data.id == "traefik-observability"
+    - deployment_project_keycloak_dependency_host_ip | default('') | trim | length > 0
+
+- name: Validate Keycloak dependency contract for wikijs project
+  ansible.builtin.assert:
+    that:
+      - deployment_project_keycloak_dependency_host_ip | default('') | trim | length > 0
+      - deployment_project_keycloak_admin_username | default('') | trim | length > 0
+      - deployment_project_keycloak_admin_password | default('') | trim | length > 0
+    fail_msg: >-
+      Missing Keycloak dependency context for Wiki.js OIDC provisioning.
+      Deploy/fix traefik-keycloak first, then retry this project deployment.
+  when: deployment_project_manifest_data.id == "traefik-wikijs"
+
+- name: Resolve effective OIDC realm/client for wikijs project
+  ansible.builtin.set_fact:
+    deployment_project_wikijs_keycloak_realm_effective: "{{ deployment_project_manifest_data.oidc.realm | default(deployment_project_keycloak_realm | default('local.test', true), true) }}"
+    deployment_project_wikijs_keycloak_client_id_effective: "{{ deployment_project_manifest_data.oidc.client_id | default(deployment_project_keycloak_wikijs_client_id | default('wikijs', true), true) }}"
+  when: deployment_project_manifest_data.id == "traefik-wikijs"
+
+- name: Resolve effective Keycloak OIDC base URL for wikijs project
+  ansible.builtin.set_fact:
+    deployment_project_wikijs_keycloak_oidc_base_url_effective: "{{ deployment_project_keycloak_oidc_base_url | default('https://keycloak.' ~ (deployment_project_base_domain_cmd.stdout | trim), true) }}"
+  when: deployment_project_manifest_data.id == "traefik-wikijs"
+
+- name: Ensure WIKIJS_HOSTNAME for wikijs project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^WIKIJS_HOSTNAME="
+    line: "WIKIJS_HOSTNAME=wikijs"
+  when: deployment_project_manifest_data.id == "traefik-wikijs"
+
+- name: Ensure WIKIJS_DB_USER for wikijs project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^WIKIJS_DB_USER="
+    line: "WIKIJS_DB_USER=wikijs"
+  when: deployment_project_manifest_data.id == "traefik-wikijs"
+
+- name: Ensure WIKIJS_DB_NAME for wikijs project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^WIKIJS_DB_NAME="
+    line: "WIKIJS_DB_NAME=wikijs"
+  when: deployment_project_manifest_data.id == "traefik-wikijs"
+
+- name: Ensure default KEYCLOAK_OIDC_BASE_URL for wikijs project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^KEYCLOAK_OIDC_BASE_URL="
+    line: "KEYCLOAK_OIDC_BASE_URL={{ deployment_project_wikijs_keycloak_oidc_base_url_effective }}"
+  when: deployment_project_manifest_data.id == "traefik-wikijs"
+
+- name: Ensure KEYCLOAK_REALM for wikijs project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^KEYCLOAK_REALM="
+    line: "KEYCLOAK_REALM={{ deployment_project_wikijs_keycloak_realm_effective }}"
+  when: deployment_project_manifest_data.id == "traefik-wikijs"
+
+- name: Ensure WIKIJS_OIDC_CLIENT_ID for wikijs project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^WIKIJS_OIDC_CLIENT_ID="
+    line: "WIKIJS_OIDC_CLIENT_ID={{ deployment_project_wikijs_keycloak_client_id_effective }}"
+  when: deployment_project_manifest_data.id == "traefik-wikijs"
+
+- name: Read existing WIKIJS_OIDC_CLIENT_SECRET from project .env
+  ansible.builtin.command:
+    cmd: "bash -lc \"awk -F= '$1==\\\"WIKIJS_OIDC_CLIENT_SECRET\\\" {print $2}' .env | tail -n1 | tr -d '\\\"' | xargs\""
+  args:
+    chdir: "{{ deployment_project_repo_dir }}"
+  register: deployment_project_wikijs_oidc_client_secret_cmd
+  changed_when: false
+  when: deployment_project_manifest_data.id == "traefik-wikijs"
+
+- name: Generate WIKIJS_OIDC_CLIENT_SECRET when absent
+  ansible.builtin.command:
+    cmd: "bash -lc \"openssl rand -hex 24\""
+  register: deployment_project_wikijs_oidc_client_secret_generated
+  changed_when: true
+  when:
+    - deployment_project_manifest_data.id == "traefik-wikijs"
+    - deployment_project_keycloak_wikijs_client_secret | default('') | trim | length == 0
+    - deployment_project_wikijs_oidc_client_secret_cmd.stdout | trim | length == 0
+
+- name: Resolve effective WIKIJS_OIDC_CLIENT_SECRET
+  ansible.builtin.set_fact:
+    deployment_project_wikijs_oidc_client_secret_effective: >-
+      {{
+        (deployment_project_keycloak_wikijs_client_secret | trim)
+          if (deployment_project_keycloak_wikijs_client_secret | default('') | trim | length > 0)
+          else (
+            (deployment_project_wikijs_oidc_client_secret_cmd.stdout | trim)
+              if (deployment_project_wikijs_oidc_client_secret_cmd.stdout | trim | length > 0)
+              else (deployment_project_wikijs_oidc_client_secret_generated.stdout | trim)
+          )
+      }}
+  when: deployment_project_manifest_data.id == "traefik-wikijs"
+
+- name: Ensure WIKIJS_OIDC_CLIENT_SECRET for wikijs project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^WIKIJS_OIDC_CLIENT_SECRET="
+    line: "WIKIJS_OIDC_CLIENT_SECRET={{ deployment_project_wikijs_oidc_client_secret_effective }}"
+  when: deployment_project_manifest_data.id == "traefik-wikijs"
+
+- name: Read existing WIKIJS_DB_PASSWORD from project .env
+  ansible.builtin.command:
+    cmd: "bash -lc \"awk -F= '$1==\\\"WIKIJS_DB_PASSWORD\\\" {print $2}' .env | tail -n1 | tr -d '\\\"' | xargs\""
+  args:
+    chdir: "{{ deployment_project_repo_dir }}"
+  register: deployment_project_wikijs_db_password_cmd
+  changed_when: false
+  when: deployment_project_manifest_data.id == "traefik-wikijs"
+
+- name: Generate WIKIJS_DB_PASSWORD when absent
+  ansible.builtin.command:
+    cmd: "bash -lc \"openssl rand -hex 24\""
+  register: deployment_project_wikijs_db_password_generated
+  changed_when: true
+  when:
+    - deployment_project_manifest_data.id == "traefik-wikijs"
+    - deployment_project_wikijs_db_password_cmd.stdout | trim | length == 0
+
+- name: Resolve effective WIKIJS_DB_PASSWORD
+  ansible.builtin.set_fact:
+    deployment_project_wikijs_db_password_effective: >-
+      {{
+        (deployment_project_wikijs_db_password_cmd.stdout | trim)
+          if (deployment_project_wikijs_db_password_cmd.stdout | trim | length > 0)
+          else (deployment_project_wikijs_db_password_generated.stdout | trim)
+      }}
+  when: deployment_project_manifest_data.id == "traefik-wikijs"
+
+- name: Ensure WIKIJS_DB_PASSWORD for wikijs project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^WIKIJS_DB_PASSWORD="
+    line: "WIKIJS_DB_PASSWORD={{ deployment_project_wikijs_db_password_effective }}"
+  when: deployment_project_manifest_data.id == "traefik-wikijs"
+
+- name: Read existing WIKIJS_BOOTSTRAP_ADMIN_EMAIL from project .env
+  ansible.builtin.command:
+    cmd: "bash -lc \"awk -F= '$1==\\\"WIKIJS_BOOTSTRAP_ADMIN_EMAIL\\\" {print $2}' .env | tail -n1 | tr -d '\\\"' | xargs\""
+  args:
+    chdir: "{{ deployment_project_repo_dir }}"
+  register: deployment_project_wikijs_bootstrap_admin_email_cmd
+  changed_when: false
+  when: deployment_project_manifest_data.id == "traefik-wikijs"
+
+- name: Resolve effective WIKIJS_BOOTSTRAP_ADMIN_EMAIL
+  ansible.builtin.set_fact:
+    deployment_project_wikijs_bootstrap_admin_email_effective: >-
+      {{
+        (deployment_project_wikijs_bootstrap_admin_email_cmd.stdout | trim)
+          if (deployment_project_wikijs_bootstrap_admin_email_cmd.stdout | trim | length > 0)
+          else (deployment_project_wikijs_bootstrap_admin_email | trim)
+      }}
+  when: deployment_project_manifest_data.id == "traefik-wikijs"
+
+- name: Ensure WIKIJS_BOOTSTRAP_ADMIN_EMAIL for wikijs project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^WIKIJS_BOOTSTRAP_ADMIN_EMAIL="
+    line: "WIKIJS_BOOTSTRAP_ADMIN_EMAIL={{ deployment_project_wikijs_bootstrap_admin_email_effective }}"
+  when: deployment_project_manifest_data.id == "traefik-wikijs"
+
+- name: Read existing WIKIJS_BOOTSTRAP_ADMIN_PASSWORD from project .env
+  ansible.builtin.command:
+    cmd: "bash -lc \"awk -F= '$1==\\\"WIKIJS_BOOTSTRAP_ADMIN_PASSWORD\\\" {print $2}' .env | tail -n1 | tr -d '\\\"' | xargs\""
+  args:
+    chdir: "{{ deployment_project_repo_dir }}"
+  register: deployment_project_wikijs_bootstrap_admin_password_cmd
+  changed_when: false
+  when: deployment_project_manifest_data.id == "traefik-wikijs"
+
+- name: Generate WIKIJS_BOOTSTRAP_ADMIN_PASSWORD when absent
+  ansible.builtin.command:
+    cmd: "bash -lc \"openssl rand -hex 16\""
+  register: deployment_project_wikijs_bootstrap_admin_password_generated
+  changed_when: true
+  when:
+    - deployment_project_manifest_data.id == "traefik-wikijs"
+    - deployment_project_wikijs_bootstrap_admin_password | default('') | trim | length == 0
+    - deployment_project_wikijs_bootstrap_admin_password_cmd.stdout | trim | length == 0
+
+- name: Resolve effective WIKIJS_BOOTSTRAP_ADMIN_PASSWORD
+  ansible.builtin.set_fact:
+    deployment_project_wikijs_bootstrap_admin_password_effective: >-
+      {{
+        (deployment_project_wikijs_bootstrap_admin_password | trim)
+          if (deployment_project_wikijs_bootstrap_admin_password | default('') | trim | length > 0)
+          else (
+            (deployment_project_wikijs_bootstrap_admin_password_cmd.stdout | trim)
+              if (deployment_project_wikijs_bootstrap_admin_password_cmd.stdout | trim | length > 0)
+              else (deployment_project_wikijs_bootstrap_admin_password_generated.stdout | trim)
+          )
+      }}
+  when: deployment_project_manifest_data.id == "traefik-wikijs"
+
+- name: Ensure WIKIJS_BOOTSTRAP_ADMIN_PASSWORD for wikijs project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^WIKIJS_BOOTSTRAP_ADMIN_PASSWORD="
+    line: "WIKIJS_BOOTSTRAP_ADMIN_PASSWORD={{ deployment_project_wikijs_bootstrap_admin_password_effective }}"
+  when: deployment_project_manifest_data.id == "traefik-wikijs"
+
+- name: Read existing WIKIJS_OAUTH2_COOKIE_SECRET from project .env
+  ansible.builtin.command:
+    cmd: "bash -lc \"awk -F= '$1==\\\"WIKIJS_OAUTH2_COOKIE_SECRET\\\" {print $2}' .env | tail -n1 | tr -d '\\\"' | xargs\""
+  args:
+    chdir: "{{ deployment_project_repo_dir }}"
+  register: deployment_project_wikijs_cookie_secret_cmd
+  changed_when: false
+  when: deployment_project_manifest_data.id == "traefik-wikijs"
+
+- name: Validate existing WIKIJS_OAUTH2_COOKIE_SECRET length
+  ansible.builtin.set_fact:
+    deployment_project_wikijs_cookie_secret_valid: >-
+      {{
+        (deployment_project_wikijs_cookie_secret_cmd.stdout | trim | length) in [16, 24, 32]
+      }}
+  when: deployment_project_manifest_data.id == "traefik-wikijs"
+
+- name: Generate WIKIJS_OAUTH2_COOKIE_SECRET when absent
+  ansible.builtin.command:
+    cmd: "bash -lc \"openssl rand -hex 16\""
+  register: deployment_project_wikijs_cookie_secret_generated
+  changed_when: true
+  when:
+    - deployment_project_manifest_data.id == "traefik-wikijs"
+    - >-
+      (deployment_project_wikijs_cookie_secret_cmd.stdout | trim | length == 0)
+      or (not deployment_project_wikijs_cookie_secret_valid)
+
+- name: Resolve effective WIKIJS_OAUTH2_COOKIE_SECRET
+  ansible.builtin.set_fact:
+    deployment_project_wikijs_cookie_secret_effective: >-
+      {{
+        (deployment_project_wikijs_cookie_secret_cmd.stdout | trim)
+          if (
+            (deployment_project_wikijs_cookie_secret_cmd.stdout | trim | length > 0)
+            and deployment_project_wikijs_cookie_secret_valid
+          )
+          else (deployment_project_wikijs_cookie_secret_generated.stdout | trim)
+      }}
+  when: deployment_project_manifest_data.id == "traefik-wikijs"
+
+- name: Ensure WIKIJS_OAUTH2_COOKIE_SECRET for wikijs project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^WIKIJS_OAUTH2_COOKIE_SECRET="
+    line: "WIKIJS_OAUTH2_COOKIE_SECRET={{ deployment_project_wikijs_cookie_secret_effective }}"
+  when: deployment_project_manifest_data.id == "traefik-wikijs"
+
+- name: Ensure WIKIJS_OIDC_ISSUER_URL for wikijs project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^WIKIJS_OIDC_ISSUER_URL="
+    line: "WIKIJS_OIDC_ISSUER_URL={{ deployment_project_wikijs_keycloak_oidc_base_url_effective ~ '/realms/' ~ deployment_project_wikijs_keycloak_realm_effective }}"
+  when: deployment_project_manifest_data.id == "traefik-wikijs"
+
+- name: Ensure Traefik Keycloak host mapping IP for wikijs project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^TRAEFIK_KEYCLOAK_HOST_IP="
+    line: "TRAEFIK_KEYCLOAK_HOST_IP={{ deployment_project_keycloak_dependency_host_ip }}"
+  when:
+    - deployment_project_manifest_data.id == "traefik-wikijs"
+    - deployment_project_keycloak_dependency_host_ip | default('') | trim | length > 0
+
+- name: Ensure Keycloak hostname mapping for wikijs host resolver
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: ".*\\skeycloak\\.{{ deployment_project_base_domain_cmd.stdout | trim | regex_escape() }}(\\s|$)"
+    line: "{{ deployment_project_keycloak_dependency_host_ip }} keycloak.{{ deployment_project_base_domain_cmd.stdout | trim }}"
+    create: false
+  when:
+    - deployment_project_manifest_data.id == "traefik-wikijs"
     - deployment_project_keycloak_dependency_host_ip | default('') | trim | length > 0
 
 - name: Validate required environment variables declared by manifest
@@ -1064,6 +1357,36 @@
     - deployment_project_effective_tls_mode == "stepca-acme"
     - "'step-ca' not in deployment_project_manifest_data.services"
 
+- name: Stop legacy wikijs-oauth2-proxy container when project does not declare it
+  ansible.builtin.command:
+    cmd: ./scripts/compose.sh --profile {{ deployment_project_manifest_data.compose_profile }} stop wikijs-oauth2-proxy
+    chdir: "{{ deployment_project_repo_dir }}"
+  environment:
+    COMPOSE_PROJECT_NAME: "{{ deployment_project_manifest_data.id }}"
+  register: deployment_project_wikijs_oauth2_stop_cmd
+  changed_when: >-
+    (deployment_project_wikijs_oauth2_stop_cmd.stdout | default('')) is search('Stopped')
+  failed_when: false
+  when:
+    - deployment_project_manifest_data.id == "traefik-wikijs"
+    - "'wikijs-oauth2-proxy' not in deployment_project_manifest_data.services"
+
+- name: Remove legacy wikijs-oauth2-proxy container when project does not declare it
+  ansible.builtin.command:
+    cmd: ./scripts/compose.sh --profile {{ deployment_project_manifest_data.compose_profile }} rm -f wikijs-oauth2-proxy
+    chdir: "{{ deployment_project_repo_dir }}"
+  environment:
+    COMPOSE_PROJECT_NAME: "{{ deployment_project_manifest_data.id }}"
+  register: deployment_project_wikijs_oauth2_rm_cmd
+  changed_when: >-
+    (deployment_project_wikijs_oauth2_rm_cmd.stdout | default('')) is search('Removing')
+    or
+    (deployment_project_wikijs_oauth2_rm_cmd.stdout | default('')) is search('Removed')
+  failed_when: false
+  when:
+    - deployment_project_manifest_data.id == "traefik-wikijs"
+    - "'wikijs-oauth2-proxy' not in deployment_project_manifest_data.services"
+
 - name: Apply docker compose stack for project manifest contract
   ansible.builtin.command:
     cmd: >-
@@ -1085,6 +1408,7 @@
     realm="${KEYCLOAK_BOOTSTRAP_REALM:-local.test}"
     username="${KEYCLOAK_BOOTSTRAP_USERNAME:-jose.romero}"
     password="${KEYCLOAK_BOOTSTRAP_PASSWORD:-abcd123}"
+    email="${KEYCLOAK_BOOTSTRAP_EMAIL:-${username}@${realm}}"
     admin_user="${KEYCLOAK_ADMIN:-admin}"
     admin_pass="${KEYCLOAK_ADMIN_PASSWORD:-}"
 
@@ -1093,6 +1417,7 @@
     [ -n "${realm}" ]
     [ -n "${username}" ]
     [ -n "${password}" ]
+    [ -n "${email}" ]
 
     # Wait for Keycloak admin endpoint before kcadm bootstrap.
     for _ in $(seq 1 20); do
@@ -1127,7 +1452,7 @@
     set +e
     create_user_output="$(
       ./scripts/compose.sh --profile keycloak exec -T keycloak /opt/keycloak/bin/kcadm.sh create users -r "${realm}" \
-        -s username="${username}" -s enabled=true -s emailVerified=true 2>&1
+        -s username="${username}" -s email="${email}" -s enabled=true -s emailVerified=true 2>&1
     )"
     create_user_rc=$?
     set -e
@@ -1153,6 +1478,21 @@
       --username "${username}" \
       --new-password "${password}" \
       --temporary=false >/dev/null
+
+    user_json="$(
+      ./scripts/compose.sh --profile keycloak exec -T keycloak /opt/keycloak/bin/kcadm.sh get users -r "${realm}" -q username="${username}" \
+        | sed -n '/^\[/,$p'
+    )"
+    user_id="$(
+      printf '%s' "${user_json}" | jq -r '.[0].id // empty'
+    )"
+    if [ -n "${user_id}" ]; then
+      ./scripts/compose.sh --profile keycloak exec -T keycloak /opt/keycloak/bin/kcadm.sh update "users/${user_id}" -r "${realm}" \
+        -s email="${email}" \
+        -s enabled=true \
+        -s emailVerified=true \
+        -s requiredActions=[] >/dev/null
+    fi
 
     if [ "${changed:-0}" -eq 1 ]; then
       echo "changed"
@@ -1302,6 +1642,302 @@
     validate_certs: false
     status_code: 204
   when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Ensure Keycloak admin authentication works before Wiki.js OIDC provisioning
+  ansible.builtin.uri:
+    url: "{{ deployment_project_wikijs_keycloak_oidc_base_url_effective }}/realms/master/protocol/openid-connect/token"
+    method: POST
+    body_format: form-urlencoded
+    body:
+      client_id: admin-cli
+      grant_type: password
+      username: "{{ deployment_project_keycloak_admin_username }}"
+      password: "{{ deployment_project_keycloak_admin_password }}"
+    validate_certs: false
+    status_code: 200
+    return_content: true
+  register: deployment_project_wikijs_keycloak_admin_token_response
+  retries: 10
+  delay: 6
+  until: deployment_project_wikijs_keycloak_admin_token_response.status == 200
+  when: deployment_project_manifest_data.id == "traefik-wikijs"
+
+- name: Extract Keycloak admin access token for Wiki.js OIDC provisioning
+  ansible.builtin.set_fact:
+    deployment_project_wikijs_keycloak_admin_access_token: "{{ (deployment_project_wikijs_keycloak_admin_token_response.content | from_json).access_token }}"
+  when: deployment_project_manifest_data.id == "traefik-wikijs"
+
+- name: Resolve OIDC client contract for wikijs project
+  ansible.builtin.set_fact:
+    deployment_project_wikijs_oidc_client_id_effective: "{{ deployment_project_wikijs_keycloak_client_id_effective }}"
+    deployment_project_wikijs_oidc_redirect_uris:
+      - "https://wikijs.{{ deployment_project_base_domain_cmd.stdout | trim }}/login/keycloak/callback"
+    deployment_project_wikijs_oidc_web_origins:
+      - "https://wikijs.{{ deployment_project_base_domain_cmd.stdout | trim }}"
+    deployment_project_wikijs_oidc_post_logout_redirect_uri: "https://wikijs.{{ deployment_project_base_domain_cmd.stdout | trim }}"
+  when: deployment_project_manifest_data.id == "traefik-wikijs"
+
+- name: Ensure OIDC client contract shape for wikijs project
+  ansible.builtin.assert:
+    that:
+      - deployment_project_wikijs_oidc_client_id_effective | trim | length > 0
+      - deployment_project_wikijs_oidc_redirect_uris | length > 0
+      - deployment_project_wikijs_oidc_web_origins | length > 0
+    fail_msg: "Malformed OIDC contract for wikijs project."
+  when: deployment_project_manifest_data.id == "traefik-wikijs"
+
+- name: Query Keycloak client by client_id in target realm (wikijs)
+  ansible.builtin.uri:
+    url: "{{ deployment_project_wikijs_keycloak_oidc_base_url_effective }}/admin/realms/{{ deployment_project_wikijs_keycloak_realm_effective }}/clients?clientId={{ deployment_project_wikijs_oidc_client_id_effective | urlencode }}"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ deployment_project_wikijs_keycloak_admin_access_token }}"
+    validate_certs: false
+    status_code: 200
+    return_content: true
+  register: deployment_project_wikijs_keycloak_client_lookup
+  when: deployment_project_manifest_data.id == "traefik-wikijs"
+
+- name: Parse existing OIDC client lookup result (wikijs)
+  ansible.builtin.set_fact:
+    deployment_project_wikijs_keycloak_existing_client: "{{ ((deployment_project_wikijs_keycloak_client_lookup.content | from_json) | first) if ((deployment_project_wikijs_keycloak_client_lookup.content | from_json) | length > 0) else {} }}"
+  when: deployment_project_manifest_data.id == "traefik-wikijs"
+
+- name: Create OIDC client in Keycloak when missing (wikijs)
+  ansible.builtin.uri:
+    url: "{{ deployment_project_wikijs_keycloak_oidc_base_url_effective }}/admin/realms/{{ deployment_project_wikijs_keycloak_realm_effective }}/clients"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ deployment_project_wikijs_keycloak_admin_access_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      clientId: "{{ deployment_project_wikijs_oidc_client_id_effective }}"
+      enabled: true
+      protocol: "openid-connect"
+      publicClient: false
+      directAccessGrantsEnabled: false
+      standardFlowEnabled: true
+      serviceAccountsEnabled: false
+      redirectUris: "{{ deployment_project_wikijs_oidc_redirect_uris }}"
+      webOrigins: "{{ deployment_project_wikijs_oidc_web_origins }}"
+      attributes:
+        pkce.code.challenge.method: ""
+        post.logout.redirect.uris: "{{ deployment_project_wikijs_oidc_post_logout_redirect_uri }}"
+    validate_certs: false
+    status_code: 201
+  when:
+    - deployment_project_manifest_data.id == "traefik-wikijs"
+    - deployment_project_wikijs_keycloak_existing_client == {}
+
+- name: Refresh OIDC client lookup after create (wikijs)
+  ansible.builtin.uri:
+    url: "{{ deployment_project_wikijs_keycloak_oidc_base_url_effective }}/admin/realms/{{ deployment_project_wikijs_keycloak_realm_effective }}/clients?clientId={{ deployment_project_wikijs_oidc_client_id_effective | urlencode }}"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ deployment_project_wikijs_keycloak_admin_access_token }}"
+    validate_certs: false
+    status_code: 200
+    return_content: true
+  register: deployment_project_wikijs_keycloak_client_lookup_after_create
+  when:
+    - deployment_project_manifest_data.id == "traefik-wikijs"
+    - deployment_project_wikijs_keycloak_existing_client == {}
+
+- name: Resolve effective Keycloak client id for update/secret (wikijs)
+  ansible.builtin.set_fact:
+    deployment_project_wikijs_keycloak_client_uuid: >-
+      {{
+        (
+          (deployment_project_wikijs_keycloak_client_lookup_after_create.content | from_json | first).id
+        ) if (deployment_project_wikijs_keycloak_existing_client == {})
+        else deployment_project_wikijs_keycloak_existing_client.id
+      }}
+  when: deployment_project_manifest_data.id == "traefik-wikijs"
+
+- name: Update OIDC client contract in Keycloak (wikijs)
+  ansible.builtin.uri:
+    url: "{{ deployment_project_wikijs_keycloak_oidc_base_url_effective }}/admin/realms/{{ deployment_project_wikijs_keycloak_realm_effective }}/clients/{{ deployment_project_wikijs_keycloak_client_uuid }}"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ deployment_project_wikijs_keycloak_admin_access_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      id: "{{ deployment_project_wikijs_keycloak_client_uuid }}"
+      clientId: "{{ deployment_project_wikijs_oidc_client_id_effective }}"
+      enabled: true
+      protocol: "openid-connect"
+      publicClient: false
+      directAccessGrantsEnabled: false
+      standardFlowEnabled: true
+      serviceAccountsEnabled: false
+      redirectUris: "{{ deployment_project_wikijs_oidc_redirect_uris }}"
+      webOrigins: "{{ deployment_project_wikijs_oidc_web_origins }}"
+      secret: "{{ deployment_project_wikijs_oidc_client_secret_effective }}"
+      attributes:
+        pkce.code.challenge.method: ""
+        post.logout.redirect.uris: "{{ deployment_project_wikijs_oidc_post_logout_redirect_uri }}"
+    validate_certs: false
+    status_code: 204
+  when: deployment_project_manifest_data.id == "traefik-wikijs"
+
+- name: Check Wiki.js setup completion status in database
+  ansible.builtin.shell: |
+    set -euo pipefail
+    set -a
+    . ./.env
+    set +a
+    ./scripts/compose.sh --profile {{ deployment_project_manifest_data.compose_profile }} exec -T wikijs-db \
+      psql -U "${WIKIJS_DB_USER:-wikijs}" -d "${WIKIJS_DB_NAME:-wikijs}" -tAc "SELECT COUNT(*) FROM settings;" \
+      | tail -n1 | tr -d '[:space:]'
+  args:
+    chdir: "{{ deployment_project_repo_dir }}"
+    executable: /bin/bash
+  register: deployment_project_wikijs_settings_count_cmd
+  changed_when: false
+  when: deployment_project_manifest_data.id == "traefik-wikijs"
+
+- name: Resolve Wiki.js setup completion counter
+  ansible.builtin.set_fact:
+    deployment_project_wikijs_settings_count_effective: "{{ deployment_project_wikijs_settings_count_cmd.stdout | trim | regex_search('^[0-9]+$') | default('0', true) }}"
+  when: deployment_project_manifest_data.id == "traefik-wikijs"
+
+- name: Bootstrap Wiki.js setup non-interactively on first run
+  ansible.builtin.shell: |
+    set -euo pipefail
+    set -a
+    . ./.env
+    set +a
+    payload=$(printf '{"siteUrl":"https://wikijs.%s","telemetry":false,"adminEmail":"%s","adminPassword":"%s"}' \
+      "${DEV_DOMAIN}" "${WIKIJS_BOOTSTRAP_ADMIN_EMAIL}" "${WIKIJS_BOOTSTRAP_ADMIN_PASSWORD}")
+    docker run --rm --network wikijs-internal curlimages/curl:8.12.1 \
+      -fsS -X POST http://wikijs:3000/finalize \
+      -H 'Content-Type: application/json' \
+      -d "${payload}"
+  args:
+    chdir: "{{ deployment_project_repo_dir }}"
+    executable: /bin/bash
+  register: deployment_project_wikijs_finalize_cmd
+  changed_when: true
+  when:
+    - deployment_project_manifest_data.id == "traefik-wikijs"
+    - (deployment_project_wikijs_settings_count_effective | int) == 0
+
+- name: Ensure Wiki.js local admin account matches bootstrap credentials
+  ansible.builtin.shell: |
+    set -euo pipefail
+    set -a
+    . ./.env
+    set +a
+
+    admin_hash="$(
+      docker exec -e ADMIN_PASS="${WIKIJS_BOOTSTRAP_ADMIN_PASSWORD}" \
+        wikijs node -e "const bcrypt=require('bcryptjs'); process.stdout.write(bcrypt.hashSync(process.env.ADMIN_PASS, 10));"
+    )"
+
+    docker exec -i wikijs-db \
+      psql -U "${WIKIJS_DB_USER:-wikijs}" -d "${WIKIJS_DB_NAME:-wikijs}" \
+      -v admin_email="${WIKIJS_BOOTSTRAP_ADMIN_EMAIL}" \
+      -v admin_hash="${admin_hash}" <<'SQL'
+    UPDATE users
+      SET email = :'admin_email',
+          name = 'Administrator',
+          password = :'admin_hash',
+          "isActive" = true,
+          "isVerified" = true,
+          "updatedAt" = NOW()::text
+      WHERE id = 1
+        AND "providerKey" = 'local';
+
+    INSERT INTO "userGroups" ("userId", "groupId")
+    VALUES (1, 1)
+    ON CONFLICT DO NOTHING;
+    SQL
+  args:
+    chdir: "{{ deployment_project_repo_dir }}"
+    executable: /bin/bash
+  register: deployment_project_wikijs_local_admin_contract_cmd
+  changed_when: true
+  when: deployment_project_manifest_data.id == "traefik-wikijs"
+
+- name: Configure native Keycloak auth strategy in Wiki.js and keep local fallback enabled
+  ansible.builtin.shell: |
+    set -euo pipefail
+    set -a
+    . ./.env
+    set +a
+    keycloak_host="${KEYCLOAK_OIDC_BASE_URL}"
+    keycloak_realm="${KEYCLOAK_REALM}"
+    keycloak_auth_url="${keycloak_host}/realms/${keycloak_realm}/protocol/openid-connect/auth"
+    keycloak_token_url="${keycloak_host}/realms/${keycloak_realm}/protocol/openid-connect/token"
+    keycloak_userinfo_url="${keycloak_host}/realms/${keycloak_realm}/protocol/openid-connect/userinfo"
+    keycloak_logout_url="${keycloak_host}/realms/${keycloak_realm}/protocol/openid-connect/logout"
+
+    ./scripts/compose.sh --profile {{ deployment_project_manifest_data.compose_profile }} exec -T wikijs-db \
+      psql -U "${WIKIJS_DB_USER:-wikijs}" -d "${WIKIJS_DB_NAME:-wikijs}" \
+      -v kc_host="${keycloak_host}" \
+      -v kc_realm="${keycloak_realm}" \
+      -v kc_client="${WIKIJS_OIDC_CLIENT_ID}" \
+      -v kc_secret="${WIKIJS_OIDC_CLIENT_SECRET}" \
+      -v kc_auth_url="${keycloak_auth_url}" \
+      -v kc_token_url="${keycloak_token_url}" \
+      -v kc_userinfo_url="${keycloak_userinfo_url}" \
+      -v kc_logout_url="${keycloak_logout_url}" <<'SQL'
+    INSERT INTO authentication
+      ("key", "isEnabled", "config", "selfRegistration", "domainWhitelist", "autoEnrollGroups", "order", "strategyKey", "displayName")
+    VALUES
+      (
+        'keycloak',
+        true,
+        json_build_object(
+          'host', :'kc_host',
+          'realm', :'kc_realm',
+          'clientId', :'kc_client',
+          'clientSecret', :'kc_secret',
+          'authorizationURL', :'kc_auth_url',
+          'tokenURL', :'kc_token_url',
+          'userInfoURL', :'kc_userinfo_url',
+          'logoutUpstream', true,
+          'logoutURL', :'kc_logout_url',
+          'logoutUpstreamRedirectLegacy', false
+        )::json,
+        true,
+        '{"v":[]}'::json,
+        '{"v":[1]}'::json,
+        1,
+        'keycloak',
+        'Keycloak'
+      )
+    ON CONFLICT ("key") DO UPDATE
+      SET "isEnabled" = EXCLUDED."isEnabled",
+          "config" = EXCLUDED."config",
+          "selfRegistration" = EXCLUDED."selfRegistration",
+          "domainWhitelist" = EXCLUDED."domainWhitelist",
+          "autoEnrollGroups" = EXCLUDED."autoEnrollGroups",
+          "order" = EXCLUDED."order",
+          "strategyKey" = EXCLUDED."strategyKey",
+          "displayName" = EXCLUDED."displayName";
+
+    UPDATE authentication
+      SET "isEnabled" = true
+      WHERE "key" = 'local';
+    SQL
+  args:
+    chdir: "{{ deployment_project_repo_dir }}"
+    executable: /bin/bash
+  register: deployment_project_wikijs_auth_contract_cmd
+  changed_when: true
+  when: deployment_project_manifest_data.id == "traefik-wikijs"
+
+- name: Restart Wiki.js service to apply auth strategy changes
+  ansible.builtin.command:
+    cmd: ./scripts/compose.sh --profile {{ deployment_project_manifest_data.compose_profile }} restart wikijs
+    chdir: "{{ deployment_project_repo_dir }}"
+  environment:
+    COMPOSE_PROJECT_NAME: "{{ deployment_project_manifest_data.id }}"
+  changed_when: true
+  when: deployment_project_manifest_data.id == "traefik-wikijs"
 
 - name: Verify traefik serves non-default TLS certificate for whoami (stepca-acme)
   ansible.builtin.shell: |

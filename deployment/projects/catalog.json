@@ -11,6 +11,10 @@
     {
       "id": "traefik-observability",
       "manifest": "deployment/projects/traefik-observability/manifest.json"
+    },
+    {
+      "id": "traefik-wikijs",
+      "manifest": "deployment/projects/traefik-wikijs/manifest.json"
     }
   ]
 }
