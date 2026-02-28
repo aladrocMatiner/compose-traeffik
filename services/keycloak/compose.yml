@@ -18,7 +18,6 @@ services:
       - "traefik.http.routers.keycloak-websecure.entrypoints=websecure"
       - "traefik.http.routers.keycloak-websecure.tls=true"
       - "traefik.http.routers.keycloak-websecure.tls.certresolver=${TLS_CERT_RESOLVER}"
-      - "traefik.http.routers.keycloak-websecure.middlewares=security-headers@file"
       - "traefik.http.services.keycloak.loadbalancer.server.port=8080"
     networks:
       - proxy
