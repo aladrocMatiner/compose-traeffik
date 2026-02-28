@@ -308,17 +308,25 @@
     line: "TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH=/etc/traefik/auth/traefik-dashboard.htpasswd"
   when: deployment_project_manifest_data.id == "traefik-stepca"
 
-- name: Set Traefik dashboard host for traefik-stepca project
+- name: Resolve project host suffix from project id
+  ansible.builtin.set_fact:
+    deployment_project_id_suffix: "{{ deployment_project_manifest_data.id | regex_replace('^traefik-', '') }}"
+  when: >-
+    ('traefik' in deployment_project_manifest_data.services)
+    or
+    ('whoami' in deployment_project_manifest_data.services)
+
+- name: Set Traefik dashboard host for project
   ansible.builtin.lineinfile:
     path: "{{ deployment_project_repo_dir }}/.env"
     regexp: "^TRAEFIK_DASHBOARD_HOST="
-    line: "TRAEFIK_DASHBOARD_HOST={{ deployment_project_public_host }}"
-  when: deployment_project_manifest_data.id == "traefik-stepca"
-
-- name: Resolve whoami host suffix from project id
-  ansible.builtin.set_fact:
-    deployment_project_id_suffix: "{{ deployment_project_manifest_data.id | regex_replace('^traefik-', '') }}"
-  when: "'whoami' in deployment_project_manifest_data.services"
+    line: >-
+      TRAEFIK_DASHBOARD_HOST={{
+        (deployment_project_public_host)
+          if (deployment_project_manifest_data.id == "traefik-stepca")
+          else ("traefik-" ~ deployment_project_id_suffix ~ "." ~ (deployment_project_base_domain_cmd.stdout | trim))
+      }}
+  when: "'traefik' in deployment_project_manifest_data.services"
 
 - name: Set whoami host for project
   ansible.builtin.lineinfile:
