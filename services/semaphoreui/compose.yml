@@ -20,7 +20,7 @@ services:
       - semaphoreui-internal
 
   semaphoreui:
-    image: ${SEMAPHOREUI_IMAGE:-semaphoreui/semaphore:v2.13.18}
+    image: ${SEMAPHOREUI_IMAGE:-semaphoreui/semaphore:latest}
     container_name: semaphoreui
     restart: unless-stopped
     profiles:
@@ -41,7 +41,7 @@ services:
       SEMAPHORE_ADMIN_PASSWORD: ${SEMAPHORE_ADMIN_PASSWORD}
       SEMAPHORE_ACCESS_KEY_ENCRYPTION: ${SEMAPHORE_ACCESS_KEY_ENCRYPTION}
       SEMAPHORE_WEB_ROOT: https://${SEMAPHOREUI_HOSTNAME:-semaphoreui}.${DEV_DOMAIN}
-      SEMAPHORE_OIDC_PROVIDERS: ${SEMAPHORE_OIDC_PROVIDERS}
+      SEMAPHORE_OIDC_PROVIDERS: "${SEMAPHORE_OIDC_PROVIDERS}"
       SEMAPHORE_NON_ADMIN_CAN_CREATE_PROJECT: ${SEMAPHORE_NON_ADMIN_CAN_CREATE_PROJECT:-false}
     labels:
       - "traefik.enable=true"

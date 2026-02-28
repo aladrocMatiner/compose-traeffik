@@ -931,7 +931,7 @@
     path: "{{ deployment_project_repo_dir }}/.env"
     regexp: "^SEMAPHORE_OIDC_PROVIDERS="
     line: >-
-      SEMAPHORE_OIDC_PROVIDERS=[{"name":"keycloak","display_name":"Keycloak","provider_url":"{{ deployment_project_semaphoreui_keycloak_oidc_base_url_effective }}/realms/{{ deployment_project_semaphoreui_keycloak_realm_effective }}","client_id":"{{ deployment_project_semaphoreui_keycloak_client_id_effective }}","client_secret":"{{ deployment_project_semaphoreui_oidc_client_secret_effective }}","redirect_url":"https://semaphoreui.{{ deployment_project_base_domain_cmd.stdout | trim }}/api/auth/oidc/keycloak/redirect","username_claim":"preferred_username","name_claim":"preferred_username","email_claim":"email","scopes":["openid","profile","email"]}
+      SEMAPHORE_OIDC_PROVIDERS='{"keycloak":{"display_name":"Keycloak","provider_url":"{{ deployment_project_semaphoreui_keycloak_oidc_base_url_effective }}/realms/{{ deployment_project_semaphoreui_keycloak_realm_effective }}","client_id":"{{ deployment_project_semaphoreui_keycloak_client_id_effective }}","client_secret":"{{ deployment_project_semaphoreui_oidc_client_secret_effective }}","redirect_url":"https://semaphoreui.{{ deployment_project_base_domain_cmd.stdout | trim }}/api/auth/oidc/keycloak/redirect","username_claim":"preferred_username","name_claim":"preferred_username","email_claim":"email","scopes":["openid","profile","email"]}}'
   when: deployment_project_manifest_data.id == "traefik-semaphoreui"
 
 - name: Ensure Traefik Keycloak host mapping IP for semaphoreui project
