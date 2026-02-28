@@ -100,11 +100,15 @@ if ! jq -e '
     (.services | index("traefik")) and
     (.services | index("grafana")) and
     .deploy_playbook == "deployment/ansible/playbooks/project_deploy.yml" and
-    (.required_env | index("KEYCLOAK_FORWARDAUTH_ADDRESS")) and
+    (.required_env | index("BASE_DOMAIN")) and
+    (.required_env | index("DEV_DOMAIN")) and
     .tls_mode == "stepca-acme" and
-    (.depends_on_projects == ["traefik-stepca", "traefik-keycloak"])
+    (.depends_on_projects == ["traefik-stepca", "traefik-keycloak"]) and
+    (.oidc.enabled == true) and
+    (.oidc.realm == "local.test") and
+    (.oidc.client_id == "grafana")
 ' "$OBS_MANIFEST" >/dev/null; then
-    log_error "traefik-observability manifest contract is invalid"
+  log_error "traefik-observability manifest contract is invalid"
 fi
 
 set +e

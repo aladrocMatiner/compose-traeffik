@@ -17,12 +17,16 @@
   "deploy_playbook": "deployment/ansible/playbooks/project_deploy.yml",
   "required_env": [
     "BASE_DOMAIN",
-    "DEV_DOMAIN",
-    "KEYCLOAK_FORWARDAUTH_ADDRESS"
+    "DEV_DOMAIN"
   ],
   "tls_mode": "stepca-acme",
   "depends_on_projects": [
     "traefik-stepca",
     "traefik-keycloak"
-  ]
+  ],
+  "oidc": {
+    "enabled": true,
+    "realm": "local.test",
+    "client_id": "grafana"
+  }
 }

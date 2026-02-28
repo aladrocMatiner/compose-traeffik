@@ -43,6 +43,26 @@
       - >-
         (deployment_project_manifest_data.depends_on_projects is not defined)
         or (deployment_project_manifest_data.depends_on_projects is sequence)
+      - >-
+        (deployment_project_manifest_data.oidc is not defined)
+        or (
+          deployment_project_manifest_data.oidc is mapping
+          and deployment_project_manifest_data.oidc.enabled is boolean
+        )
+      - >-
+        (deployment_project_manifest_data.oidc is not defined)
+        or (deployment_project_manifest_data.oidc.realm is not defined)
+        or (
+          deployment_project_manifest_data.oidc.realm is string
+          and deployment_project_manifest_data.oidc.realm | length > 0
+        )
+      - >-
+        (deployment_project_manifest_data.oidc is not defined)
+        or (deployment_project_manifest_data.oidc.client_id is not defined)
+        or (
+          deployment_project_manifest_data.oidc.client_id is string
+          and deployment_project_manifest_data.oidc.client_id | length > 0
+        )
     fail_msg: "Invalid optional manifest fields"
 
 - name: Resolve effective tls_mode (manifest default with optional override)
@@ -83,7 +103,9 @@
     src: "{{ playbook_dir }}/../../../services/step-ca/compose.yml"
     dest: "{{ deployment_project_repo_dir }}/services/step-ca/compose.yml"
     mode: "0644"
-  when: deployment_project_effective_tls_mode == "stepca-acme"
+  when:
+    - deployment_project_effective_tls_mode == "stepca-acme"
+    - "'step-ca' in deployment_project_manifest_data.services"
 
 - name: Backport traefik compose definition from controller workspace
   ansible.builtin.copy:
@@ -120,12 +142,12 @@
     mode: "0644"
   when: "'keycloak' in deployment_project_manifest_data.services"
 
-- name: Backport compose wrapper for keycloak project compatibility
+- name: Backport compose wrapper for project compatibility
   ansible.builtin.copy:
     src: "{{ playbook_dir }}/../../../scripts/compose.sh"
     dest: "{{ deployment_project_repo_dir }}/scripts/compose.sh"
     mode: "0755"
-  when: "'keycloak' in deployment_project_manifest_data.services"
+  when: "'traefik' in deployment_project_manifest_data.services"
 
 - name: Check if project .env exists
   ansible.builtin.stat:
@@ -180,6 +202,27 @@
     line: "KEYCLOAK_ADMIN=admin"
   when: deployment_project_manifest_data.id == "traefik-keycloak"
 
+- name: Ensure Keycloak bootstrap realm default in project .env
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^KEYCLOAK_BOOTSTRAP_REALM="
+    line: "KEYCLOAK_BOOTSTRAP_REALM=local.test"
+  when: deployment_project_manifest_data.id == "traefik-keycloak"
+
+- name: Ensure Keycloak bootstrap username default in project .env
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^KEYCLOAK_BOOTSTRAP_USERNAME="
+    line: "KEYCLOAK_BOOTSTRAP_USERNAME=jose.romero"
+  when: deployment_project_manifest_data.id == "traefik-keycloak"
+
+- name: Ensure Keycloak bootstrap password default in project .env
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^KEYCLOAK_BOOTSTRAP_PASSWORD="
+    line: "KEYCLOAK_BOOTSTRAP_PASSWORD=abcd123"
+  when: deployment_project_manifest_data.id == "traefik-keycloak"
+
 - name: Read Keycloak admin password from project .env
   ansible.builtin.command:
     cmd: "bash -lc \"awk -F= '$1==\\\"KEYCLOAK_ADMIN_PASSWORD\\\" {print $2}' .env | tail -n1 | tr -d '\\\"' | xargs\""
@@ -215,12 +258,129 @@
     line: "KEYCLOAK_ADMIN_PASSWORD={{ deployment_project_keycloak_admin_password_effective }}"
   when: deployment_project_manifest_data.id == "traefik-keycloak"
 
-- name: Ensure default KEYCLOAK_FORWARDAUTH_ADDRESS for observability project
+- name: Validate Keycloak dependency contract for observability project
+  ansible.builtin.assert:
+    that:
+      - deployment_project_keycloak_dependency_host_ip | default('') | trim | length > 0
+      - deployment_project_keycloak_admin_username | default('') | trim | length > 0
+      - deployment_project_keycloak_admin_password | default('') | trim | length > 0
+    fail_msg: >-
+      Missing Keycloak dependency context for OIDC provisioning.
+      Deploy/fix traefik-keycloak first, then retry this project deployment.
+  when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Resolve effective OIDC realm/client for observability project
+  ansible.builtin.set_fact:
+    deployment_project_keycloak_realm_effective: "{{ deployment_project_manifest_data.oidc.realm | default(deployment_project_keycloak_realm | default('local.test', true), true) }}"
+    deployment_project_keycloak_client_id_effective: "{{ deployment_project_manifest_data.oidc.client_id | default(deployment_project_keycloak_grafana_client_id | default('grafana', true), true) }}"
+  when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Resolve effective Keycloak OIDC base URL for observability project
+  ansible.builtin.set_fact:
+    deployment_project_keycloak_oidc_base_url_effective: "{{ deployment_project_keycloak_oidc_base_url | default('https://keycloak.' ~ (deployment_project_base_domain_cmd.stdout | trim), true) }}"
+  when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Ensure default KEYCLOAK_OIDC_BASE_URL for observability project
   ansible.builtin.lineinfile:
     path: "{{ deployment_project_repo_dir }}/.env"
-    regexp: "^KEYCLOAK_FORWARDAUTH_ADDRESS="
-    line: "KEYCLOAK_FORWARDAUTH_ADDRESS=https://keycloak.{{ deployment_project_base_domain_cmd.stdout | trim }}/"
+    regexp: "^KEYCLOAK_OIDC_BASE_URL="
+    line: "KEYCLOAK_OIDC_BASE_URL={{ deployment_project_keycloak_oidc_base_url_effective }}"
   when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Ensure KEYCLOAK_REALM for observability project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^KEYCLOAK_REALM="
+    line: "KEYCLOAK_REALM={{ deployment_project_keycloak_realm_effective }}"
+  when:
+    - deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Ensure GRAFANA_OIDC_CLIENT_ID for observability project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^GRAFANA_OIDC_CLIENT_ID="
+    line: "GRAFANA_OIDC_CLIENT_ID={{ deployment_project_keycloak_client_id_effective }}"
+  when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Read existing GRAFANA_OIDC_CLIENT_SECRET from project .env
+  ansible.builtin.command:
+    cmd: "bash -lc \"awk -F= '$1==\\\"GRAFANA_OIDC_CLIENT_SECRET\\\" {print $2}' .env | tail -n1 | tr -d '\\\"' | xargs\""
+  args:
+    chdir: "{{ deployment_project_repo_dir }}"
+  register: deployment_project_grafana_oidc_client_secret_cmd
+  changed_when: false
+  when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Generate Grafana OIDC client secret when absent
+  ansible.builtin.command:
+    cmd: "bash -lc \"openssl rand -hex 24\""
+  register: deployment_project_grafana_oidc_client_secret_generated
+  changed_when: true
+  when:
+    - deployment_project_manifest_data.id == "traefik-observability"
+    - deployment_project_keycloak_grafana_client_secret | default('') | trim | length == 0
+    - deployment_project_grafana_oidc_client_secret_cmd.stdout | trim | length == 0
+
+- name: Resolve effective Grafana OIDC client secret
+  ansible.builtin.set_fact:
+    deployment_project_grafana_oidc_client_secret_effective: >-
+      {{
+        (deployment_project_keycloak_grafana_client_secret | trim)
+          if (deployment_project_keycloak_grafana_client_secret | default('') | trim | length > 0)
+          else (
+            (deployment_project_grafana_oidc_client_secret_cmd.stdout | trim)
+              if (deployment_project_grafana_oidc_client_secret_cmd.stdout | trim | length > 0)
+              else (deployment_project_grafana_oidc_client_secret_generated.stdout | trim)
+          )
+      }}
+  when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Ensure GRAFANA_OIDC_CLIENT_SECRET for observability project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^GRAFANA_OIDC_CLIENT_SECRET="
+    line: "GRAFANA_OIDC_CLIENT_SECRET={{ deployment_project_grafana_oidc_client_secret_effective }}"
+  when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Ensure KEYCLOAK_OIDC_AUTH_URL for observability project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^KEYCLOAK_OIDC_AUTH_URL="
+    line: "KEYCLOAK_OIDC_AUTH_URL={{ deployment_project_keycloak_oidc_base_url_effective ~ '/realms/' ~ deployment_project_keycloak_realm_effective ~ '/protocol/openid-connect/auth' }}"
+  when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Ensure KEYCLOAK_OIDC_TOKEN_URL for observability project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^KEYCLOAK_OIDC_TOKEN_URL="
+    line: "KEYCLOAK_OIDC_TOKEN_URL={{ deployment_project_keycloak_oidc_base_url_effective ~ '/realms/' ~ deployment_project_keycloak_realm_effective ~ '/protocol/openid-connect/token' }}"
+  when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Ensure KEYCLOAK_OIDC_USERINFO_URL for observability project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^KEYCLOAK_OIDC_USERINFO_URL="
+    line: "KEYCLOAK_OIDC_USERINFO_URL={{ deployment_project_keycloak_oidc_base_url_effective ~ '/realms/' ~ deployment_project_keycloak_realm_effective ~ '/protocol/openid-connect/userinfo' }}"
+  when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Ensure Traefik Keycloak host mapping IP for observability project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^TRAEFIK_KEYCLOAK_HOST_IP="
+    line: "TRAEFIK_KEYCLOAK_HOST_IP={{ deployment_project_keycloak_dependency_host_ip }}"
+  when:
+    - deployment_project_manifest_data.id == "traefik-observability"
+    - deployment_project_keycloak_dependency_host_ip | default('') | trim | length > 0
+
+- name: Ensure Keycloak hostname mapping for observability host resolver
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: ".*\\skeycloak\\.{{ deployment_project_base_domain_cmd.stdout | trim | regex_escape() }}(\\s|$)"
+    line: "{{ deployment_project_keycloak_dependency_host_ip }} keycloak.{{ deployment_project_base_domain_cmd.stdout | trim }}"
+    create: false
+  when:
+    - deployment_project_manifest_data.id == "traefik-observability"
+    - deployment_project_keycloak_dependency_host_ip | default('') | trim | length > 0
 
 - name: Validate required environment variables declared by manifest
   ansible.builtin.command:
@@ -287,6 +447,12 @@
   loop:
     - { key: "PROJECT_NAME" }
     - { key: "COMPOSE_PROJECT_NAME" }
+
+- name: Set compose step-ca inclusion toggle from project services
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^COMPOSE_INCLUDE_STEPCA="
+    line: "COMPOSE_INCLUDE_STEPCA={{ 'true' if ('step-ca' in deployment_project_manifest_data.services) else 'false' }}"
 
 - name: Ensure Traefik dashboard auth file exists for project defaults
   ansible.builtin.copy:
@@ -667,43 +833,205 @@
   ansible.builtin.lineinfile:
     path: "{{ deployment_project_repo_dir }}/services/observability/compose.yml"
     regexp: 'traefik\.http\.routers\.grafana-websecure\.middlewares='
-    line: '      - "traefik.http.routers.grafana-websecure.middlewares=security-headers@file,keycloak-forwardauth@file"'
+    line: '      - "traefik.http.routers.grafana-websecure.middlewares=security-headers@file"'
   when: deployment_project_manifest_data.id == "traefik-observability"
 
-- name: Configure Traefik Keycloak forwardAuth middleware for observability project
-  ansible.builtin.copy:
-    dest: "{{ deployment_project_repo_dir }}/services/traefik/dynamic/keycloak-forwardauth.yml"
-    mode: "0644"
-    content: |
-      http:
-        middlewares:
-          keycloak-forwardauth:
-            forwardAuth:
-              address: "__KEYCLOAK_FORWARDAUTH_ADDRESS__"
-              trustForwardHeader: true
-  when: deployment_project_manifest_data.id == "traefik-observability"
-
-- name: Read Keycloak forwardAuth endpoint from project .env
-  ansible.builtin.command:
-    cmd: "bash -lc \"awk -F= '$1==\\\"KEYCLOAK_FORWARDAUTH_ADDRESS\\\" {print $2}' .env | tail -n1 | xargs\""
-  args:
-    chdir: "{{ deployment_project_repo_dir }}"
-  register: deployment_project_keycloak_forwardauth_address_cmd
-  changed_when: false
-  when: deployment_project_manifest_data.id == "traefik-observability"
-
-- name: Assert Keycloak forwardAuth endpoint is available for observability project
-  ansible.builtin.assert:
-    that:
-      - deployment_project_keycloak_forwardauth_address_cmd.stdout | trim | length > 0
-    fail_msg: "KEYCLOAK_FORWARDAUTH_ADDRESS must be set in project .env for traefik-observability."
-  when: deployment_project_manifest_data.id == "traefik-observability"
-
-- name: Render Keycloak forwardAuth middleware endpoint from .env
+- name: Enforce explicit TLS certresolver usage for observability routers
   ansible.builtin.replace:
-    path: "{{ deployment_project_repo_dir }}/services/traefik/dynamic/keycloak-forwardauth.yml"
-    regexp: "__KEYCLOAK_FORWARDAUTH_ADDRESS__"
-    replace: "{{ deployment_project_keycloak_forwardauth_address_cmd.stdout | trim }}"
+    path: "{{ deployment_project_repo_dir }}/services/observability/compose.yml"
+    regexp: '(?m)^(\s*- "traefik\.http\.routers\.(grafana|prometheus)-websecure\.tls\.certresolver=)\$\{TLS_CERT_RESOLVER:-\}"$'
+    replace: '\1${TLS_CERT_RESOLVER}"'
+  when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Configure Grafana OIDC environment in observability compose
+  ansible.builtin.blockinfile:
+    path: "{{ deployment_project_repo_dir }}/services/observability/compose.yml"
+    marker: "      # {mark} grafana oidc managed block"
+    insertafter: '      - GF_AUTH_ANONYMOUS_ENABLED=false'
+    block: |
+      - GF_AUTH_GENERIC_OAUTH_ENABLED=true
+      - GF_AUTH_GENERIC_OAUTH_NAME=Keycloak
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+      - GF_AUTH_GENERIC_OAUTH_AUTO_LOGIN=false
+      - GF_AUTH_GENERIC_OAUTH_ALLOW_SIGN_UP=true
+      - GF_AUTH_GENERIC_OAUTH_USE_PKCE=false
+      - GF_AUTH_GENERIC_OAUTH_CLIENT_ID=${GRAFANA_OIDC_CLIENT_ID}
+      - GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET=${GRAFANA_OIDC_CLIENT_SECRET}
+      - GF_AUTH_GENERIC_OAUTH_SCOPES=openid profile email
+      - GF_AUTH_GENERIC_OAUTH_AUTH_URL=${KEYCLOAK_OIDC_AUTH_URL}
+      - GF_AUTH_GENERIC_OAUTH_TOKEN_URL=${KEYCLOAK_OIDC_TOKEN_URL}
+      - GF_AUTH_GENERIC_OAUTH_API_URL=${KEYCLOAK_OIDC_USERINFO_URL}
+      - GF_AUTH_GENERIC_OAUTH_TLS_CLIENT_CA=/etc/grafana/certs/stepca-root.crt
+      - GF_AUTH_GENERIC_OAUTH_TLS_SKIP_VERIFY_INSECURE=true
+  when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Normalize Grafana OIDC block indentation in observability compose
+  ansible.builtin.replace:
+    path: "{{ deployment_project_repo_dir }}/services/observability/compose.yml"
+    regexp: "(?m)^(- GF_AUTH_[A-Z_]+=.*)$"
+    replace: "      \\1"
+  when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Mount StepCA root CA into Grafana container for OIDC TLS verification
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/services/observability/compose.yml"
+    insertafter: '      - ./services/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro'
+    regexp: 'stepca-root\.crt:/etc/grafana/certs/stepca-root\.crt:ro'
+    line: '      - ./services/step-ca/certs/root_ca.crt:/etc/grafana/certs/stepca-root.crt:ro'
+  when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Expose Prometheus through Traefik in observability project
+  ansible.builtin.blockinfile:
+    path: "{{ deployment_project_repo_dir }}/services/observability/compose.yml"
+    marker: "    # {mark} prometheus traefik managed block"
+    insertafter: '      - prometheus-data:/prometheus'
+    block: |
+        labels:
+          - "traefik.enable=true"
+          - "traefik.http.routers.prometheus-web.rule=Host(`${PROMETHEUS_HOSTNAME:-prometheus}.${DEV_DOMAIN}`)"
+          - "traefik.http.routers.prometheus-web.entrypoints=web"
+          - "traefik.http.routers.prometheus-web.middlewares=${HTTP_TO_HTTPS_MIDDLEWARE:-redirect-to-https@file}"
+          - "traefik.http.routers.prometheus-websecure.rule=Host(`${PROMETHEUS_HOSTNAME:-prometheus}.${DEV_DOMAIN}`)"
+          - "traefik.http.routers.prometheus-websecure.entrypoints=websecure"
+          - "traefik.http.routers.prometheus-websecure.service=prometheus-service"
+          - "traefik.http.routers.prometheus-websecure.tls=true"
+          - "traefik.http.routers.prometheus-websecure.tls.certresolver=${TLS_CERT_RESOLVER}"
+          - "traefik.http.routers.prometheus-websecure.tls.domains[0].main=${PROMETHEUS_HOSTNAME:-prometheus}.${DEV_DOMAIN}"
+          - "traefik.http.routers.prometheus-websecure.middlewares=security-headers@file"
+          - "traefik.http.services.prometheus-service.loadbalancer.server.port=9090"
+  when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Ensure Loki is attached to proxy network for Traefik exposure
+  ansible.builtin.replace:
+    path: "{{ deployment_project_repo_dir }}/services/observability/compose.yml"
+    regexp: '(?ms)(\n  loki:\n.*?\n    networks:\n      - observability-internal\n)(?!\s*-\s+proxy)'
+    replace: '\1      - proxy\n'
+  when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Expose Loki through Traefik in observability project
+  ansible.builtin.blockinfile:
+    path: "{{ deployment_project_repo_dir }}/services/observability/compose.yml"
+    marker: "    # {mark} loki traefik managed block"
+    insertafter: '      - loki-data:/loki'
+    block: |
+        labels:
+          - "traefik.enable=true"
+          - "traefik.http.routers.loki-web.rule=Host(`${LOKI_HOSTNAME:-loki}.${DEV_DOMAIN}`)"
+          - "traefik.http.routers.loki-web.entrypoints=web"
+          - "traefik.http.routers.loki-web.middlewares=${HTTP_TO_HTTPS_MIDDLEWARE:-redirect-to-https@file}"
+          - "traefik.http.routers.loki-websecure.rule=Host(`${LOKI_HOSTNAME:-loki}.${DEV_DOMAIN}`)"
+          - "traefik.http.routers.loki-websecure.entrypoints=websecure"
+          - "traefik.http.routers.loki-websecure.service=loki-service"
+          - "traefik.http.routers.loki-websecure.tls=true"
+          - "traefik.http.routers.loki-websecure.tls.certresolver=${TLS_CERT_RESOLVER}"
+          - "traefik.http.routers.loki-websecure.middlewares=loki-root-redirect,security-headers@file"
+          - "traefik.http.middlewares.loki-root-redirect.redirectregex.regex=^https?://([^/]+)/?$"
+          - "traefik.http.middlewares.loki-root-redirect.redirectregex.replacement=https://$${1}/metrics"
+          - "traefik.http.services.loki-service.loadbalancer.server.port=3100"
+  when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Ensure Tempo is attached to proxy network for Traefik exposure
+  ansible.builtin.replace:
+    path: "{{ deployment_project_repo_dir }}/services/observability/compose.yml"
+    regexp: '(?ms)(\n  tempo:\n.*?\n    networks:\n      - observability-internal\n)(?!\s*-\s+proxy)'
+    replace: '\1      - proxy\n'
+  when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Expose Tempo through Traefik in observability project
+  ansible.builtin.blockinfile:
+    path: "{{ deployment_project_repo_dir }}/services/observability/compose.yml"
+    marker: "    # {mark} tempo traefik managed block"
+    insertafter: '      - tempo-data:/var/tempo'
+    block: |
+        labels:
+          - "traefik.enable=true"
+          - "traefik.http.routers.tempo-web.rule=Host(`${TEMPO_HOSTNAME:-tempo}.${DEV_DOMAIN}`)"
+          - "traefik.http.routers.tempo-web.entrypoints=web"
+          - "traefik.http.routers.tempo-web.middlewares=${HTTP_TO_HTTPS_MIDDLEWARE:-redirect-to-https@file}"
+          - "traefik.http.routers.tempo-websecure.rule=Host(`${TEMPO_HOSTNAME:-tempo}.${DEV_DOMAIN}`)"
+          - "traefik.http.routers.tempo-websecure.entrypoints=websecure"
+          - "traefik.http.routers.tempo-websecure.service=tempo-service"
+          - "traefik.http.routers.tempo-websecure.tls=true"
+          - "traefik.http.routers.tempo-websecure.tls.certresolver=${TLS_CERT_RESOLVER}"
+          - "traefik.http.routers.tempo-websecure.middlewares=tempo-root-redirect,security-headers@file"
+          - "traefik.http.middlewares.tempo-root-redirect.redirectregex.regex=^https?://([^/]+)/?$"
+          - "traefik.http.middlewares.tempo-root-redirect.redirectregex.replacement=https://$${1}/metrics"
+          - "traefik.http.services.tempo-service.loadbalancer.server.port=3200"
+  when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Ensure Pyroscope is attached to proxy network for Traefik exposure
+  ansible.builtin.replace:
+    path: "{{ deployment_project_repo_dir }}/services/observability/compose.yml"
+    regexp: '(?ms)(\n  pyroscope:\n.*?\n    networks:\n      - observability-internal\n)(?!\s*-\s+proxy)'
+    replace: '\1      - proxy\n'
+  when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Expose Pyroscope through Traefik in observability project
+  ansible.builtin.blockinfile:
+    path: "{{ deployment_project_repo_dir }}/services/observability/compose.yml"
+    marker: "    # {mark} pyroscope traefik managed block"
+    insertafter: '      - pyroscope-data:/var/lib/pyroscope'
+    block: |
+        labels:
+          - "traefik.enable=true"
+          - "traefik.http.routers.pyroscope-web.rule=Host(`${PYROSCOPE_HOSTNAME:-pyroscope}.${DEV_DOMAIN}`)"
+          - "traefik.http.routers.pyroscope-web.entrypoints=web"
+          - "traefik.http.routers.pyroscope-web.middlewares=${HTTP_TO_HTTPS_MIDDLEWARE:-redirect-to-https@file}"
+          - "traefik.http.routers.pyroscope-websecure.rule=Host(`${PYROSCOPE_HOSTNAME:-pyroscope}.${DEV_DOMAIN}`)"
+          - "traefik.http.routers.pyroscope-websecure.entrypoints=websecure"
+          - "traefik.http.routers.pyroscope-websecure.service=pyroscope-service"
+          - "traefik.http.routers.pyroscope-websecure.tls=true"
+          - "traefik.http.routers.pyroscope-websecure.tls.certresolver=${TLS_CERT_RESOLVER}"
+          - "traefik.http.routers.pyroscope-websecure.middlewares=security-headers@file"
+          - "traefik.http.services.pyroscope-service.loadbalancer.server.port=4040"
+  when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Ensure Alloy is attached to proxy network for Traefik exposure
+  ansible.builtin.replace:
+    path: "{{ deployment_project_repo_dir }}/services/observability/compose.yml"
+    regexp: '(?ms)(\n  alloy:\n.*?\n    networks:\n      - observability-internal\n)(?!\s*-\s+proxy)'
+    replace: '\1      - proxy\n'
+  when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Remove misplaced Alloy HTTP listen flag from unrelated commands
+  ansible.builtin.replace:
+    path: "{{ deployment_project_repo_dir }}/services/observability/compose.yml"
+    regexp: '(?m)^      - --server\.http\.listen-addr=0\.0\.0\.0:12345\n'
+    replace: ""
+  when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Ensure Alloy listens on 0.0.0.0 for reverse proxy access
+  ansible.builtin.replace:
+    path: "{{ deployment_project_repo_dir }}/services/observability/compose.yml"
+    regexp: '(?ms)(\n  alloy:\n.*?\n    command:\n      - run\n      - --stability\.level=public-preview\n)(\s*      - --server\.http\.listen-addr=0\.0\.0\.0:12345\n)?'
+    replace: '\1      - --server.http.listen-addr=0.0.0.0:12345\n'
+  when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Expose Alloy through Traefik in observability project
+  ansible.builtin.blockinfile:
+    path: "{{ deployment_project_repo_dir }}/services/observability/compose.yml"
+    marker: "    # {mark} alloy traefik managed block"
+    insertafter: '      - alloy-data:/var/lib/alloy'
+    block: |
+        labels:
+          - "traefik.enable=true"
+          - "traefik.http.routers.alloy-web.rule=Host(`${ALLOY_HOSTNAME:-alloy}.${DEV_DOMAIN}`)"
+          - "traefik.http.routers.alloy-web.entrypoints=web"
+          - "traefik.http.routers.alloy-web.middlewares=${HTTP_TO_HTTPS_MIDDLEWARE:-redirect-to-https@file}"
+          - "traefik.http.routers.alloy-websecure.rule=Host(`${ALLOY_HOSTNAME:-alloy}.${DEV_DOMAIN}`)"
+          - "traefik.http.routers.alloy-websecure.entrypoints=websecure"
+          - "traefik.http.routers.alloy-websecure.service=alloy-service"
+          - "traefik.http.routers.alloy-websecure.tls=true"
+          - "traefik.http.routers.alloy-websecure.tls.certresolver=${TLS_CERT_RESOLVER}"
+          - "traefik.http.routers.alloy-websecure.middlewares=security-headers@file"
+          - "traefik.http.services.alloy-service.loadbalancer.server.port=12345"
+  when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Normalize observability Traefik managed block indentation in compose
+  ansible.builtin.replace:
+    path: "{{ deployment_project_repo_dir }}/services/observability/compose.yml"
+    regexp: '(?m)^(labels:|  - "traefik\.)'
+    replace: "    \\1"
   when: deployment_project_manifest_data.id == "traefik-observability"
 
 - name: Stop legacy step-ca container when project does not declare step-ca service
@@ -746,6 +1074,234 @@
   environment:
     COMPOSE_PROJECT_NAME: "{{ deployment_project_manifest_data.id }}"
   changed_when: true
+
+- name: Bootstrap shared Keycloak realm and initial user (traefik-keycloak)
+  ansible.builtin.shell: |
+    set -euo pipefail
+    set -a
+    . ./.env
+    set +a
+
+    realm="${KEYCLOAK_BOOTSTRAP_REALM:-local.test}"
+    username="${KEYCLOAK_BOOTSTRAP_USERNAME:-jose.romero}"
+    password="${KEYCLOAK_BOOTSTRAP_PASSWORD:-abcd123}"
+    admin_user="${KEYCLOAK_ADMIN:-admin}"
+    admin_pass="${KEYCLOAK_ADMIN_PASSWORD:-}"
+
+    [ -n "${admin_user}" ]
+    [ -n "${admin_pass}" ]
+    [ -n "${realm}" ]
+    [ -n "${username}" ]
+    [ -n "${password}" ]
+
+    # Wait for Keycloak admin endpoint before kcadm bootstrap.
+    for _ in $(seq 1 20); do
+      if ./scripts/compose.sh --profile keycloak exec -T keycloak /opt/keycloak/bin/kcadm.sh config credentials \
+        --server http://127.0.0.1:8080 \
+        --realm master \
+        --user "${admin_user}" \
+        --password "${admin_pass}" >/dev/null 2>&1; then
+        break
+      fi
+      sleep 3
+    done
+
+    ./scripts/compose.sh --profile keycloak exec -T keycloak /opt/keycloak/bin/kcadm.sh config credentials \
+      --server http://127.0.0.1:8080 \
+      --realm master \
+      --user "${admin_user}" \
+      --password "${admin_pass}" >/dev/null
+
+    set +e
+    ./scripts/compose.sh --profile keycloak exec -T keycloak /opt/keycloak/bin/kcadm.sh get "realms/${realm}" >/dev/null 2>&1
+    realm_exists_rc=$?
+    set -e
+    if [ "${realm_exists_rc}" -ne 0 ]; then
+      ./scripts/compose.sh --profile keycloak exec -T keycloak /opt/keycloak/bin/kcadm.sh create realms -s realm="${realm}" -s enabled=true >/dev/null
+      changed=1
+    else
+      ./scripts/compose.sh --profile keycloak exec -T keycloak /opt/keycloak/bin/kcadm.sh update "realms/${realm}" -s enabled=true >/dev/null
+      changed=0
+    fi
+
+    set +e
+    create_user_output="$(
+      ./scripts/compose.sh --profile keycloak exec -T keycloak /opt/keycloak/bin/kcadm.sh create users -r "${realm}" \
+        -s username="${username}" -s enabled=true -s emailVerified=true 2>&1
+    )"
+    create_user_rc=$?
+    set -e
+    if [ "${create_user_rc}" -eq 0 ]; then
+      changed=1
+    elif echo "${create_user_output}" | grep -Eqi 'already exists|User exists'; then
+      true
+    fi
+
+    for _ in $(seq 1 20); do
+      if ./scripts/compose.sh --profile keycloak exec -T keycloak /opt/keycloak/bin/kcadm.sh set-password \
+        -r "${realm}" \
+        --username "${username}" \
+        --new-password "${password}" \
+        --temporary=false >/dev/null 2>&1; then
+        break
+      fi
+      sleep 2
+    done
+
+    ./scripts/compose.sh --profile keycloak exec -T keycloak /opt/keycloak/bin/kcadm.sh set-password \
+      -r "${realm}" \
+      --username "${username}" \
+      --new-password "${password}" \
+      --temporary=false >/dev/null
+
+    if [ "${changed:-0}" -eq 1 ]; then
+      echo "changed"
+    fi
+  args:
+    chdir: "{{ deployment_project_repo_dir }}"
+    executable: /bin/bash
+  environment:
+    COMPOSE_PROJECT_NAME: "{{ deployment_project_manifest_data.id }}"
+  register: deployment_project_keycloak_bootstrap_cmd
+  changed_when: >-
+    (deployment_project_keycloak_bootstrap_cmd.stdout | default('')) is search('changed')
+  when: deployment_project_manifest_data.id == "traefik-keycloak"
+
+- name: Ensure Keycloak admin authentication works before OIDC provisioning
+  ansible.builtin.uri:
+    url: "{{ deployment_project_keycloak_oidc_base_url_effective }}/realms/master/protocol/openid-connect/token"
+    method: POST
+    body_format: form-urlencoded
+    body:
+      client_id: admin-cli
+      grant_type: password
+      username: "{{ deployment_project_keycloak_admin_username }}"
+      password: "{{ deployment_project_keycloak_admin_password }}"
+    validate_certs: false
+    status_code: 200
+    return_content: true
+  register: deployment_project_keycloak_admin_token_response
+  retries: 10
+  delay: 6
+  until: deployment_project_keycloak_admin_token_response.status == 200
+  when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Extract Keycloak admin access token for project OIDC provisioning
+  ansible.builtin.set_fact:
+    deployment_project_keycloak_admin_access_token: "{{ (deployment_project_keycloak_admin_token_response.content | from_json).access_token }}"
+  when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Resolve OIDC client contract for observability project
+  ansible.builtin.set_fact:
+    deployment_project_oidc_client_id_effective: "{{ deployment_project_keycloak_client_id_effective }}"
+    deployment_project_oidc_redirect_uris:
+      - "https://grafana.{{ deployment_project_base_domain_cmd.stdout | trim }}/login/generic_oauth"
+    deployment_project_oidc_web_origins:
+      - "https://grafana.{{ deployment_project_base_domain_cmd.stdout | trim }}"
+  when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Ensure OIDC client contract shape for observability project
+  ansible.builtin.assert:
+    that:
+      - deployment_project_oidc_client_id_effective | trim | length > 0
+      - deployment_project_oidc_redirect_uris | length > 0
+      - deployment_project_oidc_web_origins | length > 0
+    fail_msg: "Malformed OIDC contract for observability project."
+  when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Query Keycloak client by client_id in target realm
+  ansible.builtin.uri:
+    url: "{{ deployment_project_keycloak_oidc_base_url_effective }}/admin/realms/{{ deployment_project_keycloak_realm_effective }}/clients?clientId={{ deployment_project_oidc_client_id_effective | urlencode }}"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ deployment_project_keycloak_admin_access_token }}"
+    validate_certs: false
+    status_code: 200
+    return_content: true
+  register: deployment_project_keycloak_client_lookup
+  when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Parse existing OIDC client lookup result
+  ansible.builtin.set_fact:
+    deployment_project_keycloak_existing_client: "{{ ((deployment_project_keycloak_client_lookup.content | from_json) | first) if ((deployment_project_keycloak_client_lookup.content | from_json) | length > 0) else {} }}"
+  when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Create OIDC client in Keycloak when missing
+  ansible.builtin.uri:
+    url: "{{ deployment_project_keycloak_oidc_base_url_effective }}/admin/realms/{{ deployment_project_keycloak_realm_effective }}/clients"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ deployment_project_keycloak_admin_access_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      clientId: "{{ deployment_project_oidc_client_id_effective }}"
+      enabled: true
+      protocol: "openid-connect"
+      publicClient: false
+      directAccessGrantsEnabled: false
+      standardFlowEnabled: true
+      serviceAccountsEnabled: false
+      redirectUris: "{{ deployment_project_oidc_redirect_uris }}"
+      webOrigins: "{{ deployment_project_oidc_web_origins }}"
+      attributes:
+        pkce.code.challenge.method: ""
+    validate_certs: false
+    status_code: 201
+  when:
+    - deployment_project_manifest_data.id == "traefik-observability"
+    - deployment_project_keycloak_existing_client == {}
+
+- name: Refresh OIDC client lookup after create
+  ansible.builtin.uri:
+    url: "{{ deployment_project_keycloak_oidc_base_url_effective }}/admin/realms/{{ deployment_project_keycloak_realm_effective }}/clients?clientId={{ deployment_project_oidc_client_id_effective | urlencode }}"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ deployment_project_keycloak_admin_access_token }}"
+    validate_certs: false
+    status_code: 200
+    return_content: true
+  register: deployment_project_keycloak_client_lookup_after_create
+  when:
+    - deployment_project_manifest_data.id == "traefik-observability"
+    - deployment_project_keycloak_existing_client == {}
+
+- name: Resolve effective Keycloak client id for update/secret
+  ansible.builtin.set_fact:
+    deployment_project_keycloak_client_uuid: >-
+      {{
+        (
+          (deployment_project_keycloak_client_lookup_after_create.content | from_json | first).id
+        ) if (deployment_project_keycloak_existing_client == {})
+        else deployment_project_keycloak_existing_client.id
+      }}
+  when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Update OIDC client contract in Keycloak
+  ansible.builtin.uri:
+    url: "{{ deployment_project_keycloak_oidc_base_url_effective }}/admin/realms/{{ deployment_project_keycloak_realm_effective }}/clients/{{ deployment_project_keycloak_client_uuid }}"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ deployment_project_keycloak_admin_access_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      id: "{{ deployment_project_keycloak_client_uuid }}"
+      clientId: "{{ deployment_project_oidc_client_id_effective }}"
+      enabled: true
+      protocol: "openid-connect"
+      publicClient: false
+      directAccessGrantsEnabled: false
+      standardFlowEnabled: true
+      serviceAccountsEnabled: false
+      redirectUris: "{{ deployment_project_oidc_redirect_uris }}"
+      webOrigins: "{{ deployment_project_oidc_web_origins }}"
+      secret: "{{ deployment_project_grafana_oidc_client_secret_effective }}"
+      attributes:
+        pkce.code.challenge.method: ""
+    validate_certs: false
+    status_code: 204
+  when: deployment_project_manifest_data.id == "traefik-observability"
 
 - name: Verify traefik serves non-default TLS certificate for whoami (stepca-acme)
   ansible.builtin.shell: |

@@ -81,7 +81,20 @@ validate_manifest() {
     (.required_env | type == "array" and all(.[]; type == "string" and length > 0)) and
     (.tls_mode | type == "string" and length > 0) and
     ((has("public_host") | not) or (.public_host | type == "string" and length > 0)) and
-    ((has("depends_on_projects") | not) or (.depends_on_projects | type == "array" and all(.[]; type == "string" and length > 0)))
+    ((has("depends_on_projects") | not) or (.depends_on_projects | type == "array" and all(.[]; type == "string" and length > 0))) and
+    (
+      (.oidc? == null)
+      or (
+        (.oidc as $oidc
+          | ($oidc | type == "object")
+          and ($oidc.enabled | type == "boolean")
+          and (($oidc.realm? == null) or ($oidc.realm | type == "string" and length > 0))
+          and (($oidc.client_id? == null) or ($oidc.client_id | type == "string" and length > 0))
+          and (($oidc.redirect_uris? == null) or ($oidc.redirect_uris | type == "array" and all(.[]; type == "string" and length > 0)))
+          and (($oidc.web_origins? == null) or ($oidc.web_origins | type == "array" and all(.[]; type == "string" and length > 0)))
+        )
+      )
+    )
   ' "${manifest_path}" >/dev/null || die "Invalid project manifest schema: ${manifest_path}"
 }
 
@@ -286,6 +299,32 @@ sync_stepca_container_host_alias() {
     "sudo docker exec -u 0 step-ca sh -lc \"grep -qE '[[:space:]]${alias_host}([[:space:]]|$)' /etc/hosts || printf '%s %s\\n' '${alias_ip}' '${alias_host}' >> /etc/hosts\""
 }
 
+read_keycloak_admin_credentials() {
+  local keycloak_host_ip="$1"
+  local keycloak_ssh_user="$2"
+
+  check_cmd ssh
+  local -a ssh_opts=(
+    -o BatchMode=yes
+    -o ConnectTimeout=8
+    -o StrictHostKeyChecking=no
+    -o UserKnownHostsFile=/dev/null
+    -p "${SSH_PORT}"
+  )
+  if [[ -n "${IDENTITY_PATH}" ]]; then
+    ssh_opts+=(-i "${IDENTITY_PATH}")
+  fi
+
+  ssh "${ssh_opts[@]}" "${keycloak_ssh_user}@${keycloak_host_ip}" "bash -lc '
+    set -euo pipefail
+    env_file=/opt/deployment-projects/traefik-keycloak/.env
+    admin_user=\$(grep -E \"^KEYCLOAK_ADMIN=\" \"\${env_file}\" | tail -n1 | cut -d= -f2- | xargs)
+    admin_pass=\$(grep -E \"^KEYCLOAK_ADMIN_PASSWORD=\" \"\${env_file}\" | tail -n1 | cut -d= -f2- | xargs)
+    [ -n \"\${admin_user}\" ] && [ -n \"\${admin_pass}\" ]
+    printf \"%s|%s\\n\" \"\${admin_user}\" \"\${admin_pass}\"
+  '"
+}
+
 list_projects() {
   validate_catalog
   jq -r '.projects[].id' "${CATALOG_PATH}"
@@ -378,6 +417,20 @@ run_project() {
   local stepca_dependency_host_ip=""
   local stepca_dependency_ssh_user=""
   local stepca_dependency_root_cert_path=""
+  local keycloak_dependency_host_ip=""
+  local keycloak_dependency_ssh_user=""
+  local keycloak_dependency_admin_user=""
+  local keycloak_dependency_admin_password=""
+  local keycloak_realm="local.test"
+  local keycloak_grafana_client_id="grafana"
+  local keycloak_grafana_client_secret="${DEPLOYMENT_KEYCLOAK_GRAFANA_CLIENT_SECRET:-}"
+  local keycloak_oidc_base_url=""
+  local oidc_enabled="false"
+  oidc_enabled="$(jq -r '.oidc.enabled // false' "${manifest_path}")"
+  if [[ "${oidc_enabled}" == "true" ]]; then
+    keycloak_realm="$(jq -r '.oidc.realm // "local.test"' "${manifest_path}")"
+    keycloak_grafana_client_id="$(jq -r '.oidc.client_id // "grafana"' "${manifest_path}")"
+  fi
   local has_stepca_service
   has_stepca_service="$(jq -r '.services | index("step-ca") != null' "${manifest_path}")"
   if [[ "${effective_tls_mode}" == "stepca-acme" && "${has_stepca_service}" != "true" ]]; then
@@ -394,11 +447,18 @@ run_project() {
     else
       project_public_host="${PROJECT_ID}.local.test"
     fi
-    local project_domain project_id_suffix whoami_public_host traefik_public_host
+    local project_domain project_id_suffix whoami_public_host traefik_public_host grafana_public_host keycloak_public_host prometheus_public_host loki_public_host tempo_public_host pyroscope_public_host alloy_public_host
     project_domain="${project_public_host#*.}"
     project_id_suffix="${PROJECT_ID#traefik-}"
     whoami_public_host="whoami-${project_id_suffix}.${project_domain}"
     traefik_public_host="traefik-${project_id_suffix}.${project_domain}"
+    grafana_public_host="grafana.${project_domain}"
+    keycloak_public_host="keycloak.${project_domain}"
+    prometheus_public_host="prometheus.${project_domain}"
+    loki_public_host="loki.${project_domain}"
+    tempo_public_host="tempo.${project_domain}"
+    pyroscope_public_host="pyroscope.${project_domain}"
+    alloy_public_host="alloy.${project_domain}"
     sync_stepca_container_host_alias "${stepca_dependency_host_ip}" "${stepca_dependency_ssh_user}" "${project_public_host}" "${host_ip}"
     log "Synced StepCA container host alias ${project_public_host} -> ${host_ip}"
     if [[ "${manifest_services}" == *"whoami"* ]]; then
@@ -409,6 +469,57 @@ run_project() {
       sync_stepca_container_host_alias "${stepca_dependency_host_ip}" "${stepca_dependency_ssh_user}" "${traefik_public_host}" "${host_ip}"
       log "Synced StepCA container host alias ${traefik_public_host} -> ${host_ip}"
     fi
+    if [[ "${manifest_services}" == *"grafana"* ]]; then
+      sync_stepca_container_host_alias "${stepca_dependency_host_ip}" "${stepca_dependency_ssh_user}" "${grafana_public_host}" "${host_ip}"
+      log "Synced StepCA container host alias ${grafana_public_host} -> ${host_ip}"
+    fi
+    if [[ "${manifest_services}" == *"keycloak"* ]]; then
+      sync_stepca_container_host_alias "${stepca_dependency_host_ip}" "${stepca_dependency_ssh_user}" "${keycloak_public_host}" "${host_ip}"
+      log "Synced StepCA container host alias ${keycloak_public_host} -> ${host_ip}"
+    fi
+    if [[ "${manifest_services}" == *"prometheus"* ]]; then
+      sync_stepca_container_host_alias "${stepca_dependency_host_ip}" "${stepca_dependency_ssh_user}" "${prometheus_public_host}" "${host_ip}"
+      log "Synced StepCA container host alias ${prometheus_public_host} -> ${host_ip}"
+    fi
+    if [[ "${manifest_services}" == *"loki"* ]]; then
+      sync_stepca_container_host_alias "${stepca_dependency_host_ip}" "${stepca_dependency_ssh_user}" "${loki_public_host}" "${host_ip}"
+      log "Synced StepCA container host alias ${loki_public_host} -> ${host_ip}"
+    fi
+    if [[ "${manifest_services}" == *"tempo"* ]]; then
+      sync_stepca_container_host_alias "${stepca_dependency_host_ip}" "${stepca_dependency_ssh_user}" "${tempo_public_host}" "${host_ip}"
+      log "Synced StepCA container host alias ${tempo_public_host} -> ${host_ip}"
+    fi
+    if [[ "${manifest_services}" == *"pyroscope"* ]]; then
+      sync_stepca_container_host_alias "${stepca_dependency_host_ip}" "${stepca_dependency_ssh_user}" "${pyroscope_public_host}" "${host_ip}"
+      log "Synced StepCA container host alias ${pyroscope_public_host} -> ${host_ip}"
+    fi
+    if [[ "${manifest_services}" == *"alloy"* ]]; then
+      sync_stepca_container_host_alias "${stepca_dependency_host_ip}" "${stepca_dependency_ssh_user}" "${alloy_public_host}" "${host_ip}"
+      log "Synced StepCA container host alias ${alloy_public_host} -> ${host_ip}"
+    fi
+  fi
+
+  if jq -e '.depends_on_projects | index("traefik-keycloak") != null' "${manifest_path}" >/dev/null 2>&1; then
+    keycloak_dependency_host_ip="$(registry_get_project_field "traefik-keycloak" "host_ip")"
+    keycloak_dependency_ssh_user="$(registry_get_project_field "traefik-keycloak" "ssh_user")"
+    [[ -n "${keycloak_dependency_host_ip}" ]] || die "Missing traefik-keycloak host_ip in ${PROJECT_REGISTRY_PATH}"
+    [[ -n "${keycloak_dependency_ssh_user}" ]] || die "Missing traefik-keycloak ssh_user in ${PROJECT_REGISTRY_PATH}"
+
+    local project_public_host_for_oidc project_domain_for_oidc
+    if [[ -n "${manifest_public_host}" ]]; then
+      project_public_host_for_oidc="${manifest_public_host}"
+    else
+      project_public_host_for_oidc="${PROJECT_ID}.local.test"
+    fi
+    project_domain_for_oidc="${project_public_host_for_oidc#*.}"
+    keycloak_oidc_base_url="https://keycloak.${project_domain_for_oidc}"
+
+    local keycloak_admin_pair
+    keycloak_admin_pair="$(read_keycloak_admin_credentials "${keycloak_dependency_host_ip}" "${keycloak_dependency_ssh_user}")"
+    keycloak_dependency_admin_user="${keycloak_admin_pair%%|*}"
+    keycloak_dependency_admin_password="${keycloak_admin_pair#*|}"
+    [[ -n "${keycloak_dependency_admin_user}" ]] || die "Missing KEYCLOAK_ADMIN from traefik-keycloak dependency."
+    [[ -n "${keycloak_dependency_admin_password}" ]] || die "Missing KEYCLOAK_ADMIN_PASSWORD from traefik-keycloak dependency."
   fi
 
   run_stage system_bootstrap run_ansible_playbook "${REPO_ROOT}/deployment/ansible/playbooks/system_bootstrap.yml"
@@ -420,7 +531,14 @@ run_project() {
     --extra-vars "deployment_project_os=${OS_SELECTOR}" \
     --extra-vars "deployment_project_tls_mode_override=${TLS_MODE_OVERRIDE}" \
     --extra-vars "deployment_project_stepca_dependency_host_ip=${stepca_dependency_host_ip}" \
-    --extra-vars "deployment_project_stepca_dependency_root_cert_path=${stepca_dependency_root_cert_path}"
+    --extra-vars "deployment_project_stepca_dependency_root_cert_path=${stepca_dependency_root_cert_path}" \
+    --extra-vars "deployment_project_keycloak_dependency_host_ip=${keycloak_dependency_host_ip}" \
+    --extra-vars "deployment_project_keycloak_oidc_base_url=${keycloak_oidc_base_url}" \
+    --extra-vars "deployment_project_keycloak_realm=${keycloak_realm}" \
+    --extra-vars "deployment_project_keycloak_grafana_client_id=${keycloak_grafana_client_id}" \
+    --extra-vars "deployment_project_keycloak_grafana_client_secret=${keycloak_grafana_client_secret}" \
+    --extra-vars "deployment_project_keycloak_admin_username=${keycloak_dependency_admin_user}" \
+    --extra-vars "deployment_project_keycloak_admin_password=${keycloak_dependency_admin_password}"
 
   record_project_deployment "${PROJECT_ID}" "${TARGET_INPUT}" "${OS_SELECTOR}" "${deployment_vm_name}" "${deployment_tf_state_path}" "${host_ip}" "${ssh_user}"
   log "Project deployment finished successfully for project=${PROJECT_ID}"

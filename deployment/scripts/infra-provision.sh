@@ -495,6 +495,15 @@ check_cmd terraform
 TF_DIR="${REPO_ROOT}/infra/terraform/targets/${TARGET}"
 [[ -d "${TF_DIR}" ]] || die "Missing Terraform target dir: ${TF_DIR}"
 
+deployment_libvirt_pool_explicit=false
+if [[ -n "${DEPLOYMENT_LIBVIRT_POOL+x}" ]]; then
+  deployment_libvirt_pool_explicit=true
+fi
+deployment_libvirt_pool_path_explicit=false
+if [[ -n "${DEPLOYMENT_LIBVIRT_POOL_PATH+x}" ]]; then
+  deployment_libvirt_pool_path_explicit=true
+fi
+
 if [[ "${TARGET}" == "proxmox" && ("${ACTION}" == "apply" || "${ACTION}" == "plan") ]]; then
   [[ -n "${PROXMOX_API_URL:-${DEPLOYMENT_PROXMOX_API_URL:-}}" ]] || die "Missing Proxmox API URL (set PROXMOX_API_URL or DEPLOYMENT_PROXMOX_API_URL)"
   [[ -n "${PROXMOX_API_TOKEN:-${DEPLOYMENT_PROXMOX_API_TOKEN:-}}" ]] || die "Missing Proxmox API token (set PROXMOX_API_TOKEN or DEPLOYMENT_PROXMOX_API_TOKEN)"
@@ -564,6 +573,51 @@ DEPLOYMENT_UBUNTU_IMAGE_PATH="${DEPLOYMENT_UBUNTU_IMAGE_PATH:-${REPO_ROOT}/infra
 DEPLOYMENT_GENTOO_OPENRC_MANIFEST_PATH="${DEPLOYMENT_GENTOO_OPENRC_MANIFEST_PATH:-${REPO_ROOT}/experiments/gentoo-qemu/manifests/gentoo-openrc-stage3-hostkernel-20260222T170100Z.yaml}"
 DEPLOYMENT_GENTOO_SYSTEMD_MANIFEST_PATH="${DEPLOYMENT_GENTOO_SYSTEMD_MANIFEST_PATH:-${REPO_ROOT}/experiments/gentoo-qemu/manifests/gentoo-systemd-stage3-hostkernel-20260222T170100Z.yaml}"
 DEPLOYMENT_TF_STATE_PATH="${DEPLOYMENT_TF_STATE_PATH:-}"
+
+if [[ "${TARGET}" == "libvirt" && "${deployment_libvirt_pool_explicit}" != "true" && -n "${DEPLOYMENT_TF_STATE_PATH}" && "$(command -v jq || true)" != "" ]]; then
+  for state_candidate in "${DEPLOYMENT_TF_STATE_PATH}" "${DEPLOYMENT_TF_STATE_PATH}.backup"; do
+    [[ -f "${state_candidate}" ]] || continue
+    recovered_pool="$(jq -r '[.resources[]? | select(.type=="libvirt_volume" or .type=="libvirt_cloudinit_disk") | .instances[]?.attributes.pool | select(type=="string" and length>0)] | first // empty' "${state_candidate}" 2>/dev/null || true)"
+    if [[ -n "${recovered_pool}" ]]; then
+      DEPLOYMENT_LIBVIRT_POOL="${recovered_pool}"
+      if [[ "${deployment_libvirt_pool_path_explicit}" != "true" ]]; then
+        DEPLOYMENT_LIBVIRT_POOL_PATH="/var/lib/libvirt/images/${DEPLOYMENT_LIBVIRT_POOL}"
+      fi
+      log "Recovered libvirt pool '${DEPLOYMENT_LIBVIRT_POOL}' from ${state_candidate}"
+      break
+    fi
+  done
+fi
+
+if [[ "${TARGET}" == "libvirt" && "${deployment_libvirt_pool_explicit}" != "true" && "$(command -v virsh || true)" != "" ]]; then
+  if ! virsh pool-info "${DEPLOYMENT_LIBVIRT_POOL}" >/dev/null 2>&1; then
+    detected_pool=""
+    while IFS= read -r pool_name; do
+      pool_name="$(printf '%s' "${pool_name}" | xargs)"
+      [[ -n "${pool_name}" ]] || continue
+      if virsh pool-info "${pool_name}" 2>/dev/null | grep -q "^State:[[:space:]]*running$"; then
+        detected_pool="${pool_name}"
+        break
+      fi
+      if [[ -z "${detected_pool}" ]]; then
+        detected_pool="${pool_name}"
+      fi
+    done < <(virsh pool-list --all --name 2>/dev/null || true)
+
+    if [[ -n "${detected_pool}" ]]; then
+      DEPLOYMENT_LIBVIRT_POOL="${detected_pool}"
+      if [[ "${deployment_libvirt_pool_path_explicit}" != "true" ]]; then
+        detected_pool_path="$(virsh pool-dumpxml "${detected_pool}" 2>/dev/null | awk -F'[<>]' '/<path>/{print $3; exit}' || true)"
+        if [[ -n "${detected_pool_path}" ]]; then
+          DEPLOYMENT_LIBVIRT_POOL_PATH="${detected_pool_path}"
+        else
+          DEPLOYMENT_LIBVIRT_POOL_PATH="/var/lib/libvirt/images/${DEPLOYMENT_LIBVIRT_POOL}"
+        fi
+      fi
+      warn "Configured libvirt pool '${DEPLOYMENT_LIBVIRT_POOL}' (default pool not available)"
+    fi
+  fi
+fi
 
 if [[ "${TARGET}" == "libvirt" ]]; then
   resolve_base_image_config

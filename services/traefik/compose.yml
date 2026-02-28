@@ -10,6 +10,8 @@ services:
       - "443:443"
     networks:
       - proxy
+    extra_hosts:
+      - "keycloak.${BASE_DOMAIN}:${TRAEFIK_KEYCLOAK_HOST_IP:-127.0.0.1}"
     environment:
       - TZ=UTC
       - DOCKER_API_VERSION=1.44
