@@ -17,6 +17,7 @@ SCRIPT_DIR=$(dirname "$0")
 REPO_ROOT="$SCRIPT_DIR/../../.."
 CATALOG="$REPO_ROOT/deployment/projects/catalog.json"
 MANIFEST="$REPO_ROOT/deployment/projects/traefik-stepca/manifest.json"
+KEY_MANIFEST="$REPO_ROOT/deployment/projects/traefik-keycloak/manifest.json"
 OBS_MANIFEST="$REPO_ROOT/deployment/projects/traefik-observability/manifest.json"
 
 check_command "jq"
@@ -30,12 +31,15 @@ fi
 if [ ! -f "$MANIFEST" ]; then
     log_error "Missing traefik-stepca manifest: $MANIFEST"
 fi
+if [ ! -f "$KEY_MANIFEST" ]; then
+    log_error "Missing traefik-keycloak manifest: $KEY_MANIFEST"
+fi
 if [ ! -f "$OBS_MANIFEST" ]; then
     log_error "Missing traefik-observability manifest: $OBS_MANIFEST"
 fi
 
 list_output="$(make -s -C "$REPO_ROOT" deployment-project-list)"
-expected_list=$'traefik-stepca\ntraefik-observability'
+expected_list=$'traefik-stepca\ntraefik-keycloak\ntraefik-observability'
 if [ "$list_output" != "$expected_list" ]; then
     log_error "deployment-project-list output drifted. Expected:\n${expected_list}\nGot:\n${list_output}"
 fi
@@ -49,6 +53,9 @@ if ! jq -e '.projects[] | select(.id=="traefik-stepca") | .manifest == "deployme
 fi
 if ! jq -e '.projects[] | select(.id=="traefik-observability") | .manifest == "deployment/projects/traefik-observability/manifest.json"' "$CATALOG" >/dev/null; then
     log_error "Catalog entry for traefik-observability is missing or points to an unexpected manifest path"
+fi
+if ! jq -e '.projects[] | select(.id=="traefik-keycloak") | .manifest == "deployment/projects/traefik-keycloak/manifest.json"' "$CATALOG" >/dev/null; then
+    log_error "Catalog entry for traefik-keycloak is missing or points to an unexpected manifest path"
 fi
 
 if ! jq -e '
@@ -64,6 +71,22 @@ if ! jq -e '
     (.depends_on_projects | type == "array")
 ' "$MANIFEST" >/dev/null; then
     log_error "traefik-stepca manifest contract is invalid"
+fi
+
+if ! jq -e '
+    .id == "traefik-keycloak" and
+    (.description | type == "string" and length > 0) and
+    (.repo_url | type == "string" and length > 0) and
+    (.repo_ref | type == "string" and length > 0) and
+    .compose_profile == "keycloak" and
+    (.services == ["traefik", "whoami", "keycloak"]) and
+    .deploy_playbook == "deployment/ansible/playbooks/project_deploy.yml" and
+    (.required_env | index("KEYCLOAK_ADMIN")) and
+    (.required_env | index("KEYCLOAK_ADMIN_PASSWORD")) and
+    .tls_mode == "stepca-acme" and
+    (.depends_on_projects == ["traefik-stepca"])
+' "$KEY_MANIFEST" >/dev/null; then
+    log_error "traefik-keycloak manifest contract is invalid"
 fi
 
 if ! jq -e '

@@ -64,4 +64,12 @@ if ! grep -q -- "--tls-mode" "$RUNNER"; then
     log_error "deployment-project runner must expose --tls-mode override option"
 fi
 
+if ! grep -q "tf_state_path_for_vm" "$RUNNER"; then
+    log_error "deployment-project runner must isolate terraform state per VM/project"
+fi
+
+if ! grep -q "check_dependencies_registry" "$RUNNER"; then
+    log_error "deployment-project runner must validate dependencies from controller registry"
+fi
+
 log_success "Deployment project workflow contract test passed."

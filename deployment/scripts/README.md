@@ -20,6 +20,7 @@ Project orchestration entrypoints:
 Current catalog projects:
 
 - `traefik-stepca`
+- `traefik-keycloak`
 - `traefik-observability`
 
 `traefik-observability` contract highlights:
@@ -32,3 +33,8 @@ Hostname contract for web projects:
 
 - Default public host: `<project-id>.<BASE_DOMAIN>`
 - Optional manifest override: `public_host`
+
+Terraform state isolation:
+
+- `deployment-project` uses one tfstate per VM/project under `infra/terraform/state/<target>/<vm-name>.tfstate`.
+- This allows running multiple project VMs in parallel (for example: stepca + keycloak + observability).
