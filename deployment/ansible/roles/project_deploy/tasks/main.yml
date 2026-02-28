@@ -99,6 +99,13 @@
     mode: "0644"
   when: "'traefik' in deployment_project_manifest_data.services"
 
+- name: Backport whoami compose definition from controller workspace
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../../services/whoami/compose.yml"
+    dest: "{{ deployment_project_repo_dir }}/services/whoami/compose.yml"
+    mode: "0644"
+  when: "'whoami' in deployment_project_manifest_data.services"
+
 - name: Backport keycloak compose definition from controller workspace
   ansible.builtin.file:
     path: "{{ deployment_project_repo_dir }}/services/keycloak"
