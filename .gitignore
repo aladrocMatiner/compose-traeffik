@@ -62,5 +62,7 @@ services/dns-bind/zones/db.aladroc.io
 !*.tfvars.example
 crash.log
 crash.*.log
+deployment/state/
+infra/terraform/state/
 infra/images/
 .tools/

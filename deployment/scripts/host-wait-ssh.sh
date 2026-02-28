@@ -10,7 +10,7 @@ Usage:
   deployment/scripts/host-wait-ssh.sh [--host IP] [--user USER] [--port PORT] [--identity PATH]
                            [--target <libvirt|qemu|proxmox>]
                            [--os <ubuntu|debian|debian12|debian13|gentoo|opensuse-leap|almalinux9|rockylinux9|fedora-cloud>]
-                           [--init <openrc|systemd>] [--terraform-dir DIR]
+                           [--init <openrc|systemd>] [--terraform-dir DIR] [--state-path FILE]
                            [--timeout SECONDS] [--interval SECONDS] [--skip-cloud-init-wait]
 
 Waits for SSH reachability and (by default) waits for cloud-init completion.
@@ -85,8 +85,12 @@ resolve_from_terraform() {
   local tf_dir="$1"
   check_cmd terraform
   [[ -d "${tf_dir}" ]] || die "Terraform directory not found: ${tf_dir}"
-  host_ip="$(terraform -chdir="${tf_dir}" output -raw host_ip 2>/dev/null || true)"
-  ssh_user="$(terraform -chdir="${tf_dir}" output -raw ssh_user 2>/dev/null || true)"
+  local -a tf_state_args=()
+  if [[ -n "${TF_STATE_PATH}" ]]; then
+    tf_state_args+=("-state=${TF_STATE_PATH}")
+  fi
+  host_ip="$(terraform -chdir="${tf_dir}" output "${tf_state_args[@]}" -raw host_ip 2>/dev/null || true)"
+  ssh_user="$(terraform -chdir="${tf_dir}" output "${tf_state_args[@]}" -raw ssh_user 2>/dev/null || true)"
   [[ -n "${host_ip}" ]] || die "Unable to read 'host_ip' from terraform outputs in ${tf_dir}"
   [[ -n "${ssh_user}" ]] || die "Unable to read 'ssh_user' from terraform outputs in ${tf_dir}"
 }
@@ -102,6 +106,7 @@ TF_DIR=""
 TIMEOUT_SECONDS="${DEPLOYMENT_WAIT_TIMEOUT_SECONDS:-300}"
 INTERVAL_SECONDS="${DEPLOYMENT_WAIT_INTERVAL_SECONDS:-5}"
 WAIT_CLOUD_INIT=true
+TF_STATE_PATH="${DEPLOYMENT_TF_STATE_PATH:-}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -143,6 +148,11 @@ while [[ $# -gt 0 ]]; do
     --terraform-dir)
       [[ $# -ge 2 ]] || die "--terraform-dir requires a value"
       TF_DIR="$2"
+      shift 2
+      ;;
+    --state-path)
+      [[ $# -ge 2 ]] || die "--state-path requires a value"
+      TF_STATE_PATH="$2"
       shift 2
       ;;
     --timeout)

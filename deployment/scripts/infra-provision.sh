@@ -62,6 +62,7 @@ Environment overrides (selected):
   DEPLOYMENT_LIBVIRT_MACHINE
   DEPLOYMENT_LIBVIRT_ATTACH_CLOUDINIT_AS_SCSI
   DEPLOYMENT_LIBVIRT_REMOVE_IDE_CONTROLLER
+  DEPLOYMENT_TF_STATE_PATH
   PROXMOX_API_URL
   PROXMOX_API_TOKEN
   PROXMOX_TLS_INSECURE
@@ -562,6 +563,7 @@ DEPLOYMENT_UBUNTU_IMAGE_URL="${DEPLOYMENT_UBUNTU_IMAGE_URL:-https://cloud-images
 DEPLOYMENT_UBUNTU_IMAGE_PATH="${DEPLOYMENT_UBUNTU_IMAGE_PATH:-${REPO_ROOT}/infra/images/ubuntu/noble-server-cloudimg-amd64.img}"
 DEPLOYMENT_GENTOO_OPENRC_MANIFEST_PATH="${DEPLOYMENT_GENTOO_OPENRC_MANIFEST_PATH:-${REPO_ROOT}/experiments/gentoo-qemu/manifests/gentoo-openrc-stage3-hostkernel-20260222T170100Z.yaml}"
 DEPLOYMENT_GENTOO_SYSTEMD_MANIFEST_PATH="${DEPLOYMENT_GENTOO_SYSTEMD_MANIFEST_PATH:-${REPO_ROOT}/experiments/gentoo-qemu/manifests/gentoo-systemd-stage3-hostkernel-20260222T170100Z.yaml}"
+DEPLOYMENT_TF_STATE_PATH="${DEPLOYMENT_TF_STATE_PATH:-}"
 
 if [[ "${TARGET}" == "libvirt" ]]; then
   resolve_base_image_config
@@ -606,6 +608,12 @@ if [[ "${TARGET}" == "libvirt" && ("${ACTION}" == "apply" || "${ACTION}" == "pla
 fi
 
 terraform -chdir="${TF_DIR}" init -upgrade=false >/dev/null
+
+TF_STATE_ARGS=()
+if [[ -n "${DEPLOYMENT_TF_STATE_PATH}" ]]; then
+  mkdir -p "$(dirname "${DEPLOYMENT_TF_STATE_PATH}")"
+  TF_STATE_ARGS+=("-state=${DEPLOYMENT_TF_STATE_PATH}")
+fi
 
 TF_VARS=()
 if [[ "${TARGET}" == "libvirt" ]]; then
@@ -666,7 +674,7 @@ fi
 case "${ACTION}" in
   plan)
     log "Planning ${OS_FAMILY}${INIT_SYSTEM:+ (${INIT_SYSTEM})} VM '${DEPLOYMENT_VM_NAME}' on ${TARGET}"
-    terraform -chdir="${TF_DIR}" plan "${TF_VARS[@]}"
+    terraform -chdir="${TF_DIR}" plan "${TF_STATE_ARGS[@]}" "${TF_VARS[@]}"
     ;;
   apply)
     log "Applying ${OS_FAMILY}${INIT_SYSTEM:+ (${INIT_SYSTEM})} VM '${DEPLOYMENT_VM_NAME}' on ${TARGET}"
@@ -674,9 +682,9 @@ case "${ACTION}" in
     if [[ "${AUTO_APPROVE}" == "true" ]]; then
       APPLY_ARGS+=("-auto-approve")
     fi
-    terraform -chdir="${TF_DIR}" apply "${APPLY_ARGS[@]}" "${TF_VARS[@]}"
+    terraform -chdir="${TF_DIR}" apply "${TF_STATE_ARGS[@]}" "${APPLY_ARGS[@]}" "${TF_VARS[@]}"
     log "Provisioned VM. Connection command:"
-    terraform -chdir="${TF_DIR}" output -raw ssh_command || true
+    terraform -chdir="${TF_DIR}" output "${TF_STATE_ARGS[@]}" -raw ssh_command || true
     printf '\n'
     ;;
   destroy)
@@ -685,15 +693,15 @@ case "${ACTION}" in
     if [[ "${AUTO_APPROVE}" == "true" ]]; then
       DESTROY_ARGS+=("-auto-approve")
     fi
-    terraform -chdir="${TF_DIR}" destroy "${DESTROY_ARGS[@]}" "${TF_VARS[@]}"
+    terraform -chdir="${TF_DIR}" destroy "${TF_STATE_ARGS[@]}" "${DESTROY_ARGS[@]}" "${TF_VARS[@]}"
     ;;
   output)
-    terraform -chdir="${TF_DIR}" output -json
+    terraform -chdir="${TF_DIR}" output "${TF_STATE_ARGS[@]}" -json
     ;;
   ssh)
     check_cmd ssh
-    host_ip="$(terraform -chdir="${TF_DIR}" output -raw host_ip)"
-    ssh_user="$(terraform -chdir="${TF_DIR}" output -raw ssh_user)"
+    host_ip="$(terraform -chdir="${TF_DIR}" output "${TF_STATE_ARGS[@]}" -raw host_ip)"
+    ssh_user="$(terraform -chdir="${TF_DIR}" output "${TF_STATE_ARGS[@]}" -raw ssh_user)"
     exec ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "${ssh_user}@${host_ip}"
     ;;
 esac
