@@ -5,6 +5,10 @@
       "manifest": "deployment/projects/traefik-stepca/manifest.json"
     },
     {
+      "id": "traefik-keycloak",
+      "manifest": "deployment/projects/traefik-keycloak/manifest.json"
+    },
+    {
       "id": "traefik-observability",
       "manifest": "deployment/projects/traefik-observability/manifest.json"
     }

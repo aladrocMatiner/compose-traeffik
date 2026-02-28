@@ -4,6 +4,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 CATALOG_PATH="${REPO_ROOT}/deployment/projects/catalog.json"
+DEPLOYMENT_STATE_DIR="${REPO_ROOT}/deployment/state"
+PROJECT_REGISTRY_PATH="${DEPLOYMENT_STATE_DIR}/projects.json"
+STEPCA_ROOT_CERT_REMOTE_PATH="/opt/deployment-projects/traefik-stepca/services/step-ca/certs/root_ca.crt"
 
 usage() {
   cat <<'USAGE'
@@ -91,12 +94,38 @@ terraform_dir_for_target() {
   esac
 }
 
+tf_state_path_for_vm() {
+  local target="$1"
+  local vm_name="$2"
+  printf '%s\n' "${REPO_ROOT}/infra/terraform/state/${target}/${vm_name}.tfstate"
+}
+
+default_vm_ip_for_project() {
+  local project_id="$1"
+  case "${project_id}" in
+    traefik-stepca) printf '192.168.122.50\n' ;;
+    traefik-keycloak) printf '192.168.122.51\n' ;;
+    traefik-observability) printf '192.168.122.52\n' ;;
+    *)
+      local hash octet
+      hash="$(printf '%s' "${project_id}" | cksum | awk '{print $1}')"
+      octet="$((60 + (hash % 130)))"
+      printf '192.168.122.%s\n' "${octet}"
+      ;;
+  esac
+}
+
 resolve_host_tuple() {
   local tf_dir="$1"
+  local tf_state_path="$2"
   check_cmd terraform
   [[ -d "${tf_dir}" ]] || die "Terraform directory not found: ${tf_dir}"
-  host_ip="$(terraform -chdir="${tf_dir}" output -raw host_ip 2>/dev/null || true)"
-  ssh_user="$(terraform -chdir="${tf_dir}" output -raw ssh_user 2>/dev/null || true)"
+  local -a tf_state_args=()
+  if [[ -n "${tf_state_path}" ]]; then
+    tf_state_args+=("-state=${tf_state_path}")
+  fi
+  host_ip="$(terraform -chdir="${tf_dir}" output "${tf_state_args[@]}" -raw host_ip 2>/dev/null || true)"
+  ssh_user="$(terraform -chdir="${tf_dir}" output "${tf_state_args[@]}" -raw ssh_user 2>/dev/null || true)"
   [[ -n "${host_ip}" ]] || die "Unable to read 'host_ip' from terraform outputs in ${tf_dir}"
   [[ -n "${ssh_user}" ]] || die "Unable to read 'ssh_user' from terraform outputs in ${tf_dir}"
 }
@@ -143,7 +172,17 @@ run_ansible_playbook() {
   ANSIBLE_CONFIG="${REPO_ROOT}/deployment/ansible/ansible.cfg" "${cmd[@]}"
 }
 
-check_dependencies_remote() {
+ensure_project_registry() {
+  check_cmd jq
+  mkdir -p "${DEPLOYMENT_STATE_DIR}"
+  if [[ ! -f "${PROJECT_REGISTRY_PATH}" ]]; then
+    printf '{\n  "projects": {}\n}\n' > "${PROJECT_REGISTRY_PATH}"
+  fi
+  jq -e '.projects | type == "object"' "${PROJECT_REGISTRY_PATH}" >/dev/null || \
+    die "Invalid project registry schema: ${PROJECT_REGISTRY_PATH}"
+}
+
+check_dependencies_registry() {
   local -a deps=("$@")
   local missing=()
 
@@ -151,29 +190,100 @@ check_dependencies_remote() {
     return 0
   fi
 
-  check_cmd ssh
-
-  local ssh_opts=(
-    -o BatchMode=yes
-    -o ConnectTimeout=8
-    -o StrictHostKeyChecking=no
-    -o UserKnownHostsFile=/dev/null
-  )
-  if [[ -n "${IDENTITY_PATH}" ]]; then
-    ssh_opts+=(-i "${IDENTITY_PATH}")
-  fi
-
   local dep
   for dep in "${deps[@]}"; do
-    if ! ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${ssh_user}@${host_ip}" \
-      "test -f ~/.compose-traeffik/deployment-project-state.json && grep -Fq '\"${dep}\"' ~/.compose-traeffik/deployment-project-state.json"; then
+    if ! jq -e --arg dep "${dep}" '.projects[$dep].host_ip | type == "string" and length > 0' "${PROJECT_REGISTRY_PATH}" >/dev/null; then
       missing+=("${dep}")
     fi
   done
 
   if [[ "${#missing[@]}" -gt 0 ]]; then
-    die "Missing required project dependencies: ${missing[*]}. Recovery: deploy dependencies first (make deployment-project project=<dependency>) and retry project=${PROJECT_ID}."
+    die "Missing required project dependencies in local registry (${PROJECT_REGISTRY_PATH}): ${missing[*]}. Recovery: deploy dependencies first (make deployment-project project=<dependency>) and retry project=${PROJECT_ID}."
   fi
+}
+
+record_project_deployment() {
+  local project_id="$1"
+  local target="$2"
+  local os_selector="$3"
+  local vm_name="$4"
+  local tf_state_path="$5"
+  local host_ip_value="$6"
+  local ssh_user_value="$7"
+
+  ensure_project_registry
+  local tmp_file
+  tmp_file="$(mktemp)"
+  jq \
+    --arg project_id "${project_id}" \
+    --arg target "${target}" \
+    --arg os "${os_selector}" \
+    --arg vm_name "${vm_name}" \
+    --arg tf_state_path "${tf_state_path}" \
+    --arg host_ip "${host_ip_value}" \
+    --arg ssh_user "${ssh_user_value}" \
+    --arg deployed_at "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+    '.projects[$project_id] = {
+      target: $target,
+      os: $os,
+      vm_name: $vm_name,
+      tf_state_path: $tf_state_path,
+      host_ip: $host_ip,
+      ssh_user: $ssh_user,
+      deployed_at: $deployed_at
+    }' \
+    "${PROJECT_REGISTRY_PATH}" > "${tmp_file}"
+  mv "${tmp_file}" "${PROJECT_REGISTRY_PATH}"
+}
+
+registry_get_project_field() {
+  local project_id="$1"
+  local field="$2"
+  jq -r --arg id "${project_id}" --arg field "${field}" '.projects[$id][$field] // empty' "${PROJECT_REGISTRY_PATH}"
+}
+
+fetch_stepca_root_cert_from_dependency() {
+  local stepca_host_ip="$1"
+  local stepca_ssh_user="$2"
+  local cert_cache_path="$3"
+
+  check_cmd scp
+  mkdir -p "$(dirname "${cert_cache_path}")"
+
+  local -a scp_opts=(
+    -o StrictHostKeyChecking=no
+    -o UserKnownHostsFile=/dev/null
+    -P "${SSH_PORT}"
+  )
+  if [[ -n "${IDENTITY_PATH}" ]]; then
+    scp_opts+=(-i "${IDENTITY_PATH}")
+  fi
+
+  scp "${scp_opts[@]}" \
+    "${stepca_ssh_user}@${stepca_host_ip}:${STEPCA_ROOT_CERT_REMOTE_PATH}" \
+    "${cert_cache_path}"
+}
+
+sync_stepca_container_host_alias() {
+  local stepca_host_ip="$1"
+  local stepca_ssh_user="$2"
+  local alias_host="$3"
+  local alias_ip="$4"
+
+  check_cmd ssh
+  local -a ssh_opts=(
+    -o BatchMode=yes
+    -o ConnectTimeout=8
+    -o StrictHostKeyChecking=no
+    -o UserKnownHostsFile=/dev/null
+    -p "${SSH_PORT}"
+  )
+  if [[ -n "${IDENTITY_PATH}" ]]; then
+    ssh_opts+=(-i "${IDENTITY_PATH}")
+  fi
+
+  ssh "${ssh_opts[@]}" "${stepca_ssh_user}@${stepca_host_ip}" \
+    "sudo docker exec -u 0 step-ca sh -lc \"grep -qE '[[:space:]]${alias_host}([[:space:]]|$)' /etc/hosts || printf '%s %s\\n' '${alias_ip}' '${alias_host}' >> /etc/hosts\""
 }
 
 list_projects() {
@@ -183,6 +293,7 @@ list_projects() {
 
 run_project() {
   validate_catalog
+  ensure_project_registry
 
   [[ -n "${PROJECT_ID}" ]] || die "Missing required selector: --project <id>"
 
@@ -204,11 +315,17 @@ run_project() {
   [[ "${manifest_id}" == "${PROJECT_ID}" ]] || die "Manifest id mismatch. expected=${PROJECT_ID} got=${manifest_id}"
 
   local manifest_repo_url manifest_repo_ref manifest_profile manifest_services manifest_tls_mode
+  local manifest_public_host
   manifest_repo_url="$(jq -r '.repo_url' "${manifest_path}")"
   manifest_repo_ref="$(jq -r '.repo_ref' "${manifest_path}")"
   manifest_profile="$(jq -r '.compose_profile' "${manifest_path}")"
   manifest_services="$(jq -r '.services | join(",")' "${manifest_path}")"
   manifest_tls_mode="$(jq -r '.tls_mode' "${manifest_path}")"
+  manifest_public_host="$(jq -r '.public_host // empty' "${manifest_path}")"
+  local effective_tls_mode="${manifest_tls_mode}"
+  if [[ -n "${TLS_MODE_OVERRIDE}" ]]; then
+    effective_tls_mode="${TLS_MODE_OVERRIDE}"
+  fi
 
   log "Selected project=${PROJECT_ID} target=${TARGET_INPUT} os=${OS_SELECTOR}"
   if [[ -n "${TLS_MODE_OVERRIDE}" ]]; then
@@ -227,6 +344,10 @@ run_project() {
   if [[ -n "${INIT_ARG}" ]]; then
     deployment_vm_name="${deployment_vm_name}-${INIT_ARG}"
   fi
+  local deployment_vm_ip
+  deployment_vm_ip="${DEPLOYMENT_VM_IP:-$(default_vm_ip_for_project "${PROJECT_ID}")}"
+  local deployment_tf_state_path
+  deployment_tf_state_path="$(tf_state_path_for_vm "${target_normalized}" "${deployment_vm_name}")"
 
   local -a provision_cmd=("${REPO_ROOT}/deployment/scripts/infra-provision.sh" apply --target "${TARGET_INPUT}" --os "${OS_SELECTOR}")
   local -a wait_cmd=("${REPO_ROOT}/deployment/scripts/host-wait-ssh.sh" --target "${TARGET_INPUT}" --os "${OS_SELECTOR}")
@@ -236,18 +357,45 @@ run_project() {
   fi
 
   log "Resolved deployment VM name=${deployment_vm_name}"
+  log "Resolved deployment VM IP=${deployment_vm_ip}"
+  log "Resolved Terraform state=${deployment_tf_state_path}"
   run_stage provision env \
     "DEPLOYMENT_VM_NAME=${deployment_vm_name}" \
     "DEPLOYMENT_HOSTNAME=${deployment_vm_name}" \
+    "DEPLOYMENT_VM_IP=${deployment_vm_ip}" \
+    "DEPLOYMENT_TF_STATE_PATH=${deployment_tf_state_path}" \
     "${provision_cmd[@]}"
-  run_stage wait "${wait_cmd[@]}"
+  run_stage wait env "DEPLOYMENT_TF_STATE_PATH=${deployment_tf_state_path}" "${wait_cmd[@]}"
 
-  resolve_host_tuple "${tf_dir}"
+  resolve_host_tuple "${tf_dir}" "${deployment_tf_state_path}"
   log "Resolved host tuple: ${ssh_user}@${host_ip}:${SSH_PORT}"
 
   mapfile -t deps < <(jq -r '.depends_on_projects[]?' "${manifest_path}")
   if [[ "${#deps[@]}" -gt 0 ]]; then
-    check_dependencies_remote "${deps[@]}"
+    check_dependencies_registry "${deps[@]}"
+  fi
+
+  local stepca_dependency_host_ip=""
+  local stepca_dependency_ssh_user=""
+  local stepca_dependency_root_cert_path=""
+  local has_stepca_service
+  has_stepca_service="$(jq -r '.services | index("step-ca") != null' "${manifest_path}")"
+  if [[ "${effective_tls_mode}" == "stepca-acme" && "${has_stepca_service}" != "true" ]]; then
+    stepca_dependency_host_ip="$(registry_get_project_field "traefik-stepca" "host_ip")"
+    stepca_dependency_ssh_user="$(registry_get_project_field "traefik-stepca" "ssh_user")"
+    [[ -n "${stepca_dependency_host_ip}" ]] || die "Missing traefik-stepca host_ip in ${PROJECT_REGISTRY_PATH}"
+    [[ -n "${stepca_dependency_ssh_user}" ]] || die "Missing traefik-stepca ssh_user in ${PROJECT_REGISTRY_PATH}"
+    stepca_dependency_root_cert_path="${DEPLOYMENT_STATE_DIR}/certs/traefik-stepca-root_ca.crt"
+    fetch_stepca_root_cert_from_dependency "${stepca_dependency_host_ip}" "${stepca_dependency_ssh_user}" "${stepca_dependency_root_cert_path}"
+    log "Fetched StepCA root cert from dependency traefik-stepca (${stepca_dependency_host_ip})"
+    local project_public_host
+    if [[ -n "${manifest_public_host}" ]]; then
+      project_public_host="${manifest_public_host}"
+    else
+      project_public_host="${PROJECT_ID}.local.test"
+    fi
+    sync_stepca_container_host_alias "${stepca_dependency_host_ip}" "${stepca_dependency_ssh_user}" "${project_public_host}" "${host_ip}"
+    log "Synced StepCA container host alias ${project_public_host} -> ${host_ip}"
   fi
 
   run_stage system_bootstrap run_ansible_playbook "${REPO_ROOT}/deployment/ansible/playbooks/system_bootstrap.yml"
@@ -257,8 +405,11 @@ run_project() {
     --extra-vars "deployment_project_manifest=${manifest_path}" \
     --extra-vars "deployment_project_target=${TARGET_INPUT}" \
     --extra-vars "deployment_project_os=${OS_SELECTOR}" \
-    --extra-vars "deployment_project_tls_mode_override=${TLS_MODE_OVERRIDE}"
+    --extra-vars "deployment_project_tls_mode_override=${TLS_MODE_OVERRIDE}" \
+    --extra-vars "deployment_project_stepca_dependency_host_ip=${stepca_dependency_host_ip}" \
+    --extra-vars "deployment_project_stepca_dependency_root_cert_path=${stepca_dependency_root_cert_path}"
 
+  record_project_deployment "${PROJECT_ID}" "${TARGET_INPUT}" "${OS_SELECTOR}" "${deployment_vm_name}" "${deployment_tf_state_path}" "${host_ip}" "${ssh_user}"
   log "Project deployment finished successfully for project=${PROJECT_ID}"
 }
 

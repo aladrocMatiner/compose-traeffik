@@ -4,6 +4,8 @@ services:
     container_name: step-ca
     profiles:
       - stepca
+    ports:
+      - "9000:9000"
     networks:
       - stepca-internal
       - proxy

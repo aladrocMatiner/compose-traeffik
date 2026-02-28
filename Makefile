@@ -41,7 +41,8 @@ COMPOSE_FILES := \
   -f services/whoami/compose.yml \
   -f services/dns-bind/compose.yml \
   -f services/certbot/compose.yml \
-  -f services/step-ca/compose.yml
+  -f services/step-ca/compose.yml \
+  -f services/keycloak/compose.yml
 
 # Pin compose project directory/name to avoid cross-CWD conflicts.
 COMPOSE_PROJECT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
@@ -518,6 +519,6 @@ help:
 	@echo ""
 	@echo "Profiles:"
 	@echo "  Use COMPOSE_PROFILES=<profile_name> before make commands to activate profiles."
-	@echo "  Available profiles: bind, le, stepca"
+	@echo "  Available profiles: bind, le, stepca, keycloak"
 	@echo "  Example: COMPOSE_PROFILES=le make up"
 	@echo ""

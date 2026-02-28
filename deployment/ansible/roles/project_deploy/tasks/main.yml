@@ -99,6 +99,27 @@
     mode: "0644"
   when: "'traefik' in deployment_project_manifest_data.services"
 
+- name: Backport keycloak compose definition from controller workspace
+  ansible.builtin.file:
+    path: "{{ deployment_project_repo_dir }}/services/keycloak"
+    state: directory
+    mode: "0755"
+  when: "'keycloak' in deployment_project_manifest_data.services"
+
+- name: Backport keycloak compose definition from controller workspace
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../../services/keycloak/compose.yml"
+    dest: "{{ deployment_project_repo_dir }}/services/keycloak/compose.yml"
+    mode: "0644"
+  when: "'keycloak' in deployment_project_manifest_data.services"
+
+- name: Backport compose wrapper for keycloak project compatibility
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../../scripts/compose.sh"
+    dest: "{{ deployment_project_repo_dir }}/scripts/compose.sh"
+    mode: "0755"
+  when: "'keycloak' in deployment_project_manifest_data.services"
+
 - name: Check if project .env exists
   ansible.builtin.stat:
     path: "{{ deployment_project_repo_dir }}/.env"
@@ -144,6 +165,55 @@
     that:
       - deployment_project_public_host | length > 0
     fail_msg: "BASE_DOMAIN missing in .env and no public_host override provided"
+
+- name: Ensure Keycloak admin username default in project .env
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^KEYCLOAK_ADMIN="
+    line: "KEYCLOAK_ADMIN=admin"
+  when: deployment_project_manifest_data.id == "traefik-keycloak"
+
+- name: Read Keycloak admin password from project .env
+  ansible.builtin.command:
+    cmd: "bash -lc \"awk -F= '$1==\\\"KEYCLOAK_ADMIN_PASSWORD\\\" {print $2}' .env | tail -n1 | tr -d '\\\"' | xargs\""
+  args:
+    chdir: "{{ deployment_project_repo_dir }}"
+  register: deployment_project_keycloak_admin_password_cmd
+  changed_when: false
+  when: deployment_project_manifest_data.id == "traefik-keycloak"
+
+- name: Generate Keycloak admin password when missing
+  ansible.builtin.command:
+    cmd: "bash -lc \"openssl rand -hex 16\""
+  register: deployment_project_keycloak_admin_password_generated
+  changed_when: true
+  when:
+    - deployment_project_manifest_data.id == "traefik-keycloak"
+    - deployment_project_keycloak_admin_password_cmd.stdout | trim | length == 0
+
+- name: Resolve effective Keycloak admin password
+  ansible.builtin.set_fact:
+    deployment_project_keycloak_admin_password_effective: >-
+      {{
+        (deployment_project_keycloak_admin_password_cmd.stdout | trim)
+          if (deployment_project_keycloak_admin_password_cmd.stdout | trim | length > 0)
+          else (deployment_project_keycloak_admin_password_generated.stdout | trim)
+      }}
+  when: deployment_project_manifest_data.id == "traefik-keycloak"
+
+- name: Persist Keycloak admin password in project .env
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^KEYCLOAK_ADMIN_PASSWORD="
+    line: "KEYCLOAK_ADMIN_PASSWORD={{ deployment_project_keycloak_admin_password_effective }}"
+  when: deployment_project_manifest_data.id == "traefik-keycloak"
+
+- name: Ensure default KEYCLOAK_FORWARDAUTH_ADDRESS for observability project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^KEYCLOAK_FORWARDAUTH_ADDRESS="
+    line: "KEYCLOAK_FORWARDAUTH_ADDRESS=https://keycloak.{{ deployment_project_base_domain_cmd.stdout | trim }}/"
+  when: deployment_project_manifest_data.id == "traefik-observability"
 
 - name: Validate required environment variables declared by manifest
   ansible.builtin.command:
@@ -256,6 +326,69 @@
     - { key: "CA_SUBJECT_OU", value: "infra" }
     - { key: "CA_SUBJECT_CN", value: "aladroc.io" }
   when: deployment_project_effective_tls_mode == "stepca-acme"
+
+- name: Ensure stepca dependency host is available for external stepca-acme projects
+  ansible.builtin.assert:
+    that:
+      - deployment_project_stepca_dependency_host_ip | trim | length > 0
+      - deployment_project_stepca_dependency_root_cert_path | trim | length > 0
+    fail_msg: >-
+      stepca-acme project without local step-ca requires dependency host/cert inputs
+      (deployment_project_stepca_dependency_host_ip and deployment_project_stepca_dependency_root_cert_path).
+  when:
+    - deployment_project_effective_tls_mode == "stepca-acme"
+    - "'step-ca' not in deployment_project_manifest_data.services"
+
+- name: Resolve external StepCA hostname for dependency projects
+  ansible.builtin.set_fact:
+    deployment_project_stepca_external_host: "step-ca.{{ deployment_project_base_domain_cmd.stdout | trim }}"
+  when:
+    - deployment_project_effective_tls_mode == "stepca-acme"
+    - "'step-ca' not in deployment_project_manifest_data.services"
+
+- name: Ensure dependency StepCA host mapping in /etc/hosts
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: ".*\\s{{ deployment_project_stepca_external_host | regex_escape() }}(\\s|$)"
+    line: "{{ deployment_project_stepca_dependency_host_ip | trim }} {{ deployment_project_stepca_external_host }}"
+    create: false
+  when:
+    - deployment_project_effective_tls_mode == "stepca-acme"
+    - "'step-ca' not in deployment_project_manifest_data.services"
+
+- name: Set external Step-CA ACME directory URL for stepca-acme dependency projects
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^STEP_CA_CA_SERVER="
+    line: "STEP_CA_CA_SERVER=https://{{ deployment_project_stepca_external_host }}:9000/acme/{{ deployment_project_stepca_acme_provisioner }}/directory"
+  when:
+    - deployment_project_effective_tls_mode == "stepca-acme"
+    - "'step-ca' not in deployment_project_manifest_data.services"
+
+- name: Ensure local StepCA cert directory exists for external dependency trust
+  ansible.builtin.file:
+    path: "{{ deployment_project_repo_dir }}/services/step-ca/certs"
+    state: directory
+    mode: "0755"
+  when:
+    - deployment_project_effective_tls_mode == "stepca-acme"
+    - "'step-ca' not in deployment_project_manifest_data.services"
+
+- name: Import dependency StepCA root certificate for external stepca-acme projects
+  ansible.builtin.copy:
+    src: "{{ deployment_project_stepca_dependency_root_cert_path }}"
+    dest: "{{ deployment_project_repo_dir }}/services/step-ca/certs/root_ca.crt"
+    mode: "0644"
+  when:
+    - deployment_project_effective_tls_mode == "stepca-acme"
+    - "'step-ca' not in deployment_project_manifest_data.services"
+
+- name: Normalize K6 trend stats env value for shell-safe sourcing
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^K6_PROMETHEUS_RW_TREND_STATS="
+    line: "K6_PROMETHEUS_RW_TREND_STATS=\"p(50),p(90),p(95),p(99),min,max,avg\""
+  when: "'traefik' in deployment_project_manifest_data.services"
 
 - name: Render Traefik dynamic configuration from project env
   ansible.builtin.command:

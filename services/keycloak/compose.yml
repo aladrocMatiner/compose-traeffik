@@ -1,0 +1,25 @@
+services:
+  keycloak:
+    image: ${KEYCLOAK_IMAGE:-quay.io/keycloak/keycloak:26.0}
+    container_name: keycloak
+    restart: unless-stopped
+    command: ["start-dev", "--http-enabled=true", "--hostname-strict=false", "--proxy-headers=xforwarded"]
+    profiles:
+      - keycloak
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_HOSTNAME: keycloak.${BASE_DOMAIN}
+      KC_HOSTNAME_URL: https://keycloak.${BASE_DOMAIN}
+      KC_PROXY_HEADERS: xforwarded
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-proxy"
+      - "traefik.http.routers.keycloak-websecure.rule=Host(`keycloak.${BASE_DOMAIN}`)"
+      - "traefik.http.routers.keycloak-websecure.entrypoints=websecure"
+      - "traefik.http.routers.keycloak-websecure.tls=true"
+      - "traefik.http.routers.keycloak-websecure.tls.certresolver=${TLS_CERT_RESOLVER}"
+      - "traefik.http.routers.keycloak-websecure.middlewares=security-headers@file"
+      - "traefik.http.services.keycloak.loadbalancer.server.port=8080"
+    networks:
+      - proxy

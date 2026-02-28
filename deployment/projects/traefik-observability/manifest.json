@@ -2,7 +2,7 @@
   "id": "traefik-observability",
   "description": "Deploy Traefik + observability stack (Grafana/Prometheus/Loki/Tempo/Pyroscope/Alloy) with StepCA ACME by default and Keycloak-based auth contract for Grafana.",
   "repo_url": "https://github.com/aladrocMatiner/compose-traeffik.git",
-  "repo_ref": "aa6cc13ab6e5ca0e6284f6b335266de6064406e0",
+  "repo_ref": "aa6cc1331491b6e73ce7d5d63c9e713d55e93d94",
   "compose_profile": "observability",
   "services": [
     "traefik",
