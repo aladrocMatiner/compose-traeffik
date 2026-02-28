@@ -43,6 +43,7 @@ if [ -z "${DEV_DOMAIN:-}" ]; then
 fi
 
 TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH="${TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH:-/etc/traefik/auth/traefik-dashboard.htpasswd.example}"
+TRAEFIK_DASHBOARD_HOST="${TRAEFIK_DASHBOARD_HOST:-traefik.${DEV_DOMAIN}}"
 TLS_CERT_RESOLVER="${TLS_CERT_RESOLVER:-}"
 
 escape_sed() {
@@ -50,6 +51,7 @@ escape_sed() {
 }
 
 dashboard_auth_path_escaped=$(escape_sed "$TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH")
+dashboard_host_escaped=$(escape_sed "$TRAEFIK_DASHBOARD_HOST")
 
 mkdir -p "$OUTPUT_DIR"
 
@@ -84,6 +86,7 @@ for file in "$TEMPLATE_DIR"/*.yml; do
     sed \
         -e "s/__DEV_DOMAIN__/${DEV_DOMAIN}/g" \
         -e "s/__TLS_CERT_RESOLVER__/${TLS_CERT_RESOLVER}/g" \
+        -e "s/__TRAEFIK_DASHBOARD_HOST__/${dashboard_host_escaped}/g" \
         -e "s/__TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH__/${dashboard_auth_path_escaped}/g" \
         "$source_file" > "${OUTPUT_DIR}/${filename}"
 done

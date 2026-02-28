@@ -17,5 +17,6 @@
     "STEP_CA_PASSWORD"
   ],
   "tls_mode": "stepca-acme",
-  "depends_on_projects": []
+  "depends_on_projects": [],
+  "public_host": "traefik-stepca.local.test"
 }

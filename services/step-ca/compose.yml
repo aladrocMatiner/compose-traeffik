@@ -12,6 +12,7 @@ services:
     extra_hosts:
       - "whoami.${DEV_DOMAIN}:host-gateway"
       - "traefik.${DEV_DOMAIN}:host-gateway"
+      - "traefik-stepca.${DEV_DOMAIN}:host-gateway"
       - "step-ca.${DEV_DOMAIN}:host-gateway"
     environment:
       - STEP_CA_NAME=${STEP_CA_NAME:-Local Dev CA}

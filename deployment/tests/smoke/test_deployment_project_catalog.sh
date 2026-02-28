@@ -68,7 +68,8 @@ if ! jq -e '
     .deploy_playbook == "deployment/ansible/playbooks/project_deploy.yml" and
     (.required_env | type == "array" and length > 0) and
     .tls_mode == "stepca-acme" and
-    (.depends_on_projects | type == "array")
+    (.depends_on_projects | type == "array") and
+    .public_host == "traefik-stepca.local.test"
 ' "$MANIFEST" >/dev/null; then
     log_error "traefik-stepca manifest contract is invalid"
 fi

@@ -301,6 +301,13 @@
     line: "TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH=/etc/traefik/auth/traefik-dashboard.htpasswd"
   when: deployment_project_manifest_data.id == "traefik-stepca"
 
+- name: Set Traefik dashboard host for traefik-stepca project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^TRAEFIK_DASHBOARD_HOST="
+    line: "TRAEFIK_DASHBOARD_HOST={{ deployment_project_public_host }}"
+  when: deployment_project_manifest_data.id == "traefik-stepca"
+
 - name: Regenerate project managed environment artifacts from .env
   ansible.builtin.command:
     cmd: ./scripts/env-generate.sh --mode=full
