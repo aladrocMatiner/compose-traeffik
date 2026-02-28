@@ -256,7 +256,9 @@
   loop_control:
     label: "{{ item }}"
   changed_when: false
-  when: deployment_project_effective_tls_mode == "stepca-acme"
+  when:
+    - deployment_project_effective_tls_mode == "stepca-acme"
+    - "'step-ca' in deployment_project_manifest_data.services"
 
 - name: Validate mode-specific env requirements for letsencrypt-acme
   ansible.builtin.command:
@@ -703,6 +705,36 @@
     regexp: "__KEYCLOAK_FORWARDAUTH_ADDRESS__"
     replace: "{{ deployment_project_keycloak_forwardauth_address_cmd.stdout | trim }}"
   when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Stop legacy step-ca container when project does not declare step-ca service
+  ansible.builtin.command:
+    cmd: ./scripts/compose.sh --profile {{ deployment_project_manifest_data.compose_profile }} stop step-ca
+    chdir: "{{ deployment_project_repo_dir }}"
+  environment:
+    COMPOSE_PROJECT_NAME: "{{ deployment_project_manifest_data.id }}"
+  register: deployment_project_stepca_stop_cmd
+  changed_when: >-
+    (deployment_project_stepca_stop_cmd.stdout | default('')) is search('Stopped')
+  failed_when: false
+  when:
+    - deployment_project_effective_tls_mode == "stepca-acme"
+    - "'step-ca' not in deployment_project_manifest_data.services"
+
+- name: Remove legacy step-ca container when project does not declare step-ca service
+  ansible.builtin.command:
+    cmd: ./scripts/compose.sh --profile {{ deployment_project_manifest_data.compose_profile }} rm -f step-ca
+    chdir: "{{ deployment_project_repo_dir }}"
+  environment:
+    COMPOSE_PROJECT_NAME: "{{ deployment_project_manifest_data.id }}"
+  register: deployment_project_stepca_rm_cmd
+  changed_when: >-
+    (deployment_project_stepca_rm_cmd.stdout | default('')) is search('Removing')
+    or
+    (deployment_project_stepca_rm_cmd.stdout | default('')) is search('Removed')
+  failed_when: false
+  when:
+    - deployment_project_effective_tls_mode == "stepca-acme"
+    - "'step-ca' not in deployment_project_manifest_data.services"
 
 - name: Apply docker compose stack for project manifest contract
   ansible.builtin.command:
