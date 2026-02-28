@@ -1,0 +1,75 @@
+services:
+  semaphoreui-db:
+    image: ${SEMAPHOREUI_DB_IMAGE:-postgres:16-alpine}
+    container_name: semaphoreui-db
+    restart: unless-stopped
+    profiles:
+      - semaphoreui
+    environment:
+      POSTGRES_DB: ${SEMAPHOREUI_DB_NAME:-semaphore}
+      POSTGRES_USER: ${SEMAPHOREUI_DB_USER:-semaphore}
+      POSTGRES_PASSWORD: ${SEMAPHOREUI_DB_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${SEMAPHOREUI_DB_USER:-semaphore} -d ${SEMAPHOREUI_DB_NAME:-semaphore}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    volumes:
+      - semaphoreui-db-data:/var/lib/postgresql/data
+    networks:
+      - semaphoreui-internal
+
+  semaphoreui:
+    image: ${SEMAPHOREUI_IMAGE:-semaphoreui/semaphore:v2.13.18}
+    container_name: semaphoreui
+    restart: unless-stopped
+    profiles:
+      - semaphoreui
+    depends_on:
+      semaphoreui-db:
+        condition: service_healthy
+    environment:
+      SEMAPHORE_DB_DIALECT: postgres
+      SEMAPHORE_DB_HOST: semaphoreui-db
+      SEMAPHORE_DB_PORT: 5432
+      SEMAPHORE_DB_USER: ${SEMAPHOREUI_DB_USER:-semaphore}
+      SEMAPHORE_DB_PASS: ${SEMAPHOREUI_DB_PASSWORD}
+      SEMAPHORE_DB: ${SEMAPHOREUI_DB_NAME:-semaphore}
+      SEMAPHORE_ADMIN: ${SEMAPHORE_ADMIN:-admin}
+      SEMAPHORE_ADMIN_NAME: ${SEMAPHORE_ADMIN_NAME:-Administrator}
+      SEMAPHORE_ADMIN_EMAIL: ${SEMAPHORE_ADMIN_EMAIL:-admin@local.test}
+      SEMAPHORE_ADMIN_PASSWORD: ${SEMAPHORE_ADMIN_PASSWORD}
+      SEMAPHORE_ACCESS_KEY_ENCRYPTION: ${SEMAPHORE_ACCESS_KEY_ENCRYPTION}
+      SEMAPHORE_WEB_ROOT: https://${SEMAPHOREUI_HOSTNAME:-semaphoreui}.${DEV_DOMAIN}
+      SEMAPHORE_OIDC_PROVIDERS: ${SEMAPHORE_OIDC_PROVIDERS}
+      SEMAPHORE_NON_ADMIN_CAN_CREATE_PROJECT: ${SEMAPHORE_NON_ADMIN_CAN_CREATE_PROJECT:-false}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-proxy"
+      - "traefik.http.routers.semaphoreui-web.rule=Host(`${SEMAPHOREUI_HOSTNAME:-semaphoreui}.${DEV_DOMAIN}`)"
+      - "traefik.http.routers.semaphoreui-web.entrypoints=web"
+      - "traefik.http.routers.semaphoreui-web.middlewares=${HTTP_TO_HTTPS_MIDDLEWARE:-redirect-to-https@file}"
+      - "traefik.http.routers.semaphoreui-websecure.rule=Host(`${SEMAPHOREUI_HOSTNAME:-semaphoreui}.${DEV_DOMAIN}`)"
+      - "traefik.http.routers.semaphoreui-websecure.entrypoints=websecure"
+      - "traefik.http.routers.semaphoreui-websecure.tls=true"
+      - "traefik.http.routers.semaphoreui-websecure.tls.certresolver=${TLS_CERT_RESOLVER}"
+      - "traefik.http.routers.semaphoreui-websecure.middlewares=security-headers@file"
+      - "traefik.http.routers.semaphoreui-websecure.service=semaphoreui-service"
+      - "traefik.http.services.semaphoreui-service.loadbalancer.server.port=3000"
+    volumes:
+      - semaphoreui-data:/var/lib/semaphore
+      - ./services/step-ca/certs/root_ca.crt:/etc/ssl/certs/stepca-root-ca.crt:ro
+    networks:
+      - proxy
+      - semaphoreui-internal
+
+networks:
+  semaphoreui-internal:
+    name: semaphoreui-internal
+    internal: true
+
+volumes:
+  semaphoreui-db-data:
+    name: semaphoreui-db-data
+  semaphoreui-data:
+    name: semaphoreui-data

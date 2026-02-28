@@ -15,6 +15,10 @@
     {
       "id": "traefik-wikijs",
       "manifest": "deployment/projects/traefik-wikijs/manifest.json"
+    },
+    {
+      "id": "traefik-semaphoreui",
+      "manifest": "deployment/projects/traefik-semaphoreui/manifest.json"
     }
   ]
 }
