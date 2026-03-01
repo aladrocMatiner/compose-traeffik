@@ -29,8 +29,8 @@
 ## 5. Testing and Documentation
 
 - [x] 5.1 Actualizar smoke tests de contrato de manifiestos/catálogo para nuevos campos/expectativas OIDC.
-- [ ] 5.2 Añadir tests de idempotencia para create/update de realm/usuario/cliente.
-- [ ] 5.3 Documentar procedimiento operativo (bootstrap user, override de password, cliente por proyecto).
+- [x] 5.2 Añadir tests de idempotencia para create/update de realm/usuario/cliente.
+- [x] 5.3 Documentar procedimiento operativo (bootstrap user, override de password, cliente por proyecto).
 
 ## 6. Validation and Handoff
 

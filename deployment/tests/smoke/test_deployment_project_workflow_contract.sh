@@ -72,4 +72,30 @@ if ! grep -q "check_dependencies_registry" "$RUNNER"; then
     log_error "deployment-project runner must validate dependencies from controller registry"
 fi
 
+if ! grep -q "Missing required project dependencies in local registry" "$RUNNER"; then
+    log_error "dependency preflight must emit explicit missing dependency message"
+fi
+
+if ! grep -q "deploy dependencies first" "$RUNNER"; then
+    log_error "dependency preflight must provide explicit recovery guidance"
+fi
+
+if ! grep -q "if \[\[ \"\${#deps\[@\]}\" -gt 0 \]\]; then" "$RUNNER"; then
+    log_error "dependency preflight guard must only evaluate registry checks when dependencies are declared"
+fi
+
+if ! grep -q "if \[\[ \"\${#deps\[@\]}\" -eq 0 \]\]; then" "$RUNNER"; then
+    log_error "dependency preflight function must explicitly allow empty dependency sets"
+fi
+
+deps_line="$(grep -n 'mapfile -t deps' "$RUNNER" | head -n1 | cut -d: -f1)"
+check_line="$(grep -n 'check_dependencies_registry "${deps\[@\]}"' "$RUNNER" | head -n1 | cut -d: -f1)"
+bootstrap_line="$(grep -n 'run_stage system_bootstrap' "$RUNNER" | head -n1 | cut -d: -f1)"
+if [ -z "$deps_line" ] || [ -z "$check_line" ] || [ -z "$bootstrap_line" ]; then
+    log_error "dependency preflight ordering markers are missing in deployment-project runner"
+fi
+if [ "$check_line" -le "$deps_line" ] || [ "$check_line" -ge "$bootstrap_line" ]; then
+    log_error "dependency preflight must run after manifest dependency resolution and before system_bootstrap"
+fi
+
 log_success "Deployment project workflow contract test passed."

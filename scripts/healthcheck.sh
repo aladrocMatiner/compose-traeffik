@@ -198,6 +198,33 @@ else
     TEST_RESULTS=1
 fi
 
+# --- Test 18: Deployment Project Workflow Contract (no sudo) ---
+log_info "Running test_deployment_project_workflow_contract.sh..."
+if "$DEPLOYMENT_TEST_DIR/test_deployment_project_workflow_contract.sh"; then
+    log_success "Test: Deployment Project Workflow Contract"
+else
+    log_warn "Test failed: Deployment Project Workflow Contract"
+    TEST_RESULTS=1
+fi
+
+# --- Test 19: Deployment Project Catalog Contract (no sudo) ---
+log_info "Running test_deployment_project_catalog.sh..."
+if "$DEPLOYMENT_TEST_DIR/test_deployment_project_catalog.sh"; then
+    log_success "Test: Deployment Project Catalog Contract"
+else
+    log_warn "Test failed: Deployment Project Catalog Contract"
+    TEST_RESULTS=1
+fi
+
+# --- Test 20: Keycloak/OIDC Idempotency Contract (no sudo) ---
+log_info "Running test_deployment_keycloak_oidc_idempotency_contract.sh..."
+if "$DEPLOYMENT_TEST_DIR/test_deployment_keycloak_oidc_idempotency_contract.sh"; then
+    log_success "Test: Keycloak/OIDC Idempotency Contract"
+else
+    log_warn "Test failed: Keycloak/OIDC Idempotency Contract"
+    TEST_RESULTS=1
+fi
+
 if [ "$TEST_RESULTS" -eq 0 ]; then
     log_success "All smoke tests passed!"
 else
