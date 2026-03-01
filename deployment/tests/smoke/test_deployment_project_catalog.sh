@@ -21,6 +21,7 @@ KEY_MANIFEST="$REPO_ROOT/deployment/projects/traefik-keycloak/manifest.json"
 OBS_MANIFEST="$REPO_ROOT/deployment/projects/traefik-observability/manifest.json"
 WIKI_MANIFEST="$REPO_ROOT/deployment/projects/traefik-wikijs/manifest.json"
 SEMAPHOREUI_MANIFEST="$REPO_ROOT/deployment/projects/traefik-semaphoreui/manifest.json"
+ROCKETCHAT_MANIFEST="$REPO_ROOT/deployment/projects/traefik-rocketchat/manifest.json"
 
 check_command "jq"
 check_command "make"
@@ -45,9 +46,12 @@ fi
 if [ ! -f "$SEMAPHOREUI_MANIFEST" ]; then
     log_error "Missing traefik-semaphoreui manifest: $SEMAPHOREUI_MANIFEST"
 fi
+if [ ! -f "$ROCKETCHAT_MANIFEST" ]; then
+    log_error "Missing traefik-rocketchat manifest: $ROCKETCHAT_MANIFEST"
+fi
 
 list_output="$(make -s -C "$REPO_ROOT" deployment-project-list)"
-expected_list=$'traefik-stepca\ntraefik-keycloak\ntraefik-observability\ntraefik-wikijs\ntraefik-semaphoreui'
+expected_list=$'traefik-stepca\ntraefik-keycloak\ntraefik-observability\ntraefik-wikijs\ntraefik-semaphoreui\ntraefik-rocketchat'
 if [ "$list_output" != "$expected_list" ]; then
     log_error "deployment-project-list output drifted. Expected:\n${expected_list}\nGot:\n${list_output}"
 fi
@@ -70,6 +74,9 @@ if ! jq -e '.projects[] | select(.id=="traefik-wikijs") | .manifest == "deployme
 fi
 if ! jq -e '.projects[] | select(.id=="traefik-semaphoreui") | .manifest == "deployment/projects/traefik-semaphoreui/manifest.json"' "$CATALOG" >/dev/null; then
     log_error "Catalog entry for traefik-semaphoreui is missing or points to an unexpected manifest path"
+fi
+if ! jq -e '.projects[] | select(.id=="traefik-rocketchat") | .manifest == "deployment/projects/traefik-rocketchat/manifest.json"' "$CATALOG" >/dev/null; then
+    log_error "Catalog entry for traefik-rocketchat is missing or points to an unexpected manifest path"
 fi
 
 if ! jq -e '
@@ -167,6 +174,26 @@ if ! jq -e '
     .public_host == "semaphoreui.local.test"
 ' "$SEMAPHOREUI_MANIFEST" >/dev/null; then
   log_error "traefik-semaphoreui manifest contract is invalid"
+fi
+
+if ! jq -e '
+    .id == "traefik-rocketchat" and
+    (.description | type == "string" and length > 0) and
+    (.repo_url | type == "string" and length > 0) and
+    (.repo_ref | test("^[0-9a-f]{40}$")) and
+    .compose_profile == "rocketchat" and
+    (.services == ["traefik", "whoami", "rocketchat-mongodb", "rocketchat-mongodb-init-replica", "rocketchat"]) and
+    .deploy_playbook == "deployment/ansible/playbooks/project_deploy.yml" and
+    (.required_env | index("BASE_DOMAIN")) and
+    (.required_env | index("DEV_DOMAIN")) and
+    .tls_mode == "stepca-acme" and
+    (.depends_on_projects == ["traefik-stepca", "traefik-keycloak"]) and
+    (.oidc.enabled == true) and
+    (.oidc.realm == "local.test") and
+    (.oidc.client_id == "rocketchat") and
+    .public_host == "rocketchat.local.test"
+' "$ROCKETCHAT_MANIFEST" >/dev/null; then
+  log_error "traefik-rocketchat manifest contract is invalid"
 fi
 
 set +e

@@ -156,6 +156,20 @@
     mode: "0644"
   when: "'semaphoreui' in deployment_project_manifest_data.services"
 
+- name: Backport rocketchat compose definition from controller workspace
+  ansible.builtin.file:
+    path: "{{ deployment_project_repo_dir }}/services/rocketchat"
+    state: directory
+    mode: "0755"
+  when: "'rocketchat' in deployment_project_manifest_data.services"
+
+- name: Backport rocketchat compose definition from controller workspace
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../../services/rocketchat/compose.yml"
+    dest: "{{ deployment_project_repo_dir }}/services/rocketchat/compose.yml"
+    mode: "0644"
+  when: "'rocketchat' in deployment_project_manifest_data.services"
+
 - name: Backport keycloak compose definition from controller workspace
   ansible.builtin.file:
     path: "{{ deployment_project_repo_dir }}/services/keycloak"
@@ -953,6 +967,129 @@
     - deployment_project_manifest_data.id == "traefik-semaphoreui"
     - deployment_project_keycloak_dependency_host_ip | default('') | trim | length > 0
 
+- name: Validate Keycloak dependency contract for rocketchat project
+  ansible.builtin.assert:
+    that:
+      - deployment_project_keycloak_dependency_host_ip | default('') | trim | length > 0
+      - deployment_project_keycloak_admin_username | default('') | trim | length > 0
+      - deployment_project_keycloak_admin_password | default('') | trim | length > 0
+    fail_msg: >-
+      Missing Keycloak dependency context for Rocket.Chat OIDC provisioning.
+      Deploy/fix traefik-keycloak first, then retry this project deployment.
+  when: deployment_project_manifest_data.id == "traefik-rocketchat"
+
+- name: Resolve effective OIDC realm/client for rocketchat project
+  ansible.builtin.set_fact:
+    deployment_project_rocketchat_keycloak_realm_effective: "{{ deployment_project_manifest_data.oidc.realm | default(deployment_project_keycloak_realm | default('local.test', true), true) }}"
+    deployment_project_rocketchat_keycloak_client_id_effective: "{{ deployment_project_manifest_data.oidc.client_id | default(deployment_project_keycloak_rocketchat_client_id | default('rocketchat', true), true) }}"
+  when: deployment_project_manifest_data.id == "traefik-rocketchat"
+
+- name: Resolve effective Keycloak OIDC base URL for rocketchat project
+  ansible.builtin.set_fact:
+    deployment_project_rocketchat_keycloak_oidc_base_url_effective: "{{ deployment_project_keycloak_oidc_base_url | default('https://keycloak.' ~ (deployment_project_base_domain_cmd.stdout | trim), true) }}"
+  when: deployment_project_manifest_data.id == "traefik-rocketchat"
+
+- name: Ensure ROCKETCHAT_HOSTNAME for rocketchat project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^ROCKETCHAT_HOSTNAME="
+    line: "ROCKETCHAT_HOSTNAME=rocketchat"
+  when: deployment_project_manifest_data.id == "traefik-rocketchat"
+
+- name: Ensure ROCKETCHAT_MONGODB_HOST for rocketchat project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^ROCKETCHAT_MONGODB_HOST="
+    line: "ROCKETCHAT_MONGODB_HOST=rocketchat-mongodb"
+  when: deployment_project_manifest_data.id == "traefik-rocketchat"
+
+- name: Ensure ROCKETCHAT_MONGODB_REPLICA_SET for rocketchat project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^ROCKETCHAT_MONGODB_REPLICA_SET="
+    line: "ROCKETCHAT_MONGODB_REPLICA_SET=rs0"
+  when: deployment_project_manifest_data.id == "traefik-rocketchat"
+
+- name: Ensure KEYCLOAK_OIDC_BASE_URL for rocketchat project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^KEYCLOAK_OIDC_BASE_URL="
+    line: "KEYCLOAK_OIDC_BASE_URL={{ deployment_project_rocketchat_keycloak_oidc_base_url_effective }}"
+  when: deployment_project_manifest_data.id == "traefik-rocketchat"
+
+- name: Ensure KEYCLOAK_REALM for rocketchat project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^KEYCLOAK_REALM="
+    line: "KEYCLOAK_REALM={{ deployment_project_rocketchat_keycloak_realm_effective }}"
+  when: deployment_project_manifest_data.id == "traefik-rocketchat"
+
+- name: Ensure ROCKETCHAT_OIDC_CLIENT_ID for rocketchat project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^ROCKETCHAT_OIDC_CLIENT_ID="
+    line: "ROCKETCHAT_OIDC_CLIENT_ID={{ deployment_project_rocketchat_keycloak_client_id_effective }}"
+  when: deployment_project_manifest_data.id == "traefik-rocketchat"
+
+- name: Read existing ROCKETCHAT_OIDC_CLIENT_SECRET from project .env
+  ansible.builtin.command:
+    cmd: "bash -lc \"awk -F= '$1==\\\"ROCKETCHAT_OIDC_CLIENT_SECRET\\\" {print $2}' .env | tail -n1 | tr -d '\\\"' | xargs\""
+  args:
+    chdir: "{{ deployment_project_repo_dir }}"
+  register: deployment_project_rocketchat_oidc_client_secret_cmd
+  changed_when: false
+  when: deployment_project_manifest_data.id == "traefik-rocketchat"
+
+- name: Generate ROCKETCHAT_OIDC_CLIENT_SECRET when absent
+  ansible.builtin.command:
+    cmd: "bash -lc \"openssl rand -hex 24\""
+  register: deployment_project_rocketchat_oidc_client_secret_generated
+  changed_when: true
+  when:
+    - deployment_project_manifest_data.id == "traefik-rocketchat"
+    - deployment_project_keycloak_rocketchat_client_secret | default('') | trim | length == 0
+    - deployment_project_rocketchat_oidc_client_secret_cmd.stdout | trim | length == 0
+
+- name: Resolve effective ROCKETCHAT_OIDC_CLIENT_SECRET
+  ansible.builtin.set_fact:
+    deployment_project_rocketchat_oidc_client_secret_effective: >-
+      {{
+        (deployment_project_keycloak_rocketchat_client_secret | trim)
+          if (deployment_project_keycloak_rocketchat_client_secret | default('') | trim | length > 0)
+          else (
+            (deployment_project_rocketchat_oidc_client_secret_cmd.stdout | trim)
+              if (deployment_project_rocketchat_oidc_client_secret_cmd.stdout | trim | length > 0)
+              else (deployment_project_rocketchat_oidc_client_secret_generated.stdout | trim)
+          )
+      }}
+  when: deployment_project_manifest_data.id == "traefik-rocketchat"
+
+- name: Ensure ROCKETCHAT_OIDC_CLIENT_SECRET for rocketchat project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^ROCKETCHAT_OIDC_CLIENT_SECRET="
+    line: "ROCKETCHAT_OIDC_CLIENT_SECRET={{ deployment_project_rocketchat_oidc_client_secret_effective }}"
+  when: deployment_project_manifest_data.id == "traefik-rocketchat"
+
+- name: Ensure Traefik Keycloak host mapping IP for rocketchat project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^TRAEFIK_KEYCLOAK_HOST_IP="
+    line: "TRAEFIK_KEYCLOAK_HOST_IP={{ deployment_project_keycloak_dependency_host_ip }}"
+  when:
+    - deployment_project_manifest_data.id == "traefik-rocketchat"
+    - deployment_project_keycloak_dependency_host_ip | default('') | trim | length > 0
+
+- name: Ensure Keycloak hostname mapping for rocketchat host resolver
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: ".*\\skeycloak\\.{{ deployment_project_base_domain_cmd.stdout | trim | regex_escape() }}(\\s|$)"
+    line: "{{ deployment_project_keycloak_dependency_host_ip }} keycloak.{{ deployment_project_base_domain_cmd.stdout | trim }}"
+    create: false
+  when:
+    - deployment_project_manifest_data.id == "traefik-rocketchat"
+    - deployment_project_keycloak_dependency_host_ip | default('') | trim | length > 0
+
 - name: Validate required environment variables declared by manifest
   ansible.builtin.command:
     cmd: "bash -lc \"grep -Eq '^{{ item }}=.+' .env\""
@@ -1676,6 +1813,28 @@
     COMPOSE_PROJECT_NAME: "{{ deployment_project_manifest_data.id }}"
   changed_when: true
 
+- name: Force Rocket.Chat OAuth login style to redirect
+  ansible.builtin.shell: |
+    set -euo pipefail
+    set -a
+    . ./.env
+    set +a
+    ./scripts/compose.sh --profile {{ deployment_project_manifest_data.compose_profile }} exec -T rocketchat-mongodb \
+      mongosh --quiet --eval '
+        db=db.getSiblingDB("rocketchat");
+        db.meteor_accounts_loginServiceConfiguration.updateOne({service:"keycloak"},{$set:{loginStyle:"redirect"}});
+        db.meteor_accounts_loginServiceConfiguration.deleteOne({service:"wordpress"});
+        db.rocketchat_settings.updateOne({_id:"Accounts_TwoFactorAuthentication_By_Email_Auto_Opt_In"},{$set:{value:false}});
+        db.rocketchat_settings.updateOne({_id:"Accounts_TwoFactorAuthentication_By_Email_Enabled"},{$set:{value:false}});
+        db.rocketchat_settings.updateOne({_id:"Accounts_Verify_Email_For_External_Accounts"},{$set:{value:false}});
+        db.users.updateMany({"services.keycloak":{$exists:true}},{$unset:{"services.email2fa":"","services.emailCode":""}});
+      '
+  args:
+    chdir: "{{ deployment_project_repo_dir }}"
+    executable: /bin/bash
+  changed_when: true
+  when: deployment_project_manifest_data.id == "traefik-rocketchat"
+
 - name: Bootstrap shared Keycloak realm and initial user (traefik-keycloak)
   ansible.builtin.shell: |
     set -euo pipefail
@@ -2195,6 +2354,143 @@
     validate_certs: false
     status_code: 204
   when: deployment_project_manifest_data.id == "traefik-semaphoreui"
+
+- name: Ensure Keycloak admin authentication works before Rocket.Chat OIDC provisioning
+  ansible.builtin.uri:
+    url: "{{ deployment_project_rocketchat_keycloak_oidc_base_url_effective }}/realms/master/protocol/openid-connect/token"
+    method: POST
+    body_format: form-urlencoded
+    body:
+      client_id: admin-cli
+      grant_type: password
+      username: "{{ deployment_project_keycloak_admin_username }}"
+      password: "{{ deployment_project_keycloak_admin_password }}"
+    validate_certs: false
+    status_code: 200
+    return_content: true
+  register: deployment_project_rocketchat_keycloak_admin_token_response
+  retries: 10
+  delay: 6
+  until: deployment_project_rocketchat_keycloak_admin_token_response.status == 200
+  when: deployment_project_manifest_data.id == "traefik-rocketchat"
+
+- name: Extract Keycloak admin access token for Rocket.Chat OIDC provisioning
+  ansible.builtin.set_fact:
+    deployment_project_rocketchat_keycloak_admin_access_token: "{{ (deployment_project_rocketchat_keycloak_admin_token_response.content | from_json).access_token }}"
+  when: deployment_project_manifest_data.id == "traefik-rocketchat"
+
+- name: Resolve OIDC client contract for rocketchat project
+  ansible.builtin.set_fact:
+    deployment_project_rocketchat_oidc_client_id_effective: "{{ deployment_project_rocketchat_keycloak_client_id_effective }}"
+    deployment_project_rocketchat_oidc_redirect_uris:
+      - "https://rocketchat.{{ deployment_project_base_domain_cmd.stdout | trim }}/_oauth/keycloak"
+      - "https://rocketchat.{{ deployment_project_base_domain_cmd.stdout | trim }}/_oauth/keycloak?close"
+    deployment_project_rocketchat_oidc_web_origins:
+      - "https://rocketchat.{{ deployment_project_base_domain_cmd.stdout | trim }}"
+  when: deployment_project_manifest_data.id == "traefik-rocketchat"
+
+- name: Ensure OIDC client contract shape for rocketchat project
+  ansible.builtin.assert:
+    that:
+      - deployment_project_rocketchat_oidc_client_id_effective | trim | length > 0
+      - deployment_project_rocketchat_oidc_redirect_uris | length > 0
+      - deployment_project_rocketchat_oidc_web_origins | length > 0
+    fail_msg: "Malformed OIDC contract for rocketchat project."
+  when: deployment_project_manifest_data.id == "traefik-rocketchat"
+
+- name: Query Keycloak client by client_id in target realm (rocketchat)
+  ansible.builtin.uri:
+    url: "{{ deployment_project_rocketchat_keycloak_oidc_base_url_effective }}/admin/realms/{{ deployment_project_rocketchat_keycloak_realm_effective }}/clients?clientId={{ deployment_project_rocketchat_oidc_client_id_effective | urlencode }}"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ deployment_project_rocketchat_keycloak_admin_access_token }}"
+    validate_certs: false
+    status_code: 200
+    return_content: true
+  register: deployment_project_rocketchat_keycloak_client_lookup
+  when: deployment_project_manifest_data.id == "traefik-rocketchat"
+
+- name: Parse existing OIDC client lookup result (rocketchat)
+  ansible.builtin.set_fact:
+    deployment_project_rocketchat_keycloak_existing_client: "{{ ((deployment_project_rocketchat_keycloak_client_lookup.content | from_json) | first) if ((deployment_project_rocketchat_keycloak_client_lookup.content | from_json) | length > 0) else {} }}"
+  when: deployment_project_manifest_data.id == "traefik-rocketchat"
+
+- name: Create OIDC client in Keycloak when missing (rocketchat)
+  ansible.builtin.uri:
+    url: "{{ deployment_project_rocketchat_keycloak_oidc_base_url_effective }}/admin/realms/{{ deployment_project_rocketchat_keycloak_realm_effective }}/clients"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ deployment_project_rocketchat_keycloak_admin_access_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      clientId: "{{ deployment_project_rocketchat_oidc_client_id_effective }}"
+      enabled: true
+      protocol: "openid-connect"
+      publicClient: false
+      directAccessGrantsEnabled: false
+      standardFlowEnabled: true
+      serviceAccountsEnabled: false
+      redirectUris: "{{ deployment_project_rocketchat_oidc_redirect_uris }}"
+      webOrigins: "{{ deployment_project_rocketchat_oidc_web_origins }}"
+      attributes:
+        pkce.code.challenge.method: ""
+    validate_certs: false
+    status_code: 201
+  when:
+    - deployment_project_manifest_data.id == "traefik-rocketchat"
+    - deployment_project_rocketchat_keycloak_existing_client == {}
+
+- name: Refresh OIDC client lookup after create (rocketchat)
+  ansible.builtin.uri:
+    url: "{{ deployment_project_rocketchat_keycloak_oidc_base_url_effective }}/admin/realms/{{ deployment_project_rocketchat_keycloak_realm_effective }}/clients?clientId={{ deployment_project_rocketchat_oidc_client_id_effective | urlencode }}"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ deployment_project_rocketchat_keycloak_admin_access_token }}"
+    validate_certs: false
+    status_code: 200
+    return_content: true
+  register: deployment_project_rocketchat_keycloak_client_lookup_after_create
+  when:
+    - deployment_project_manifest_data.id == "traefik-rocketchat"
+    - deployment_project_rocketchat_keycloak_existing_client == {}
+
+- name: Resolve effective Keycloak client id for update/secret (rocketchat)
+  ansible.builtin.set_fact:
+    deployment_project_rocketchat_keycloak_client_uuid: >-
+      {{
+        (
+          (deployment_project_rocketchat_keycloak_client_lookup_after_create.content | from_json | first).id
+        ) if (deployment_project_rocketchat_keycloak_existing_client == {})
+        else deployment_project_rocketchat_keycloak_existing_client.id
+      }}
+  when: deployment_project_manifest_data.id == "traefik-rocketchat"
+
+- name: Update OIDC client contract in Keycloak (rocketchat)
+  ansible.builtin.uri:
+    url: "{{ deployment_project_rocketchat_keycloak_oidc_base_url_effective }}/admin/realms/{{ deployment_project_rocketchat_keycloak_realm_effective }}/clients/{{ deployment_project_rocketchat_keycloak_client_uuid }}"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ deployment_project_rocketchat_keycloak_admin_access_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      id: "{{ deployment_project_rocketchat_keycloak_client_uuid }}"
+      clientId: "{{ deployment_project_rocketchat_oidc_client_id_effective }}"
+      enabled: true
+      protocol: "openid-connect"
+      publicClient: false
+      directAccessGrantsEnabled: false
+      standardFlowEnabled: true
+      serviceAccountsEnabled: false
+      redirectUris: "{{ deployment_project_rocketchat_oidc_redirect_uris }}"
+      webOrigins: "{{ deployment_project_rocketchat_oidc_web_origins }}"
+      secret: "{{ deployment_project_rocketchat_oidc_client_secret_effective }}"
+      attributes:
+        pkce.code.challenge.method: ""
+    validate_certs: false
+    status_code: 204
+  when: deployment_project_manifest_data.id == "traefik-rocketchat"
 
 - name: Check Wiki.js setup completion status in database
   ansible.builtin.shell: |

@@ -1,0 +1,118 @@
+services:
+  rocketchat-mongodb:
+    image: ${ROCKETCHAT_MONGODB_IMAGE:-mongo:7.0}
+    container_name: rocketchat-mongodb
+    restart: unless-stopped
+    profiles:
+      - rocketchat
+    command: ["mongod", "--replSet", "${ROCKETCHAT_MONGODB_REPLICA_SET:-rs0}", "--bind_ip_all"]
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.adminCommand(\"ping\").ok' localhost:27017/test | grep 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+    volumes:
+      - rocketchat-mongodb-data:/data/db
+    networks:
+      - rocketchat-internal
+
+  rocketchat-mongodb-init-replica:
+    image: ${ROCKETCHAT_MONGODB_IMAGE:-mongo:7.0}
+    container_name: rocketchat-mongodb-init-replica
+    restart: "no"
+    profiles:
+      - rocketchat
+    depends_on:
+      rocketchat-mongodb:
+        condition: service_healthy
+    command:
+      - /bin/bash
+      - -lc
+      - |
+        set -euo pipefail
+        for i in $(seq 1 30); do
+          if mongosh --host rocketchat-mongodb:27017 --quiet --eval 'db.adminCommand("ping").ok' | grep -q 1; then
+            break
+          fi
+          sleep 2
+        done
+        mongosh --host rocketchat-mongodb:27017 --quiet --eval '
+          try {
+            rs.status();
+            print("replica set already initialized");
+          } catch (err) {
+            rs.initiate({ _id: "rs0", members: [{ _id: 0, host: "rocketchat-mongodb:27017" }] });
+            print("replica set initialized");
+          }
+        '
+    networks:
+      - rocketchat-internal
+
+  rocketchat:
+    image: ${ROCKETCHAT_IMAGE:-registry.rocket.chat/rocketchat/rocket.chat:7.12.0}
+    container_name: rocketchat
+    restart: unless-stopped
+    profiles:
+      - rocketchat
+    depends_on:
+      rocketchat-mongodb:
+        condition: service_healthy
+      rocketchat-mongodb-init-replica:
+        condition: service_completed_successfully
+    environment:
+      ROOT_URL: https://${ROCKETCHAT_HOSTNAME:-rocketchat}.${DEV_DOMAIN}
+      PORT: 3000
+      MONGO_URL: mongodb://${ROCKETCHAT_MONGODB_HOST:-rocketchat-mongodb}:27017/rocketchat?replicaSet=${ROCKETCHAT_MONGODB_REPLICA_SET:-rs0}
+      MONGO_OPLOG_URL: mongodb://${ROCKETCHAT_MONGODB_HOST:-rocketchat-mongodb}:27017/local?replicaSet=${ROCKETCHAT_MONGODB_REPLICA_SET:-rs0}
+      OVERWRITE_SETTING_Site_Url: https://${ROCKETCHAT_HOSTNAME:-rocketchat}.${DEV_DOMAIN}
+      OVERWRITE_SETTING_Accounts_OAuth_Dolphin: "false"
+      OVERWRITE_SETTING_Accounts_OAuth_Dolphin_URL: ""
+      OVERWRITE_SETTING_Accounts_OAuth_Dolphin_id: ""
+      OVERWRITE_SETTING_Accounts_OAuth_Dolphin_secret: ""
+      OVERWRITE_SETTING_Accounts_OAuth_Dolphin_button_label_text: ""
+      OVERWRITE_SETTING_API_Wordpress_URL: ""
+      OVERWRITE_SETTING_Accounts_OAuth_Wordpress: "false"
+      Accounts_OAuth_Custom_KEYCLOAK: "true"
+      Accounts_OAuth_Custom_KEYCLOAK_id: ${ROCKETCHAT_OIDC_CLIENT_ID}
+      Accounts_OAuth_Custom_KEYCLOAK_secret: ${ROCKETCHAT_OIDC_CLIENT_SECRET}
+      Accounts_OAuth_Custom_KEYCLOAK_url: ${KEYCLOAK_OIDC_BASE_URL}
+      Accounts_OAuth_Custom_KEYCLOAK_authorize_path: /realms/${KEYCLOAK_REALM}/protocol/openid-connect/auth
+      Accounts_OAuth_Custom_KEYCLOAK_token_path: /realms/${KEYCLOAK_REALM}/protocol/openid-connect/token
+      Accounts_OAuth_Custom_KEYCLOAK_identity_path: /realms/${KEYCLOAK_REALM}/protocol/openid-connect/userinfo
+      Accounts_OAuth_Custom_KEYCLOAK_scope: openid profile email
+      Accounts_OAuth_Custom_KEYCLOAK_token_sent_via: payload
+      Accounts_OAuth_Custom_KEYCLOAK_identity_token_sent_via: header
+      Accounts_OAuth_Custom_KEYCLOAK_key_field: email
+      Accounts_OAuth_Custom_KEYCLOAK_email_field: email
+      Accounts_OAuth_Custom_KEYCLOAK_username_field: preferred_username
+      Accounts_OAuth_Custom_KEYCLOAK_name_field: name
+      Accounts_OAuth_Custom_KEYCLOAK_login_style: redirect
+      Accounts_OAuth_Custom_KEYCLOAK_button_label_text: Sign in with Keycloak
+      NODE_EXTRA_CA_CERTS: /etc/ssl/certs/stepca-root-ca.crt
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-proxy"
+      - "traefik.http.routers.rocketchat-web.rule=Host(`${ROCKETCHAT_HOSTNAME:-rocketchat}.${DEV_DOMAIN}`)"
+      - "traefik.http.routers.rocketchat-web.entrypoints=web"
+      - "traefik.http.routers.rocketchat-web.middlewares=${HTTP_TO_HTTPS_MIDDLEWARE:-redirect-to-https@file}"
+      - "traefik.http.routers.rocketchat-websecure.rule=Host(`${ROCKETCHAT_HOSTNAME:-rocketchat}.${DEV_DOMAIN}`)"
+      - "traefik.http.routers.rocketchat-websecure.entrypoints=websecure"
+      - "traefik.http.routers.rocketchat-websecure.tls=true"
+      - "traefik.http.routers.rocketchat-websecure.tls.certresolver=${TLS_CERT_RESOLVER}"
+      - "traefik.http.routers.rocketchat-websecure.middlewares=security-headers@file"
+      - "traefik.http.routers.rocketchat-websecure.service=rocketchat-service"
+      - "traefik.http.services.rocketchat-service.loadbalancer.server.port=3000"
+    networks:
+      - proxy
+      - rocketchat-internal
+    volumes:
+      - ./services/step-ca/certs/root_ca.crt:/etc/ssl/certs/stepca-root-ca.crt:ro
+
+networks:
+  rocketchat-internal:
+    name: rocketchat-internal
+    internal: true
+
+volumes:
+  rocketchat-mongodb-data:
+    name: rocketchat-mongodb-data

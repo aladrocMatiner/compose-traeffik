@@ -19,6 +19,10 @@
     {
       "id": "traefik-semaphoreui",
       "manifest": "deployment/projects/traefik-semaphoreui/manifest.json"
+    },
+    {
+      "id": "traefik-rocketchat",
+      "manifest": "deployment/projects/traefik-rocketchat/manifest.json"
     }
   ]
 }

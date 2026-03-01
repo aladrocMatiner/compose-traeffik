@@ -24,6 +24,7 @@ Current catalog projects:
 - `traefik-observability`
 - `traefik-wikijs`
 - `traefik-semaphoreui`
+- `traefik-rocketchat`
 
 `traefik-observability` contract highlights:
 
@@ -42,6 +43,12 @@ Current catalog projects:
 - defaults to `tls_mode=stepca-acme` (override allowed with `tls_mode=...`)
 - depends on `traefik-stepca` and `traefik-keycloak`
 - configures Keycloak OIDC contract for Semaphore UI (`realm=local.test`, `client_id=semaphoreui`) during deployment
+
+`traefik-rocketchat` contract highlights:
+
+- defaults to `tls_mode=stepca-acme` (override allowed with `tls_mode=...`)
+- depends on `traefik-stepca` and `traefik-keycloak`
+- configures Keycloak OIDC contract for Rocket.Chat (`realm=local.test`, `client_id=rocketchat`) during deployment
 
 Hostname contract for web projects:
 
