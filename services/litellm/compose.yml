@@ -33,11 +33,9 @@ services:
       - "4000"
       - "--num_workers"
       - "${LITELLM_NUM_WORKERS:-1}"
-      - "--model"
-      - "${LITELLM_MODEL:-openai/gpt-oss-20b}"
     environment:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-not-needed}
-      OPENAI_API_BASE: ${OPENAI_API_BASE:-http://10.64.70.81:8000/v1}
+      OPENAI_API_BASE: ${OPENAI_API_BASE:-http://10.64.70.81:11434/v1}
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
       DATABASE_URL: ${DATABASE_URL}
       STORE_MODEL_IN_DB: ${STORE_MODEL_IN_DB:-True}

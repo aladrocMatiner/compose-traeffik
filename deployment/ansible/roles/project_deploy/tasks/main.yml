@@ -1337,14 +1337,14 @@
   ansible.builtin.lineinfile:
     path: "{{ deployment_project_repo_dir }}/.env"
     regexp: "^LITELLM_MODEL="
-    line: "LITELLM_MODEL=openai/gpt-oss-20b"
+    line: "LITELLM_MODEL=openai/gpt-oss:20b"
   when: deployment_project_manifest_data.id == "traefik-litellm"
 
 - name: Ensure OPENAI_API_BASE for litellm project
   ansible.builtin.lineinfile:
     path: "{{ deployment_project_repo_dir }}/.env"
     regexp: "^OPENAI_API_BASE="
-    line: "OPENAI_API_BASE=http://10.64.70.81:8000/v1"
+    line: "OPENAI_API_BASE=http://10.64.70.81:11434/v1"
   when: deployment_project_manifest_data.id == "traefik-litellm"
 
 - name: Ensure LITELLM_DB_NAME for litellm project
@@ -3462,6 +3462,77 @@
   when:
     - deployment_project_manifest_data.id == "traefik-litellm"
     - deployment_project_litellm_oidc_secret_sync_env is changed
+
+- name: Sync LiteLLM UI model groups from inference backend models (idempotent)
+  ansible.builtin.shell: |
+    set -euo pipefail
+    master_key="$(grep '^LITELLM_MASTER_KEY=' .env | cut -d= -f2-)"
+    api_base="$(grep '^OPENAI_API_BASE=' .env | cut -d= -f2-)"
+    docker exec -e MASTER="${master_key}" -e API_BASE="${api_base}" litellm python3 - <<'PY'
+    import json
+    import os
+    import urllib.request
+
+    headers = {"Authorization": "Bearer " + os.environ["MASTER"], "Content-Type": "application/json"}
+    api_base = os.environ["API_BASE"].strip()
+
+    req = urllib.request.Request("http://127.0.0.1:4000/model_group/info", headers=headers)
+    with urllib.request.urlopen(req, timeout=20) as resp:
+        data = json.loads(resp.read().decode())
+
+    existing = set()
+    if isinstance(data, dict):
+        for item in data.get("data", []):
+            if isinstance(item, dict):
+                name = item.get("model_group")
+                if isinstance(name, str) and name:
+                    existing.add(name)
+
+    models_req = urllib.request.Request(api_base.rstrip("/") + "/models")
+    with urllib.request.urlopen(models_req, timeout=30) as resp:
+        remote = json.loads(resp.read().decode())
+
+    remote_ids = []
+    if isinstance(remote, dict):
+        for item in remote.get("data", []):
+            if isinstance(item, dict):
+                model_id = item.get("id")
+                if isinstance(model_id, str) and model_id:
+                    remote_ids.append(model_id)
+
+    created = 0
+    for remote_id in remote_ids:
+        model_name = f"openai/{remote_id}"
+        if model_name in existing:
+            continue
+        payload = {
+            "model_name": model_name,
+            "litellm_params": {
+                "model": model_name,
+                "api_base": api_base,
+                "api_key": "not-needed",
+            },
+        }
+        create_req = urllib.request.Request(
+            "http://127.0.0.1:4000/model/new",
+            data=json.dumps(payload).encode(),
+            headers=headers,
+        )
+        with urllib.request.urlopen(create_req, timeout=30) as resp:
+            resp.read()
+        created += 1
+
+    print(f"created={created}")
+    PY
+  args:
+    chdir: "{{ deployment_project_repo_dir }}"
+    executable: /bin/bash
+  register: deployment_project_litellm_seed_model_groups_cmd
+  changed_when: false
+  retries: 12
+  delay: 5
+  until: deployment_project_litellm_seed_model_groups_cmd.rc == 0
+  when: deployment_project_manifest_data.id == "traefik-litellm"
 
 - name: Ensure LiteLLM bootstrap user is proxy_admin (idempotent)
   ansible.builtin.shell: |
