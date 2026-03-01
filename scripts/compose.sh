@@ -53,6 +53,7 @@ append_compose_file_if_exists "${REPO_ROOT}/services/wikijs/compose.yml"
 append_compose_file_if_exists "${REPO_ROOT}/services/semaphoreui/compose.yml"
 append_compose_file_if_exists "${REPO_ROOT}/services/rocketchat/compose.yml"
 append_compose_file_if_exists "${REPO_ROOT}/services/gitlab/compose.yml"
+append_compose_file_if_exists "${REPO_ROOT}/services/litellm/compose.yml"
 
 COMPOSE_INCLUDE_STEPCA="${COMPOSE_INCLUDE_STEPCA:-true}"
 if [ "${COMPOSE_INCLUDE_STEPCA}" = "true" ]; then

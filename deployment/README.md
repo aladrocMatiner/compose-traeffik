@@ -25,9 +25,17 @@ make deployment-project project=traefik-wikijs target=qemu os=ubuntu
 make deployment-project project=traefik-semaphoreui target=qemu os=ubuntu
 make deployment-project project=traefik-rocketchat target=qemu os=ubuntu
 make deployment-project project=traefik-gitlab target=qemu os=ubuntu
+make deployment-project project=traefik-litellm target=qemu os=ubuntu
 ```
 
 Notas para `traefik-dns-bind`:
 
 - BIND expone DNS directamente por `53/udp` y `53/tcp` (no pasa por Traefik).
 - Traefik solo se usa para endpoints HTTP(S) del proyecto (por ejemplo, dashboard).
+
+Notas para `traefik-litellm`:
+
+- Despliega stack full: `litellm` + `litellm-db` (PostgreSQL persistente) detrás de Traefik.
+- Requiere `traefik-keycloak` desplegado para SSO OIDC automático.
+- Requiere `OPENAI_API_KEY` en `.env` antes del deploy.
+- La UI/admin de LiteLLM queda accesible en `https://litellm.local.test/ui`.

@@ -212,6 +212,20 @@
     mode: "0644"
   when: "'gitlab' in deployment_project_manifest_data.services"
 
+- name: Backport litellm compose definition from controller workspace
+  ansible.builtin.file:
+    path: "{{ deployment_project_repo_dir }}/services/litellm"
+    state: directory
+    mode: "0755"
+  when: "'litellm' in deployment_project_manifest_data.services"
+
+- name: Backport litellm compose definition from controller workspace
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../../services/litellm/compose.yml"
+    dest: "{{ deployment_project_repo_dir }}/services/litellm/compose.yml"
+    mode: "0644"
+  when: "'litellm' in deployment_project_manifest_data.services"
+
 - name: Backport keycloak compose definition from controller workspace
   ansible.builtin.file:
     path: "{{ deployment_project_repo_dir }}/services/keycloak"
@@ -1290,6 +1304,271 @@
     - deployment_project_manifest_data.id == "traefik-gitlab"
     - deployment_project_keycloak_dependency_host_ip | default('') | trim | length > 0
 
+- name: Validate Keycloak dependency contract for litellm project
+  ansible.builtin.assert:
+    that:
+      - deployment_project_keycloak_dependency_host_ip | default('') | trim | length > 0
+      - deployment_project_keycloak_admin_username | default('') | trim | length > 0
+      - deployment_project_keycloak_admin_password | default('') | trim | length > 0
+    fail_msg: >-
+      Missing Keycloak dependency context for LiteLLM OIDC provisioning.
+      Deploy/fix traefik-keycloak first, then retry this project deployment.
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Resolve effective OIDC realm/client for litellm project
+  ansible.builtin.set_fact:
+    deployment_project_litellm_keycloak_realm_effective: "{{ deployment_project_manifest_data.oidc.realm | default(deployment_project_keycloak_realm | default('local.test', true), true) }}"
+    deployment_project_litellm_keycloak_client_id_effective: "{{ deployment_project_manifest_data.oidc.client_id | default('litellm', true) }}"
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Resolve effective Keycloak OIDC base URL for litellm project
+  ansible.builtin.set_fact:
+    deployment_project_litellm_keycloak_oidc_base_url_effective: "{{ deployment_project_keycloak_oidc_base_url | default('https://keycloak.' ~ (deployment_project_base_domain_cmd.stdout | trim), true) }}"
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Ensure LITELLM_HOSTNAME for litellm project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^LITELLM_HOSTNAME="
+    line: "LITELLM_HOSTNAME=litellm"
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Ensure LITELLM_MODEL for litellm project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^LITELLM_MODEL="
+    line: "LITELLM_MODEL=gpt-4o-mini"
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Ensure LITELLM_DB_NAME for litellm project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^LITELLM_DB_NAME="
+    line: "LITELLM_DB_NAME=litellm"
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Ensure LITELLM_DB_USER for litellm project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^LITELLM_DB_USER="
+    line: "LITELLM_DB_USER=litellm"
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Ensure LITELLM_DB_IMAGE for litellm project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^LITELLM_DB_IMAGE="
+    line: "LITELLM_DB_IMAGE=postgres:16-alpine"
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Read existing LITELLM_DB_PASSWORD from project .env
+  ansible.builtin.command:
+    cmd: "bash -lc \"awk -F= '$1==\\\"LITELLM_DB_PASSWORD\\\" {print $2}' .env | tail -n1 | tr -d '\\\"' | xargs\""
+  args:
+    chdir: "{{ deployment_project_repo_dir }}"
+  register: deployment_project_litellm_db_password_cmd
+  changed_when: false
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Generate LITELLM_DB_PASSWORD when absent
+  ansible.builtin.command:
+    cmd: "bash -lc \"openssl rand -hex 24\""
+  register: deployment_project_litellm_db_password_generated
+  changed_when: true
+  when:
+    - deployment_project_manifest_data.id == "traefik-litellm"
+    - deployment_project_litellm_db_password_cmd.stdout | trim | length == 0
+
+- name: Resolve effective LITELLM_DB_PASSWORD
+  ansible.builtin.set_fact:
+    deployment_project_litellm_db_password_effective: >-
+      {{
+        (deployment_project_litellm_db_password_cmd.stdout | trim)
+          if (deployment_project_litellm_db_password_cmd.stdout | trim | length > 0)
+          else (deployment_project_litellm_db_password_generated.stdout | trim)
+      }}
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Ensure LITELLM_DB_PASSWORD for litellm project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^LITELLM_DB_PASSWORD="
+    line: "LITELLM_DB_PASSWORD={{ deployment_project_litellm_db_password_effective }}"
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Read existing LITELLM_MASTER_KEY from project .env
+  ansible.builtin.command:
+    cmd: "bash -lc \"awk -F= '$1==\\\"LITELLM_MASTER_KEY\\\" {print $2}' .env | tail -n1 | tr -d '\\\"' | xargs\""
+  args:
+    chdir: "{{ deployment_project_repo_dir }}"
+  register: deployment_project_litellm_master_key_cmd
+  changed_when: false
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Generate LITELLM_MASTER_KEY when absent
+  ansible.builtin.command:
+    cmd: "bash -lc \"printf 'sk-%s' \\\"$(openssl rand -hex 24)\\\"\""
+  register: deployment_project_litellm_master_key_generated
+  changed_when: true
+  when:
+    - deployment_project_manifest_data.id == "traefik-litellm"
+    - deployment_project_litellm_master_key_cmd.stdout | trim | length == 0
+
+- name: Resolve effective LITELLM_MASTER_KEY
+  ansible.builtin.set_fact:
+    deployment_project_litellm_master_key_effective: >-
+      {{
+        (deployment_project_litellm_master_key_cmd.stdout | trim)
+          if (deployment_project_litellm_master_key_cmd.stdout | trim | length > 0)
+          else (deployment_project_litellm_master_key_generated.stdout | trim)
+      }}
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Ensure LITELLM_MASTER_KEY for litellm project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^LITELLM_MASTER_KEY="
+    line: "LITELLM_MASTER_KEY={{ deployment_project_litellm_master_key_effective }}"
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Ensure DATABASE_URL for litellm project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^DATABASE_URL="
+    line: "DATABASE_URL=postgresql://litellm:{{ deployment_project_litellm_db_password_effective }}@litellm-db:5432/litellm"
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Ensure STORE_MODEL_IN_DB for litellm project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^STORE_MODEL_IN_DB="
+    line: "STORE_MODEL_IN_DB=True"
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Ensure KEYCLOAK_OIDC_BASE_URL for litellm project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^KEYCLOAK_OIDC_BASE_URL="
+    line: "KEYCLOAK_OIDC_BASE_URL={{ deployment_project_litellm_keycloak_oidc_base_url_effective }}"
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Ensure KEYCLOAK_REALM for litellm project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^KEYCLOAK_REALM="
+    line: "KEYCLOAK_REALM={{ deployment_project_litellm_keycloak_realm_effective }}"
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Ensure GENERIC_CLIENT_ID for litellm project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^GENERIC_CLIENT_ID="
+    line: "GENERIC_CLIENT_ID={{ deployment_project_litellm_keycloak_client_id_effective }}"
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Read existing GENERIC_CLIENT_SECRET from project .env (litellm)
+  ansible.builtin.command:
+    cmd: "bash -lc \"awk -F= '$1==\\\"GENERIC_CLIENT_SECRET\\\" {print $2}' .env | tail -n1 | tr -d '\\\"' | xargs\""
+  args:
+    chdir: "{{ deployment_project_repo_dir }}"
+  register: deployment_project_litellm_oidc_client_secret_cmd
+  changed_when: false
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Generate GENERIC_CLIENT_SECRET when absent (litellm)
+  ansible.builtin.command:
+    cmd: "bash -lc \"openssl rand -hex 24\""
+  register: deployment_project_litellm_oidc_client_secret_generated
+  changed_when: true
+  when:
+    - deployment_project_manifest_data.id == "traefik-litellm"
+    - deployment_project_litellm_oidc_client_secret_cmd.stdout | trim | length == 0
+
+- name: Resolve effective GENERIC_CLIENT_SECRET (litellm)
+  ansible.builtin.set_fact:
+    deployment_project_litellm_oidc_client_secret_effective: >-
+      {{
+        (deployment_project_litellm_oidc_client_secret_cmd.stdout | trim)
+          if (deployment_project_litellm_oidc_client_secret_cmd.stdout | trim | length > 0)
+          else (deployment_project_litellm_oidc_client_secret_generated.stdout | trim)
+      }}
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Ensure GENERIC_CLIENT_SECRET for litellm project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^GENERIC_CLIENT_SECRET="
+    line: "GENERIC_CLIENT_SECRET={{ deployment_project_litellm_oidc_client_secret_effective }}"
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Ensure GENERIC_SCOPE for litellm project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^GENERIC_SCOPE="
+    line: "GENERIC_SCOPE=\"openid email profile\""
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Ensure GENERIC_AUTHORIZATION_ENDPOINT for litellm project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^GENERIC_AUTHORIZATION_ENDPOINT="
+    line: "GENERIC_AUTHORIZATION_ENDPOINT={{ deployment_project_litellm_keycloak_oidc_base_url_effective }}/realms/{{ deployment_project_litellm_keycloak_realm_effective }}/protocol/openid-connect/auth"
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Ensure GENERIC_TOKEN_ENDPOINT for litellm project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^GENERIC_TOKEN_ENDPOINT="
+    line: "GENERIC_TOKEN_ENDPOINT={{ deployment_project_litellm_keycloak_oidc_base_url_effective }}/realms/{{ deployment_project_litellm_keycloak_realm_effective }}/protocol/openid-connect/token"
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Ensure GENERIC_USERINFO_ENDPOINT for litellm project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^GENERIC_USERINFO_ENDPOINT="
+    line: "GENERIC_USERINFO_ENDPOINT={{ deployment_project_litellm_keycloak_oidc_base_url_effective }}/realms/{{ deployment_project_litellm_keycloak_realm_effective }}/protocol/openid-connect/userinfo"
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Ensure generic user attribute defaults for litellm project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^{{ item.key }}="
+    line: "{{ item.key }}={{ item.value }}"
+  loop:
+    - { key: "GENERIC_USER_ID_ATTRIBUTE", value: "preferred_username" }
+    - { key: "GENERIC_USER_DISPLAY_NAME_ATTRIBUTE", value: "name" }
+    - { key: "GENERIC_USER_EMAIL_ATTRIBUTE", value: "email" }
+    - { key: "GENERIC_USER_FIRST_NAME_ATTRIBUTE", value: "given_name" }
+    - { key: "GENERIC_USER_LAST_NAME_ATTRIBUTE", value: "family_name" }
+    - { key: "GENERIC_INCLUDE_CLIENT_ID", value: "true" }
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Ensure PROXY_BASE_URL for litellm project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^PROXY_BASE_URL="
+    line: "PROXY_BASE_URL=https://litellm.{{ deployment_project_base_domain_cmd.stdout | trim }}"
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Ensure Traefik Keycloak host mapping IP for litellm project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^TRAEFIK_KEYCLOAK_HOST_IP="
+    line: "TRAEFIK_KEYCLOAK_HOST_IP={{ deployment_project_keycloak_dependency_host_ip }}"
+  when:
+    - deployment_project_manifest_data.id == "traefik-litellm"
+    - deployment_project_keycloak_dependency_host_ip | default('') | trim | length > 0
+
+- name: Ensure Keycloak hostname mapping for litellm host resolver
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: ".*\\skeycloak\\.{{ deployment_project_base_domain_cmd.stdout | trim | regex_escape() }}(\\s|$)"
+    line: "{{ deployment_project_keycloak_dependency_host_ip }} keycloak.{{ deployment_project_base_domain_cmd.stdout | trim }}"
+    create: false
+  when:
+    - deployment_project_manifest_data.id == "traefik-litellm"
+    - deployment_project_keycloak_dependency_host_ip | default('') | trim | length > 0
+
 - name: Validate required environment variables declared by manifest
   ansible.builtin.command:
     cmd: "bash -lc \"grep -Eq '^{{ item }}=.+' .env\""
@@ -2059,7 +2338,7 @@
     realm="${KEYCLOAK_BOOTSTRAP_REALM:-local.test}"
     username="${KEYCLOAK_BOOTSTRAP_USERNAME:-jose.romero}"
     password="${KEYCLOAK_BOOTSTRAP_PASSWORD:-abcd123}"
-    email="${KEYCLOAK_BOOTSTRAP_EMAIL:-${username}@${realm}}"
+    email="${KEYCLOAK_BOOTSTRAP_EMAIL:-${username}@aladroc.io}"
     admin_user="${KEYCLOAK_ADMIN:-admin}"
     admin_pass="${KEYCLOAK_ADMIN_PASSWORD:-}"
 
@@ -2878,6 +3157,180 @@
   when:
     - deployment_project_manifest_data.id == "traefik-gitlab"
     - deployment_project_gitlab_oidc_secret_sync_env is changed
+
+- name: Ensure Keycloak admin authentication works before LiteLLM OIDC provisioning
+  ansible.builtin.uri:
+    url: "{{ deployment_project_litellm_keycloak_oidc_base_url_effective }}/realms/master/protocol/openid-connect/token"
+    method: POST
+    body_format: form-urlencoded
+    body:
+      client_id: admin-cli
+      grant_type: password
+      username: "{{ deployment_project_keycloak_admin_username }}"
+      password: "{{ deployment_project_keycloak_admin_password }}"
+    validate_certs: false
+    status_code: 200
+    return_content: true
+  register: deployment_project_litellm_keycloak_admin_token_response
+  retries: 10
+  delay: 6
+  until: deployment_project_litellm_keycloak_admin_token_response.status == 200
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Extract Keycloak admin access token for LiteLLM OIDC provisioning
+  ansible.builtin.set_fact:
+    deployment_project_litellm_keycloak_admin_access_token: "{{ (deployment_project_litellm_keycloak_admin_token_response.content | from_json).access_token }}"
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Resolve OIDC client contract for litellm project
+  ansible.builtin.set_fact:
+    deployment_project_litellm_oidc_client_id_effective: "{{ deployment_project_litellm_keycloak_client_id_effective }}"
+    deployment_project_litellm_oidc_redirect_uris:
+      - "https://litellm.{{ deployment_project_base_domain_cmd.stdout | trim }}/sso/callback"
+      - "https://litellm.{{ deployment_project_base_domain_cmd.stdout | trim }}/sso/debug/callback"
+    deployment_project_litellm_oidc_web_origins:
+      - "https://litellm.{{ deployment_project_base_domain_cmd.stdout | trim }}"
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Ensure OIDC client contract shape for litellm project
+  ansible.builtin.assert:
+    that:
+      - deployment_project_litellm_oidc_client_id_effective | trim | length > 0
+      - deployment_project_litellm_oidc_redirect_uris | length > 0
+      - deployment_project_litellm_oidc_web_origins | length > 0
+    fail_msg: "Malformed OIDC contract for litellm project."
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Query Keycloak client by client_id in target realm (litellm)
+  ansible.builtin.uri:
+    url: "{{ deployment_project_litellm_keycloak_oidc_base_url_effective }}/admin/realms/{{ deployment_project_litellm_keycloak_realm_effective }}/clients?clientId={{ deployment_project_litellm_oidc_client_id_effective | urlencode }}"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ deployment_project_litellm_keycloak_admin_access_token }}"
+    validate_certs: false
+    status_code: 200
+    return_content: true
+  register: deployment_project_litellm_keycloak_client_lookup
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Parse existing OIDC client lookup result (litellm)
+  ansible.builtin.set_fact:
+    deployment_project_litellm_keycloak_existing_client: "{{ ((deployment_project_litellm_keycloak_client_lookup.content | from_json) | first) if ((deployment_project_litellm_keycloak_client_lookup.content | from_json) | length > 0) else {} }}"
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Create OIDC client in Keycloak when missing (litellm)
+  ansible.builtin.uri:
+    url: "{{ deployment_project_litellm_keycloak_oidc_base_url_effective }}/admin/realms/{{ deployment_project_litellm_keycloak_realm_effective }}/clients"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ deployment_project_litellm_keycloak_admin_access_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      clientId: "{{ deployment_project_litellm_oidc_client_id_effective }}"
+      enabled: true
+      protocol: "openid-connect"
+      publicClient: false
+      directAccessGrantsEnabled: false
+      standardFlowEnabled: true
+      serviceAccountsEnabled: false
+      redirectUris: "{{ deployment_project_litellm_oidc_redirect_uris }}"
+      webOrigins: "{{ deployment_project_litellm_oidc_web_origins }}"
+      attributes:
+        pkce.code.challenge.method: ""
+    validate_certs: false
+    status_code: 201
+  when:
+    - deployment_project_manifest_data.id == "traefik-litellm"
+    - deployment_project_litellm_keycloak_existing_client == {}
+
+- name: Refresh OIDC client lookup after create (litellm)
+  ansible.builtin.uri:
+    url: "{{ deployment_project_litellm_keycloak_oidc_base_url_effective }}/admin/realms/{{ deployment_project_litellm_keycloak_realm_effective }}/clients?clientId={{ deployment_project_litellm_oidc_client_id_effective | urlencode }}"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ deployment_project_litellm_keycloak_admin_access_token }}"
+    validate_certs: false
+    status_code: 200
+    return_content: true
+  register: deployment_project_litellm_keycloak_client_lookup_after_create
+  when:
+    - deployment_project_manifest_data.id == "traefik-litellm"
+    - deployment_project_litellm_keycloak_existing_client == {}
+
+- name: Resolve effective Keycloak client id for update/secret (litellm)
+  ansible.builtin.set_fact:
+    deployment_project_litellm_keycloak_client_uuid: >-
+      {{
+        (
+          (deployment_project_litellm_keycloak_client_lookup_after_create.content | from_json | first).id
+        ) if (deployment_project_litellm_keycloak_existing_client == {})
+        else deployment_project_litellm_keycloak_existing_client.id
+      }}
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Update OIDC client contract in Keycloak (litellm)
+  ansible.builtin.uri:
+    url: "{{ deployment_project_litellm_keycloak_oidc_base_url_effective }}/admin/realms/{{ deployment_project_litellm_keycloak_realm_effective }}/clients/{{ deployment_project_litellm_keycloak_client_uuid }}"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ deployment_project_litellm_keycloak_admin_access_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      id: "{{ deployment_project_litellm_keycloak_client_uuid }}"
+      clientId: "{{ deployment_project_litellm_oidc_client_id_effective }}"
+      enabled: true
+      protocol: "openid-connect"
+      publicClient: false
+      directAccessGrantsEnabled: false
+      standardFlowEnabled: true
+      serviceAccountsEnabled: false
+      redirectUris: "{{ deployment_project_litellm_oidc_redirect_uris }}"
+      webOrigins: "{{ deployment_project_litellm_oidc_web_origins }}"
+      secret: "{{ deployment_project_litellm_oidc_client_secret_effective }}"
+      attributes:
+        pkce.code.challenge.method: ""
+    validate_certs: false
+    status_code: 204
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Read effective OIDC client secret from Keycloak (litellm)
+  ansible.builtin.uri:
+    url: "{{ deployment_project_litellm_keycloak_oidc_base_url_effective }}/admin/realms/{{ deployment_project_litellm_keycloak_realm_effective }}/clients/{{ deployment_project_litellm_keycloak_client_uuid }}/client-secret"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ deployment_project_litellm_keycloak_admin_access_token }}"
+    validate_certs: false
+    status_code: 200
+    return_content: true
+  register: deployment_project_litellm_keycloak_client_secret_response
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Resolve effective OIDC client secret from Keycloak response (litellm)
+  ansible.builtin.set_fact:
+    deployment_project_litellm_oidc_client_secret_effective: "{{ (deployment_project_litellm_keycloak_client_secret_response.content | from_json).value | trim }}"
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Ensure GENERIC_CLIENT_SECRET matches Keycloak effective secret (litellm)
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^GENERIC_CLIENT_SECRET="
+    line: "GENERIC_CLIENT_SECRET={{ deployment_project_litellm_oidc_client_secret_effective }}"
+  register: deployment_project_litellm_oidc_secret_sync_env
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Recreate LiteLLM container after OIDC secret sync
+  ansible.builtin.command:
+    cmd: ./scripts/compose.sh --profile {{ deployment_project_manifest_data.compose_profile }} up -d --force-recreate litellm
+  args:
+    chdir: "{{ deployment_project_repo_dir }}"
+  environment:
+    COMPOSE_PROJECT_NAME: "{{ deployment_project_manifest_data.id }}"
+  changed_when: true
+  when:
+    - deployment_project_manifest_data.id == "traefik-litellm"
+    - deployment_project_litellm_oidc_secret_sync_env is changed
 
 - name: Check Wiki.js setup completion status in database
   ansible.builtin.shell: |

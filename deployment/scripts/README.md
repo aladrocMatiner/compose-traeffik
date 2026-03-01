@@ -35,6 +35,7 @@ Current catalog projects:
 - `traefik-semaphoreui`
 - `traefik-rocketchat`
 - `traefik-gitlab`
+- `traefik-litellm`
 
 `traefik-observability` contract highlights:
 
@@ -65,6 +66,12 @@ Current catalog projects:
 - defaults to `tls_mode=stepca-acme` (override allowed with `tls_mode=...`)
 - depends on `traefik-stepca` and `traefik-keycloak`
 - configures Keycloak OIDC contract for GitLab (`realm=local.test`, `client_id=gitlab`) during deployment
+
+`traefik-litellm` contract highlights:
+
+- defaults to `tls_mode=stepca-acme` (override allowed with `tls_mode=...`)
+- depends on `traefik-stepca` and `traefik-keycloak`
+- configures Keycloak OIDC contract for LiteLLM (`realm=local.test`, `client_id=litellm`) during deployment
 
 Keycloak bootstrap + OIDC operational contract:
 

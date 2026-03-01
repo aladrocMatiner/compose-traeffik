@@ -124,6 +124,7 @@ default_vm_ip_for_project() {
     traefik-rocketchat) printf '192.168.122.55\n' ;;
     traefik-gitlab) printf '192.168.122.56\n' ;;
     traefik-dns-bind) printf '192.168.122.57\n' ;;
+    traefik-litellm) printf '192.168.122.58\n' ;;
     *)
       local hash octet
       hash="$(printf '%s' "${project_id}" | cksum | awk '{print $1}')"

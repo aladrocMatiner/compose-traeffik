@@ -1,0 +1,89 @@
+services:
+  litellm-db:
+    image: ${LITELLM_DB_IMAGE:-postgres:16-alpine}
+    container_name: litellm-db
+    restart: unless-stopped
+    profiles:
+      - litellm
+    environment:
+      POSTGRES_DB: ${LITELLM_DB_NAME:-litellm}
+      POSTGRES_USER: ${LITELLM_DB_USER:-litellm}
+      POSTGRES_PASSWORD: ${LITELLM_DB_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${LITELLM_DB_USER:-litellm} -d ${LITELLM_DB_NAME:-litellm}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    volumes:
+      - litellm-db-data:/var/lib/postgresql/data
+    networks:
+      - litellm-internal
+
+  litellm:
+    image: ${LITELLM_IMAGE:-ghcr.io/berriai/litellm:main-stable}
+    container_name: litellm
+    restart: unless-stopped
+    profiles:
+      - litellm
+    depends_on:
+      litellm-db:
+        condition: service_healthy
+    command:
+      - "--port"
+      - "4000"
+      - "--num_workers"
+      - "${LITELLM_NUM_WORKERS:-1}"
+      - "--model"
+      - "${LITELLM_MODEL:-openai/gpt-4o-mini}"
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+      DATABASE_URL: ${DATABASE_URL}
+      STORE_MODEL_IN_DB: ${STORE_MODEL_IN_DB:-True}
+      PROXY_BASE_URL: ${PROXY_BASE_URL:-https://${LITELLM_HOSTNAME:-litellm}.${DEV_DOMAIN}}
+      GENERIC_CLIENT_ID: ${GENERIC_CLIENT_ID}
+      GENERIC_CLIENT_SECRET: ${GENERIC_CLIENT_SECRET}
+      GENERIC_SCOPE: ${GENERIC_SCOPE:-openid email profile}
+      GENERIC_AUTHORIZATION_ENDPOINT: ${GENERIC_AUTHORIZATION_ENDPOINT}
+      GENERIC_TOKEN_ENDPOINT: ${GENERIC_TOKEN_ENDPOINT}
+      GENERIC_USERINFO_ENDPOINT: ${GENERIC_USERINFO_ENDPOINT}
+      GENERIC_USER_ID_ATTRIBUTE: ${GENERIC_USER_ID_ATTRIBUTE:-preferred_username}
+      GENERIC_USER_DISPLAY_NAME_ATTRIBUTE: ${GENERIC_USER_DISPLAY_NAME_ATTRIBUTE:-name}
+      GENERIC_USER_EMAIL_ATTRIBUTE: ${GENERIC_USER_EMAIL_ATTRIBUTE:-email}
+      GENERIC_USER_FIRST_NAME_ATTRIBUTE: ${GENERIC_USER_FIRST_NAME_ATTRIBUTE:-given_name}
+      GENERIC_USER_LAST_NAME_ATTRIBUTE: ${GENERIC_USER_LAST_NAME_ATTRIBUTE:-family_name}
+      GENERIC_INCLUDE_CLIENT_ID: ${GENERIC_INCLUDE_CLIENT_ID:-true}
+      REQUESTS_CA_BUNDLE: /etc/ssl/certs/stepca-root-ca.crt
+      SSL_CERT_FILE: /etc/ssl/certs/stepca-root-ca.crt
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-proxy"
+      - "traefik.http.routers.litellm-web.rule=Host(`${LITELLM_HOSTNAME:-litellm}.${DEV_DOMAIN}`)"
+      - "traefik.http.routers.litellm-web.entrypoints=web"
+      - "traefik.http.routers.litellm-web.middlewares=${HTTP_TO_HTTPS_MIDDLEWARE:-redirect-to-https@file}"
+      - "traefik.http.routers.litellm-websecure.rule=Host(`${LITELLM_HOSTNAME:-litellm}.${DEV_DOMAIN}`)"
+      - "traefik.http.routers.litellm-websecure.entrypoints=websecure"
+      - "traefik.http.routers.litellm-websecure.tls=true"
+      - "traefik.http.routers.litellm-websecure.tls.certresolver=${TLS_CERT_RESOLVER}"
+      - "traefik.http.routers.litellm-websecure.middlewares=security-headers@file"
+      - "traefik.http.routers.litellm-websecure.service=litellm-service"
+      - "traefik.http.services.litellm-service.loadbalancer.server.port=4000"
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4000/health/liveliness', timeout=3)"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    volumes:
+      - ./services/step-ca/certs/root_ca.crt:/etc/ssl/certs/stepca-root-ca.crt:ro
+    networks:
+      - proxy
+      - litellm-internal
+
+networks:
+  litellm-internal:
+    name: litellm-internal
+    internal: true
+
+volumes:
+  litellm-db-data:
+    name: litellm-db-data

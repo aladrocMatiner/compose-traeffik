@@ -122,4 +122,13 @@ assert_oidc_project_flow \
     "Update OIDC client contract in Keycloak (gitlab)" \
     "deployment_project_gitlab_keycloak_existing_client"
 
+assert_oidc_project_flow \
+    "litellm" \
+    "Ensure Keycloak admin authentication works before LiteLLM OIDC provisioning" \
+    "Query Keycloak client by client_id in target realm (litellm)" \
+    "Create OIDC client in Keycloak when missing (litellm)" \
+    "Refresh OIDC client lookup after create (litellm)" \
+    "Update OIDC client contract in Keycloak (litellm)" \
+    "deployment_project_litellm_keycloak_existing_client"
+
 log_success "Keycloak bootstrap/OIDC idempotency contract test passed."

@@ -31,6 +31,10 @@
     {
       "id": "traefik-dns-bind",
       "manifest": "deployment/projects/traefik-dns-bind/manifest.json"
+    },
+    {
+      "id": "traefik-litellm",
+      "manifest": "deployment/projects/traefik-litellm/manifest.json"
     }
   ]
 }

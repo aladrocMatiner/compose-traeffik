@@ -24,6 +24,7 @@ SEMAPHOREUI_MANIFEST="$REPO_ROOT/deployment/projects/traefik-semaphoreui/manifes
 ROCKETCHAT_MANIFEST="$REPO_ROOT/deployment/projects/traefik-rocketchat/manifest.json"
 GITLAB_MANIFEST="$REPO_ROOT/deployment/projects/traefik-gitlab/manifest.json"
 DNS_BIND_MANIFEST="$REPO_ROOT/deployment/projects/traefik-dns-bind/manifest.json"
+LITELLM_MANIFEST="$REPO_ROOT/deployment/projects/traefik-litellm/manifest.json"
 
 check_command "jq"
 check_command "make"
@@ -57,8 +58,11 @@ fi
 if [ ! -f "$DNS_BIND_MANIFEST" ]; then
     log_error "Missing traefik-dns-bind manifest: $DNS_BIND_MANIFEST"
 fi
+if [ ! -f "$LITELLM_MANIFEST" ]; then
+    log_error "Missing traefik-litellm manifest: $LITELLM_MANIFEST"
+fi
 list_output="$(make -s -C "$REPO_ROOT" deployment-project-list)"
-expected_list=$'traefik-stepca\ntraefik-keycloak\ntraefik-observability\ntraefik-wikijs\ntraefik-semaphoreui\ntraefik-rocketchat\ntraefik-gitlab\ntraefik-dns-bind'
+expected_list=$'traefik-stepca\ntraefik-keycloak\ntraefik-observability\ntraefik-wikijs\ntraefik-semaphoreui\ntraefik-rocketchat\ntraefik-gitlab\ntraefik-dns-bind\ntraefik-litellm'
 if [ "$list_output" != "$expected_list" ]; then
     log_error "deployment-project-list output drifted. Expected:\n${expected_list}\nGot:\n${list_output}"
 fi
@@ -90,6 +94,9 @@ if ! jq -e '.projects[] | select(.id=="traefik-gitlab") | .manifest == "deployme
 fi
 if ! jq -e '.projects[] | select(.id=="traefik-dns-bind") | .manifest == "deployment/projects/traefik-dns-bind/manifest.json"' "$CATALOG" >/dev/null; then
     log_error "Catalog entry for traefik-dns-bind is missing or points to an unexpected manifest path"
+fi
+if ! jq -e '.projects[] | select(.id=="traefik-litellm") | .manifest == "deployment/projects/traefik-litellm/manifest.json"' "$CATALOG" >/dev/null; then
+    log_error "Catalog entry for traefik-litellm is missing or points to an unexpected manifest path"
 fi
 
 if ! jq -e '
@@ -244,6 +251,27 @@ if ! jq -e '
     .public_host == "traefik-dns-bind.local.test"
 ' "$DNS_BIND_MANIFEST" >/dev/null; then
   log_error "traefik-dns-bind manifest contract is invalid"
+fi
+
+if ! jq -e '
+    .id == "traefik-litellm" and
+    (.description | type == "string" and length > 0) and
+    (.repo_url | type == "string" and length > 0) and
+    (.repo_ref | test("^[0-9a-f]{40}$")) and
+    .compose_profile == "litellm" and
+    (.services == ["traefik", "litellm-db", "litellm"]) and
+    .deploy_playbook == "deployment/ansible/playbooks/project_deploy.yml" and
+    (.required_env | index("BASE_DOMAIN")) and
+    (.required_env | index("DEV_DOMAIN")) and
+    (.required_env | index("OPENAI_API_KEY")) and
+    .tls_mode == "stepca-acme" and
+    (.depends_on_projects == ["traefik-stepca", "traefik-keycloak"]) and
+    (.oidc.enabled == true) and
+    (.oidc.realm == "local.test") and
+    (.oidc.client_id == "litellm") and
+    .public_host == "litellm.local.test"
+' "$LITELLM_MANIFEST" >/dev/null; then
+  log_error "traefik-litellm manifest contract is invalid"
 fi
 
 
