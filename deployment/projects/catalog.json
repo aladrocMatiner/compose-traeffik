@@ -27,6 +27,10 @@
     {
       "id": "traefik-gitlab",
       "manifest": "deployment/projects/traefik-gitlab/manifest.json"
+    },
+    {
+      "id": "traefik-dns-bind",
+      "manifest": "deployment/projects/traefik-dns-bind/manifest.json"
     }
   ]
 }

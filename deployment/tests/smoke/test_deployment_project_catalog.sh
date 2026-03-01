@@ -23,6 +23,7 @@ WIKI_MANIFEST="$REPO_ROOT/deployment/projects/traefik-wikijs/manifest.json"
 SEMAPHOREUI_MANIFEST="$REPO_ROOT/deployment/projects/traefik-semaphoreui/manifest.json"
 ROCKETCHAT_MANIFEST="$REPO_ROOT/deployment/projects/traefik-rocketchat/manifest.json"
 GITLAB_MANIFEST="$REPO_ROOT/deployment/projects/traefik-gitlab/manifest.json"
+DNS_BIND_MANIFEST="$REPO_ROOT/deployment/projects/traefik-dns-bind/manifest.json"
 
 check_command "jq"
 check_command "make"
@@ -53,9 +54,11 @@ fi
 if [ ! -f "$GITLAB_MANIFEST" ]; then
     log_error "Missing traefik-gitlab manifest: $GITLAB_MANIFEST"
 fi
-
+if [ ! -f "$DNS_BIND_MANIFEST" ]; then
+    log_error "Missing traefik-dns-bind manifest: $DNS_BIND_MANIFEST"
+fi
 list_output="$(make -s -C "$REPO_ROOT" deployment-project-list)"
-expected_list=$'traefik-stepca\ntraefik-keycloak\ntraefik-observability\ntraefik-wikijs\ntraefik-semaphoreui\ntraefik-rocketchat\ntraefik-gitlab'
+expected_list=$'traefik-stepca\ntraefik-keycloak\ntraefik-observability\ntraefik-wikijs\ntraefik-semaphoreui\ntraefik-rocketchat\ntraefik-gitlab\ntraefik-dns-bind'
 if [ "$list_output" != "$expected_list" ]; then
     log_error "deployment-project-list output drifted. Expected:\n${expected_list}\nGot:\n${list_output}"
 fi
@@ -84,6 +87,9 @@ if ! jq -e '.projects[] | select(.id=="traefik-rocketchat") | .manifest == "depl
 fi
 if ! jq -e '.projects[] | select(.id=="traefik-gitlab") | .manifest == "deployment/projects/traefik-gitlab/manifest.json"' "$CATALOG" >/dev/null; then
     log_error "Catalog entry for traefik-gitlab is missing or points to an unexpected manifest path"
+fi
+if ! jq -e '.projects[] | select(.id=="traefik-dns-bind") | .manifest == "deployment/projects/traefik-dns-bind/manifest.json"' "$CATALOG" >/dev/null; then
+    log_error "Catalog entry for traefik-dns-bind is missing or points to an unexpected manifest path"
 fi
 
 if ! jq -e '
@@ -222,6 +228,24 @@ if ! jq -e '
 ' "$GITLAB_MANIFEST" >/dev/null; then
   log_error "traefik-gitlab manifest contract is invalid"
 fi
+
+if ! jq -e '
+    .id == "traefik-dns-bind" and
+    (.description | type == "string" and length > 0) and
+    (.repo_url | type == "string" and length > 0) and
+    (.repo_ref | test("^[0-9a-f]{40}$")) and
+    .compose_profile == "bind" and
+    (.services == ["traefik", "bind"]) and
+    .deploy_playbook == "deployment/ansible/playbooks/project_deploy.yml" and
+    (.required_env | index("BASE_DOMAIN")) and
+    (.required_env | index("DEV_DOMAIN")) and
+    .tls_mode == "stepca-acme" and
+    (.depends_on_projects == ["traefik-stepca"]) and
+    .public_host == "traefik-dns-bind.local.test"
+' "$DNS_BIND_MANIFEST" >/dev/null; then
+  log_error "traefik-dns-bind manifest contract is invalid"
+fi
+
 
 set +e
 override_out="$("$REPO_ROOT/deployment/scripts/deployment-project.sh" run --project traefik-stepca --services whoami 2>&1)"
