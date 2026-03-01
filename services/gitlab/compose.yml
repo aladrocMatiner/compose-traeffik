@@ -20,6 +20,10 @@ services:
           "X-Forwarded-Host" => "${GITLAB_HOSTNAME:-gitlab}.${DEV_DOMAIN}"
         }
         gitlab_rails['gitlab_https'] = true
+        gitlab_rails['env'] = {
+          "SSL_CERT_FILE" => "/opt/stepca/root_ca.crt",
+          "SSL_CERT_DIR" => "/etc/ssl/certs"
+        }
         gitlab_rails['omniauth_enabled'] = true
         gitlab_rails['omniauth_allow_single_sign_on'] = ['openid_connect']
         gitlab_rails['omniauth_block_auto_created_users'] = false
@@ -60,11 +64,13 @@ services:
       - "traefik.http.routers.gitlab-websecure.service=gitlab-service"
       - "traefik.http.services.gitlab-service.loadbalancer.server.port=80"
     shm_size: "256m"
+    healthcheck:
+      disable: true
     volumes:
       - gitlab-config:/etc/gitlab
       - gitlab-logs:/var/log/gitlab
       - gitlab-data:/var/opt/gitlab
-      - ./services/step-ca/certs/root_ca.crt:/etc/gitlab/trusted-certs/stepca-root-ca.crt:ro
+      - ./services/step-ca/certs/root_ca.crt:/opt/stepca/root_ca.crt:ro
     networks:
       - proxy
 

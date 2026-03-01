@@ -28,6 +28,7 @@ providers:
     endpoint: "unix:///var/run/docker.sock"
     exposedByDefault: false
     network: traefik-proxy
+    allowEmptyServices: true
     watch: true
 
 # API and Dashboard configuration.

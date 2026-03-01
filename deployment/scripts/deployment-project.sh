@@ -132,6 +132,20 @@ default_vm_ip_for_project() {
   esac
 }
 
+default_vm_resources_for_project() {
+  local project_id="$1"
+  case "${project_id}" in
+    traefik-gitlab)
+      # GitLab omnibus needs more headroom than the other stacks.
+      printf '4|6144|40\n'
+      ;;
+    *)
+      # cpu|memory_mb|disk_gb
+      printf '2|2048|20\n'
+      ;;
+  esac
+}
+
 resolve_host_tuple() {
   local tf_dir="$1"
   local tf_state_path="$2"
@@ -389,6 +403,11 @@ run_project() {
   fi
   local deployment_vm_ip
   deployment_vm_ip="${DEPLOYMENT_VM_IP:-$(default_vm_ip_for_project "${PROJECT_ID}")}"
+  local deployment_vm_cpu deployment_vm_memory_mb deployment_vm_disk_gb
+  IFS='|' read -r deployment_vm_cpu deployment_vm_memory_mb deployment_vm_disk_gb <<<"$(default_vm_resources_for_project "${PROJECT_ID}")"
+  deployment_vm_cpu="${DEPLOYMENT_VM_CPU:-${deployment_vm_cpu}}"
+  deployment_vm_memory_mb="${DEPLOYMENT_VM_MEMORY_MB:-${deployment_vm_memory_mb}}"
+  deployment_vm_disk_gb="${DEPLOYMENT_VM_DISK_GB:-${deployment_vm_disk_gb}}"
   local deployment_tf_state_path
   deployment_tf_state_path="$(tf_state_path_for_vm "${target_normalized}" "${deployment_vm_name}")"
 
@@ -401,11 +420,15 @@ run_project() {
 
   log "Resolved deployment VM name=${deployment_vm_name}"
   log "Resolved deployment VM IP=${deployment_vm_ip}"
+  log "Resolved deployment VM resources: cpu=${deployment_vm_cpu} memory_mb=${deployment_vm_memory_mb} disk_gb=${deployment_vm_disk_gb}"
   log "Resolved Terraform state=${deployment_tf_state_path}"
   run_stage provision env \
     "DEPLOYMENT_VM_NAME=${deployment_vm_name}" \
     "DEPLOYMENT_HOSTNAME=${deployment_vm_name}" \
     "DEPLOYMENT_VM_IP=${deployment_vm_ip}" \
+    "DEPLOYMENT_VM_CPU=${deployment_vm_cpu}" \
+    "DEPLOYMENT_VM_MEMORY_MB=${deployment_vm_memory_mb}" \
+    "DEPLOYMENT_VM_DISK_GB=${deployment_vm_disk_gb}" \
     "DEPLOYMENT_TF_STATE_PATH=${deployment_tf_state_path}" \
     "${provision_cmd[@]}"
   run_stage wait env "DEPLOYMENT_TF_STATE_PATH=${deployment_tf_state_path}" "${wait_cmd[@]}"

@@ -2800,6 +2800,43 @@
     status_code: 204
   when: deployment_project_manifest_data.id == "traefik-gitlab"
 
+- name: Read effective OIDC client secret from Keycloak (gitlab)
+  ansible.builtin.uri:
+    url: "{{ deployment_project_gitlab_keycloak_oidc_base_url_effective }}/admin/realms/{{ deployment_project_gitlab_keycloak_realm_effective }}/clients/{{ deployment_project_gitlab_keycloak_client_uuid }}/client-secret"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ deployment_project_gitlab_keycloak_admin_access_token }}"
+    validate_certs: false
+    status_code: 200
+    return_content: true
+  register: deployment_project_gitlab_keycloak_client_secret_response
+  when: deployment_project_manifest_data.id == "traefik-gitlab"
+
+- name: Resolve effective OIDC client secret from Keycloak response (gitlab)
+  ansible.builtin.set_fact:
+    deployment_project_gitlab_oidc_client_secret_effective: "{{ (deployment_project_gitlab_keycloak_client_secret_response.content | from_json).value | trim }}"
+  when: deployment_project_manifest_data.id == "traefik-gitlab"
+
+- name: Ensure GITLAB_OIDC_CLIENT_SECRET matches Keycloak effective secret
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^GITLAB_OIDC_CLIENT_SECRET="
+    line: "GITLAB_OIDC_CLIENT_SECRET={{ deployment_project_gitlab_oidc_client_secret_effective }}"
+  register: deployment_project_gitlab_oidc_secret_sync_env
+  when: deployment_project_manifest_data.id == "traefik-gitlab"
+
+- name: Recreate GitLab container after OIDC secret sync
+  ansible.builtin.command:
+    cmd: ./scripts/compose.sh --profile {{ deployment_project_manifest_data.compose_profile }} up -d --force-recreate gitlab
+  args:
+    chdir: "{{ deployment_project_repo_dir }}"
+  environment:
+    COMPOSE_PROJECT_NAME: "{{ deployment_project_manifest_data.id }}"
+  changed_when: true
+  when:
+    - deployment_project_manifest_data.id == "traefik-gitlab"
+    - deployment_project_gitlab_oidc_secret_sync_env is changed
+
 - name: Check Wiki.js setup completion status in database
   ansible.builtin.shell: |
     set -euo pipefail
