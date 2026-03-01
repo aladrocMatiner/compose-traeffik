@@ -122,6 +122,7 @@ default_vm_ip_for_project() {
     traefik-wikijs) printf '192.168.122.53\n' ;;
     traefik-semaphoreui) printf '192.168.122.54\n' ;;
     traefik-rocketchat) printf '192.168.122.55\n' ;;
+    traefik-gitlab) printf '192.168.122.56\n' ;;
     *)
       local hash octet
       hash="$(printf '%s' "${project_id}" | cksum | awk '{print $1}')"
@@ -450,7 +451,7 @@ run_project() {
     else
       project_public_host="${PROJECT_ID}.local.test"
     fi
-    local project_domain project_id_suffix whoami_public_host traefik_public_host grafana_public_host keycloak_public_host prometheus_public_host loki_public_host tempo_public_host pyroscope_public_host alloy_public_host wikijs_public_host semaphoreui_public_host rocketchat_public_host
+    local project_domain project_id_suffix whoami_public_host traefik_public_host grafana_public_host keycloak_public_host prometheus_public_host loki_public_host tempo_public_host pyroscope_public_host alloy_public_host wikijs_public_host semaphoreui_public_host rocketchat_public_host gitlab_public_host
     project_domain="${project_public_host#*.}"
     project_id_suffix="${PROJECT_ID#traefik-}"
     whoami_public_host="whoami-${project_id_suffix}.${project_domain}"
@@ -465,6 +466,7 @@ run_project() {
     wikijs_public_host="wikijs.${project_domain}"
     semaphoreui_public_host="semaphoreui.${project_domain}"
     rocketchat_public_host="rocketchat.${project_domain}"
+    gitlab_public_host="gitlab.${project_domain}"
     sync_stepca_container_host_alias "${stepca_dependency_host_ip}" "${stepca_dependency_ssh_user}" "${project_public_host}" "${host_ip}"
     log "Synced StepCA container host alias ${project_public_host} -> ${host_ip}"
     if [[ "${manifest_services}" == *"whoami"* ]]; then
@@ -514,6 +516,10 @@ run_project() {
     if [[ "${manifest_services}" == *"rocketchat"* ]]; then
       sync_stepca_container_host_alias "${stepca_dependency_host_ip}" "${stepca_dependency_ssh_user}" "${rocketchat_public_host}" "${host_ip}"
       log "Synced StepCA container host alias ${rocketchat_public_host} -> ${host_ip}"
+    fi
+    if [[ "${manifest_services}" == *"gitlab"* ]]; then
+      sync_stepca_container_host_alias "${stepca_dependency_host_ip}" "${stepca_dependency_ssh_user}" "${gitlab_public_host}" "${host_ip}"
+      log "Synced StepCA container host alias ${gitlab_public_host} -> ${host_ip}"
     fi
   fi
 

@@ -23,6 +23,10 @@
     {
       "id": "traefik-rocketchat",
       "manifest": "deployment/projects/traefik-rocketchat/manifest.json"
+    },
+    {
+      "id": "traefik-gitlab",
+      "manifest": "deployment/projects/traefik-gitlab/manifest.json"
     }
   ]
 }

@@ -1,0 +1,28 @@
+{
+  "id": "traefik-gitlab",
+  "description": "Deploy GitLab behind Traefik with StepCA ACME defaults and Keycloak-backed OIDC sign-in contract.",
+  "repo_url": "https://github.com/aladrocMatiner/compose-traeffik.git",
+  "repo_ref": "4a79d001ea3e155ffbd427146242d9aef1713849",
+  "compose_profile": "gitlab",
+  "services": [
+    "traefik",
+    "whoami",
+    "gitlab"
+  ],
+  "deploy_playbook": "deployment/ansible/playbooks/project_deploy.yml",
+  "required_env": [
+    "BASE_DOMAIN",
+    "DEV_DOMAIN"
+  ],
+  "tls_mode": "stepca-acme",
+  "depends_on_projects": [
+    "traefik-stepca",
+    "traefik-keycloak"
+  ],
+  "oidc": {
+    "enabled": true,
+    "realm": "local.test",
+    "client_id": "gitlab"
+  },
+  "public_host": "gitlab.local.test"
+}

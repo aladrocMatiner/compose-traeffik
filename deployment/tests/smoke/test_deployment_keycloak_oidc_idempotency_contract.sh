@@ -113,4 +113,13 @@ assert_oidc_project_flow \
     "Update OIDC client contract in Keycloak (rocketchat)" \
     "deployment_project_rocketchat_keycloak_existing_client"
 
+assert_oidc_project_flow \
+    "gitlab" \
+    "Ensure Keycloak admin authentication works before GitLab OIDC provisioning" \
+    "Query Keycloak client by client_id in target realm (gitlab)" \
+    "Create OIDC client in Keycloak when missing (gitlab)" \
+    "Refresh OIDC client lookup after create (gitlab)" \
+    "Update OIDC client contract in Keycloak (gitlab)" \
+    "deployment_project_gitlab_keycloak_existing_client"
+
 log_success "Keycloak bootstrap/OIDC idempotency contract test passed."
