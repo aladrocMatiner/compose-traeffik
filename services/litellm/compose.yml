@@ -34,9 +34,10 @@ services:
       - "--num_workers"
       - "${LITELLM_NUM_WORKERS:-1}"
       - "--model"
-      - "${LITELLM_MODEL:-openai/gpt-4o-mini}"
+      - "${LITELLM_MODEL:-openai/gpt-oss-20b}"
     environment:
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-not-needed}
+      OPENAI_API_BASE: ${OPENAI_API_BASE:-http://10.64.70.81:8000/v1}
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
       DATABASE_URL: ${DATABASE_URL}
       STORE_MODEL_IN_DB: ${STORE_MODEL_IN_DB:-True}
@@ -53,6 +54,10 @@ services:
       GENERIC_USER_FIRST_NAME_ATTRIBUTE: ${GENERIC_USER_FIRST_NAME_ATTRIBUTE:-given_name}
       GENERIC_USER_LAST_NAME_ATTRIBUTE: ${GENERIC_USER_LAST_NAME_ATTRIBUTE:-family_name}
       GENERIC_INCLUDE_CLIENT_ID: ${GENERIC_INCLUDE_CLIENT_ID:-true}
+      GENERIC_ROLE_MAPPINGS_GROUP_CLAIM: ${GENERIC_ROLE_MAPPINGS_GROUP_CLAIM}
+      GENERIC_ROLE_MAPPINGS_DEFAULT_ROLE: ${GENERIC_ROLE_MAPPINGS_DEFAULT_ROLE}
+      GENERIC_ROLE_MAPPINGS_ROLES: "{'proxy_admin':['litellm_proxy_admin']}"
+      PROXY_ADMIN_ID: ${PROXY_ADMIN_ID:-jose.romero}
       REQUESTS_CA_BUNDLE: /etc/ssl/certs/stepca-root-ca.crt
       SSL_CERT_FILE: /etc/ssl/certs/stepca-root-ca.crt
     labels:

@@ -345,6 +345,33 @@ read_keycloak_admin_credentials() {
   '"
 }
 
+read_keycloak_bootstrap_username() {
+  local keycloak_host_ip="$1"
+  local keycloak_ssh_user="$2"
+
+  check_cmd ssh
+  local -a ssh_opts=(
+    -o BatchMode=yes
+    -o ConnectTimeout=8
+    -o StrictHostKeyChecking=no
+    -o UserKnownHostsFile=/dev/null
+    -p "${SSH_PORT}"
+  )
+  if [[ -n "${IDENTITY_PATH}" ]]; then
+    ssh_opts+=(-i "${IDENTITY_PATH}")
+  fi
+
+  ssh "${ssh_opts[@]}" "${keycloak_ssh_user}@${keycloak_host_ip}" "bash -lc '
+    set -euo pipefail
+    env_file=/opt/deployment-projects/traefik-keycloak/.env
+    bootstrap_user=\$(grep -E \"^KEYCLOAK_BOOTSTRAP_USERNAME=\" \"\${env_file}\" | tail -n1 | cut -d= -f2- | xargs || true)
+    if [[ -z \"\${bootstrap_user}\" ]]; then
+      bootstrap_user=jose.romero
+    fi
+    printf \"%s\\n\" \"\${bootstrap_user}\"
+  '"
+}
+
 list_projects() {
   validate_catalog
   jq -r '.projects[].id' "${CATALOG_PATH}"
@@ -450,6 +477,7 @@ run_project() {
   local keycloak_dependency_ssh_user=""
   local keycloak_dependency_admin_user=""
   local keycloak_dependency_admin_password=""
+  local keycloak_bootstrap_username="jose.romero"
   local keycloak_realm="local.test"
   local keycloak_grafana_client_id="grafana"
   local keycloak_grafana_client_secret="${DEPLOYMENT_KEYCLOAK_GRAFANA_CLIENT_SECRET:-}"
@@ -567,8 +595,10 @@ run_project() {
     keycloak_admin_pair="$(read_keycloak_admin_credentials "${keycloak_dependency_host_ip}" "${keycloak_dependency_ssh_user}")"
     keycloak_dependency_admin_user="${keycloak_admin_pair%%|*}"
     keycloak_dependency_admin_password="${keycloak_admin_pair#*|}"
+    keycloak_bootstrap_username="$(read_keycloak_bootstrap_username "${keycloak_dependency_host_ip}" "${keycloak_dependency_ssh_user}")"
     [[ -n "${keycloak_dependency_admin_user}" ]] || die "Missing KEYCLOAK_ADMIN from traefik-keycloak dependency."
     [[ -n "${keycloak_dependency_admin_password}" ]] || die "Missing KEYCLOAK_ADMIN_PASSWORD from traefik-keycloak dependency."
+    [[ -n "${keycloak_bootstrap_username}" ]] || die "Missing KEYCLOAK_BOOTSTRAP_USERNAME from traefik-keycloak dependency."
   fi
 
   run_stage system_bootstrap run_ansible_playbook "${REPO_ROOT}/deployment/ansible/playbooks/system_bootstrap.yml"
@@ -587,7 +617,8 @@ run_project() {
     --extra-vars "deployment_project_keycloak_grafana_client_id=${keycloak_grafana_client_id}" \
     --extra-vars "deployment_project_keycloak_grafana_client_secret=${keycloak_grafana_client_secret}" \
     --extra-vars "deployment_project_keycloak_admin_username=${keycloak_dependency_admin_user}" \
-    --extra-vars "deployment_project_keycloak_admin_password=${keycloak_dependency_admin_password}"
+    --extra-vars "deployment_project_keycloak_admin_password=${keycloak_dependency_admin_password}" \
+    --extra-vars "deployment_project_keycloak_bootstrap_username=${keycloak_bootstrap_username}"
 
   record_project_deployment "${PROJECT_ID}" "${TARGET_INPUT}" "${OS_SELECTOR}" "${deployment_vm_name}" "${deployment_tf_state_path}" "${host_ip}" "${ssh_user}"
   log "Project deployment finished successfully for project=${PROJECT_ID}"

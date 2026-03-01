@@ -1337,7 +1337,14 @@
   ansible.builtin.lineinfile:
     path: "{{ deployment_project_repo_dir }}/.env"
     regexp: "^LITELLM_MODEL="
-    line: "LITELLM_MODEL=gpt-4o-mini"
+    line: "LITELLM_MODEL=openai/gpt-oss-20b"
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Ensure OPENAI_API_BASE for litellm project
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^OPENAI_API_BASE="
+    line: "OPENAI_API_BASE=http://10.64.70.81:8000/v1"
   when: deployment_project_manifest_data.id == "traefik-litellm"
 
 - name: Ensure LITELLM_DB_NAME for litellm project
@@ -1541,6 +1548,10 @@
     - { key: "GENERIC_USER_FIRST_NAME_ATTRIBUTE", value: "given_name" }
     - { key: "GENERIC_USER_LAST_NAME_ATTRIBUTE", value: "family_name" }
     - { key: "GENERIC_INCLUDE_CLIENT_ID", value: "true" }
+    - { key: "GENERIC_ROLE_MAPPINGS_GROUP_CLAIM", value: "realm_access.roles" }
+    - { key: "GENERIC_ROLE_MAPPINGS_DEFAULT_ROLE", value: "internal_user_viewer" }
+    - { key: "GENERIC_ROLE_MAPPINGS_ROLES", value: "{'proxy_admin':['litellm_proxy_admin']}" }
+    - { key: "PROXY_ADMIN_ID", value: "jose.romero" }
   when: deployment_project_manifest_data.id == "traefik-litellm"
 
 - name: Ensure PROXY_BASE_URL for litellm project
@@ -3295,6 +3306,126 @@
     status_code: 204
   when: deployment_project_manifest_data.id == "traefik-litellm"
 
+- name: Resolve Keycloak role bootstrap context for litellm project
+  ansible.builtin.set_fact:
+    deployment_project_litellm_keycloak_admin_role_name: "litellm_proxy_admin"
+    deployment_project_litellm_keycloak_bootstrap_username_effective: "{{ deployment_project_keycloak_bootstrap_username | default('jose.romero', true) }}"
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Query Keycloak realm role for litellm proxy admin
+  ansible.builtin.uri:
+    url: "{{ deployment_project_litellm_keycloak_oidc_base_url_effective }}/admin/realms/{{ deployment_project_litellm_keycloak_realm_effective }}/roles/{{ deployment_project_litellm_keycloak_admin_role_name | urlencode }}"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ deployment_project_litellm_keycloak_admin_access_token }}"
+    validate_certs: false
+    status_code: [200, 404]
+    return_content: true
+  register: deployment_project_litellm_keycloak_admin_role_lookup
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Create Keycloak realm role for litellm proxy admin when missing
+  ansible.builtin.uri:
+    url: "{{ deployment_project_litellm_keycloak_oidc_base_url_effective }}/admin/realms/{{ deployment_project_litellm_keycloak_realm_effective }}/roles"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ deployment_project_litellm_keycloak_admin_access_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      name: "{{ deployment_project_litellm_keycloak_admin_role_name }}"
+      description: "LiteLLM proxy admin role"
+    validate_certs: false
+    status_code: 201
+  when:
+    - deployment_project_manifest_data.id == "traefik-litellm"
+    - deployment_project_litellm_keycloak_admin_role_lookup.status == 404
+
+- name: Refresh Keycloak realm role lookup for litellm proxy admin
+  ansible.builtin.uri:
+    url: "{{ deployment_project_litellm_keycloak_oidc_base_url_effective }}/admin/realms/{{ deployment_project_litellm_keycloak_realm_effective }}/roles/{{ deployment_project_litellm_keycloak_admin_role_name | urlencode }}"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ deployment_project_litellm_keycloak_admin_access_token }}"
+    validate_certs: false
+    status_code: 200
+    return_content: true
+  register: deployment_project_litellm_keycloak_admin_role_lookup_after_create
+  when:
+    - deployment_project_manifest_data.id == "traefik-litellm"
+    - deployment_project_litellm_keycloak_admin_role_lookup.status == 404
+
+- name: Resolve effective Keycloak admin role payload for litellm project
+  ansible.builtin.set_fact:
+    deployment_project_litellm_keycloak_admin_role_effective: >-
+      {{
+        (deployment_project_litellm_keycloak_admin_role_lookup_after_create.content | from_json)
+        if (deployment_project_litellm_keycloak_admin_role_lookup.status == 404)
+        else (deployment_project_litellm_keycloak_admin_role_lookup.content | from_json)
+      }}
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Query Keycloak user for litellm admin role assignment
+  ansible.builtin.uri:
+    url: "{{ deployment_project_litellm_keycloak_oidc_base_url_effective }}/admin/realms/{{ deployment_project_litellm_keycloak_realm_effective }}/users?username={{ deployment_project_litellm_keycloak_bootstrap_username_effective | urlencode }}"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ deployment_project_litellm_keycloak_admin_access_token }}"
+    validate_certs: false
+    status_code: 200
+    return_content: true
+  register: deployment_project_litellm_keycloak_bootstrap_user_lookup
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Resolve effective Keycloak user payload for litellm admin role assignment
+  ansible.builtin.set_fact:
+    deployment_project_litellm_keycloak_bootstrap_user_effective: "{{ ((deployment_project_litellm_keycloak_bootstrap_user_lookup.content | from_json) | first) if ((deployment_project_litellm_keycloak_bootstrap_user_lookup.content | from_json) | length > 0) else {} }}"
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Ensure Keycloak bootstrap user exists before litellm admin role assignment
+  ansible.builtin.assert:
+    that:
+      - deployment_project_litellm_keycloak_bootstrap_user_effective.id | default('') | trim | length > 0
+    fail_msg: >-
+      Keycloak user '{{ deployment_project_litellm_keycloak_bootstrap_username_effective }}' not found in realm
+      '{{ deployment_project_litellm_keycloak_realm_effective }}'. Deploy/fix traefik-keycloak first.
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Query existing Keycloak realm role mappings for litellm bootstrap user
+  ansible.builtin.uri:
+    url: "{{ deployment_project_litellm_keycloak_oidc_base_url_effective }}/admin/realms/{{ deployment_project_litellm_keycloak_realm_effective }}/users/{{ deployment_project_litellm_keycloak_bootstrap_user_effective.id }}/role-mappings/realm"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ deployment_project_litellm_keycloak_admin_access_token }}"
+    validate_certs: false
+    status_code: 200
+    return_content: true
+  register: deployment_project_litellm_keycloak_bootstrap_user_role_mappings
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Resolve whether Keycloak litellm admin role is already assigned
+  ansible.builtin.set_fact:
+    deployment_project_litellm_keycloak_admin_role_assigned: "{{ ((deployment_project_litellm_keycloak_bootstrap_user_role_mappings.content | from_json) | selectattr('name', 'equalto', deployment_project_litellm_keycloak_admin_role_name) | list | length) > 0 }}"
+  when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Assign Keycloak litellm admin role to bootstrap user when missing
+  ansible.builtin.uri:
+    url: "{{ deployment_project_litellm_keycloak_oidc_base_url_effective }}/admin/realms/{{ deployment_project_litellm_keycloak_realm_effective }}/users/{{ deployment_project_litellm_keycloak_bootstrap_user_effective.id }}/role-mappings/realm"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ deployment_project_litellm_keycloak_admin_access_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      - id: "{{ deployment_project_litellm_keycloak_admin_role_effective.id }}"
+        name: "{{ deployment_project_litellm_keycloak_admin_role_effective.name }}"
+    validate_certs: false
+    status_code: 204
+  changed_when: true
+  when:
+    - deployment_project_manifest_data.id == "traefik-litellm"
+    - not deployment_project_litellm_keycloak_admin_role_assigned
+
 - name: Read effective OIDC client secret from Keycloak (litellm)
   ansible.builtin.uri:
     url: "{{ deployment_project_litellm_keycloak_oidc_base_url_effective }}/admin/realms/{{ deployment_project_litellm_keycloak_realm_effective }}/clients/{{ deployment_project_litellm_keycloak_client_uuid }}/client-secret"
@@ -3331,6 +3462,21 @@
   when:
     - deployment_project_manifest_data.id == "traefik-litellm"
     - deployment_project_litellm_oidc_secret_sync_env is changed
+
+- name: Ensure LiteLLM bootstrap user is proxy_admin (idempotent)
+  ansible.builtin.shell: |
+    set -euo pipefail
+    master_key="$(grep '^LITELLM_MASTER_KEY=' .env | cut -d= -f2-)"
+    docker exec -e MASTER="${master_key}" litellm python3 -c $'import json, os, urllib.request, urllib.error\nuser_id="{{ deployment_project_litellm_keycloak_bootstrap_username_effective }}"\nheaders={"Authorization":"Bearer "+os.environ["MASTER"],"Content-Type":"application/json"}\nupdate_payload=json.dumps({"user_id":user_id,"user_role":"proxy_admin"}).encode()\nnew_payload=json.dumps({"user_id":user_id,"user_role":"proxy_admin"}).encode()\ndef call(path,payload):\n    req=urllib.request.Request(f"http://127.0.0.1:4000{path}", data=payload, headers=headers)\n    with urllib.request.urlopen(req, timeout=20) as resp:\n        resp.read()\ntry:\n    call("/user/update", update_payload)\nexcept urllib.error.HTTPError as e:\n    if e.code==404:\n        try:\n            call("/user/new", new_payload)\n        except urllib.error.HTTPError as e2:\n            if e2.code!=409:\n                raise\n        call("/user/update", update_payload)\n    else:\n        raise\nprint("ok")'
+  args:
+    chdir: "{{ deployment_project_repo_dir }}"
+    executable: /bin/bash
+  register: deployment_project_litellm_bootstrap_admin_cmd
+  changed_when: false
+  retries: 12
+  delay: 5
+  until: deployment_project_litellm_bootstrap_admin_cmd.rc == 0
+  when: deployment_project_manifest_data.id == "traefik-litellm"
 
 - name: Check Wiki.js setup completion status in database
   ansible.builtin.shell: |

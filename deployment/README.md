@@ -37,5 +37,7 @@ Notas para `traefik-litellm`:
 
 - Despliega stack full: `litellm` + `litellm-db` (PostgreSQL persistente) detrás de Traefik.
 - Requiere `traefik-keycloak` desplegado para SSO OIDC automático.
-- Requiere `OPENAI_API_KEY` en `.env` antes del deploy.
+- Por defecto apunta a inferencia OpenAI-compatible en `http://10.64.70.81:8000/v1` con modelo `openai/gpt-oss-20b`.
+- Puedes sobreescribir backend/modelo con `OPENAI_API_BASE` y `LITELLM_MODEL` en `.env`.
+- El rol admin en LiteLLM se resuelve desde Keycloak: se crea `litellm_proxy_admin` y se asigna al usuario bootstrap (`KEYCLOAK_BOOTSTRAP_USERNAME`, por defecto `jose.romero`).
 - La UI/admin de LiteLLM queda accesible en `https://litellm.local.test/ui`.

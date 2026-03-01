@@ -72,6 +72,8 @@ Current catalog projects:
 - defaults to `tls_mode=stepca-acme` (override allowed with `tls_mode=...`)
 - depends on `traefik-stepca` and `traefik-keycloak`
 - configures Keycloak OIDC contract for LiteLLM (`realm=local.test`, `client_id=litellm`) during deployment
+- defaults to OpenAI-compatible inference backend `http://10.64.70.81:8000/v1` and model `openai/gpt-oss-20b` (override with `OPENAI_API_BASE` / `LITELLM_MODEL`)
+- configures Keycloak role mapping (`realm_access.roles`) and assigns realm role `litellm_proxy_admin` to bootstrap user so SSO user becomes LiteLLM `proxy_admin`
 
 Keycloak bootstrap + OIDC operational contract:
 
