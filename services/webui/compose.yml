@@ -1,0 +1,16 @@
+services:
+  webui:
+    build: ./services/webui
+    container_name: webui
+    restart: unless-stopped
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.webui.rule=PathPrefix(`/webui`)"
+      - "traefik.http.routers.webui.entrypoints=websecure"
+      - "traefik.http.routers.webui.tls.certresolver=stepca-resolver"
+      - "traefik.http.services.webui.loadbalancer.server.port=80"
+      - "traefik.http.middlewares.webui-strip-prefix.stripprefix.prefixes=/webui"
+      - "traefik.http.routers.webui.middlewares=webui-strip-prefix"
+

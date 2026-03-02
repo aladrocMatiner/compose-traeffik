@@ -70,6 +70,14 @@
         "sv": "DNS (BIND)",
         "es": "DNS (BIND)"
       }
+    },
+    {
+      "slug": "webui",
+      "title": {
+        "en": "WebUI",
+        "sv": "WebUI",
+        "es": "WebUI"
+      }
     }
   ]
 }
