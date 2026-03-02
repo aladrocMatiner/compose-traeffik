@@ -35,10 +35,6 @@
     {
       "id": "traefik-litellm",
       "manifest": "deployment/projects/traefik-litellm/manifest.json"
-    },
-    {
-      "id": "traefik-webui",
-      "manifest": "deployment/projects/traefik-webui/manifest.json"
     }
   ]
 }

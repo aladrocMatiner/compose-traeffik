@@ -45,8 +45,7 @@ COMPOSE_FILES := \
   -f services/keycloak/compose.yml \
   -f services/semaphoreui/compose.yml \
   -f services/rocketchat/compose.yml \
-  -f services/gitlab/compose.yml \
-  -f services/webui/compose.yml
+  -f services/gitlab/compose.yml
 
 # Pin compose project directory/name to avoid cross-CWD conflicts.
 COMPOSE_PROJECT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))

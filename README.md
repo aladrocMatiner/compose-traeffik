@@ -80,7 +80,6 @@ For detailed TLS workflows, see:
 
 - [Traefik](services/traefik/README.md) - reverse proxy and routing core.
 - [Whoami](services/whoami/README.md) - demo service used for routing tests.
-- [WebUI](services/webui/README.md) - placeholder WebUI service.
 - [DNS (BIND)](services/dns-bind/README.md) - optional profile `bind`.
 - [Certbot](services/certbot/README.md) - optional profile `le`.
 - [Step-CA](services/step-ca/README.md) - optional profile `stepca`.
