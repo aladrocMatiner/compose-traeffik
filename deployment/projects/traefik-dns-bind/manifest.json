@@ -1,0 +1,21 @@
+{
+  "id": "traefik-dns-bind",
+  "description": "Deploy BIND DNS with Traefik edge services for HTTP(S) endpoints in the same project workflow.",
+  "repo_url": "https://github.com/aladrocMatiner/compose-traeffik.git",
+  "repo_ref": "2a22fcb33c9b164ffaabc66a7dadff1b3310ca7d",
+  "compose_profile": "bind",
+  "services": [
+    "traefik",
+    "bind"
+  ],
+  "deploy_playbook": "deployment/ansible/playbooks/project_deploy.yml",
+  "required_env": [
+    "BASE_DOMAIN",
+    "DEV_DOMAIN"
+  ],
+  "tls_mode": "stepca-acme",
+  "depends_on_projects": [
+    "traefik-stepca"
+  ],
+  "public_host": "traefik-dns-bind.local.test"
+}

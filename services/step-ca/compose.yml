@@ -4,9 +4,16 @@ services:
     container_name: step-ca
     profiles:
       - stepca
+    ports:
+      - "9000:9000"
     networks:
       - stepca-internal
       - proxy
+    extra_hosts:
+      - "${WHOAMI_HOST:-whoami.${DEV_DOMAIN}}:host-gateway"
+      - "traefik.${DEV_DOMAIN}:host-gateway"
+      - "traefik-stepca.${DEV_DOMAIN}:host-gateway"
+      - "step-ca.${DEV_DOMAIN}:host-gateway"
     environment:
       - STEP_CA_NAME=${STEP_CA_NAME:-Local Dev CA}
       - STEP_CA_DNS=${STEP_CA_DNS:-step-ca,localhost,127.0.0.1,step-ca.${DEV_DOMAIN}}
@@ -15,6 +22,7 @@ services:
     volumes:
       - ./services/step-ca/config:/home/step/config
       - ./services/step-ca/secrets:/home/step/secrets
+      - ./services/step-ca/certs:/home/step/certs
       - stepca-data:/home/step/data
     labels:
       - "traefik.enable=true"

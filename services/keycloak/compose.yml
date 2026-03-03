@@ -1,86 +1,23 @@
 services:
-  keycloak-db:
-    image: postgres:16.8-alpine
-    container_name: keycloak-db
-    restart: unless-stopped
-    profiles: ["keycloak"]
-    environment:
-      POSTGRES_DB: ${KEYCLOAK_DB_NAME:-keycloak}
-      POSTGRES_USER: ${KEYCLOAK_DB_USER:-keycloak}
-      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
-    volumes:
-      - keycloak-db-data:/var/lib/postgresql/data
-    networks:
-      - keycloak-internal
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\" -h 127.0.0.1"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 15s
-
   keycloak:
-    image: ${KEYCLOAK_IMAGE:-quay.io/keycloak/keycloak:26.5.3}
+    image: ${KEYCLOAK_IMAGE:-quay.io/keycloak/keycloak:26.0}
     container_name: keycloak
     restart: unless-stopped
-    profiles: ["keycloak"]
-    depends_on:
-      keycloak-db:
-        condition: service_healthy
-    command: ["start"]
+    command: ["start-dev", "--http-enabled=true", "--hostname-strict=false", "--proxy-headers=xforwarded"]
+    profiles:
+      - keycloak
     environment:
-      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER:-admin}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
-      KC_DB: postgres
-      KC_DB_URL_HOST: keycloak-db
-      KC_DB_URL_PORT: ${KEYCLOAK_DB_PORT:-5432}
-      KC_DB_URL_DATABASE: ${KEYCLOAK_DB_NAME:-keycloak}
-      KC_DB_USERNAME: ${KEYCLOAK_DB_USER:-keycloak}
-      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
-      KC_HTTP_ENABLED: "true"
-      KC_HOSTNAME: https://${KEYCLOAK_HOSTNAME:-keycloak}.${DEV_DOMAIN}
-      KC_PROXY_HEADERS: ${KEYCLOAK_PROXY_HEADERS:-xforwarded}
-      KC_HEALTH_ENABLED: ${KEYCLOAK_HEALTH_ENABLED:-true}
-      KC_METRICS_ENABLED: ${KEYCLOAK_OBSERVABILITY_ENABLED:-false}
-      KC_HTTP_MANAGEMENT_PORT: ${KEYCLOAK_MANAGEMENT_PORT:-9000}
-      KC_HTTP_ACCESS_LOG_ENABLED: ${KEYCLOAK_HTTP_ACCESS_LOG_ENABLED:-true}
-    networks:
-      - proxy
-      - keycloak-internal
+      KC_HOSTNAME: keycloak.${BASE_DOMAIN}
+      KC_PROXY_HEADERS: xforwarded
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.keycloak-web.rule=Host(`${KEYCLOAK_HOSTNAME:-keycloak}.${DEV_DOMAIN}`)"
-      - "traefik.http.routers.keycloak-web.entrypoints=web"
-      - "traefik.http.routers.keycloak-web.middlewares=${HTTP_TO_HTTPS_MIDDLEWARE:-redirect-to-https@file}"
-      - "traefik.http.routers.keycloak-websecure.rule=Host(`${KEYCLOAK_HOSTNAME:-keycloak}.${DEV_DOMAIN}`)"
+      - "traefik.docker.network=traefik-proxy"
+      - "traefik.http.routers.keycloak-websecure.rule=Host(`keycloak.${BASE_DOMAIN}`)"
       - "traefik.http.routers.keycloak-websecure.entrypoints=websecure"
       - "traefik.http.routers.keycloak-websecure.tls=true"
-      - "traefik.http.routers.keycloak-websecure.tls.certresolver=${TLS_CERT_RESOLVER:-}"
-      - "traefik.http.routers.keycloak-websecure.middlewares=security-headers@file"
-      - "traefik.http.services.keycloak-service.loadbalancer.server.port=8080"
-      - "traefik.http.routers.keycloak-websecure.service=keycloak-service"
-      - "com.compose-traeffik.observability.discovery=${KEYCLOAK_OBSERVABILITY_DISCOVERY:-labels}"
-      - "com.compose-traeffik.observability.logs=${KEYCLOAK_OBSERVABILITY_ENABLED:-false}"
-      - "com.compose-traeffik.observability.metrics=${KEYCLOAK_OBSERVABILITY_ENABLED:-false}"
-      - "com.compose-traeffik.observability.metrics.port=${KEYCLOAK_MANAGEMENT_PORT:-9000}"
-      - "com.compose-traeffik.observability.metrics.path=/metrics"
-      - "com.compose-traeffik.observability.service=keycloak"
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "bash -ec 'exec 3<>/dev/tcp/127.0.0.1/${KEYCLOAK_MANAGEMENT_PORT:-9000}; printf \"GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n\" >&3; cat <&3 | grep -q \"200\"'",
-        ]
-      interval: 15s
-      timeout: 5s
-      retries: 20
-      start_period: 60s
-
-networks:
-  keycloak-internal:
-    name: keycloak-internal
-    internal: true
-
-volumes:
-  keycloak-db-data:
-    name: keycloak-db-data
+      - "traefik.http.routers.keycloak-websecure.tls.certresolver=${TLS_CERT_RESOLVER}"
+      - "traefik.http.services.keycloak.loadbalancer.server.port=8080"
+    networks:
+      - proxy

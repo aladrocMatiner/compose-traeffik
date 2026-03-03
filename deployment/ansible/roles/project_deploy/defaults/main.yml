@@ -1,0 +1,31 @@
+---
+deployment_project_manifest: ""
+deployment_project_workspace_dir: /opt/deployment-projects
+deployment_project_state_relpath: .compose-traeffik/deployment-project-state.json
+deployment_project_state_home: "/home/{{ ansible_user | default('ubuntu') }}"
+deployment_project_tls_resolver_map:
+  stepca-acme: stepca-resolver
+  letsencrypt-acme: le-resolver
+deployment_project_stepca_acme_provisioner: traefik-acme
+deployment_project_stepca_admin_provisioner: admin
+deployment_project_tls_mode_override: ""
+deployment_project_stepca_dependency_host_ip: ""
+deployment_project_stepca_dependency_root_cert_path: ""
+deployment_project_keycloak_dependency_host_ip: ""
+deployment_project_keycloak_oidc_base_url: ""
+deployment_project_keycloak_realm: "local.test"
+deployment_project_keycloak_grafana_client_id: "grafana"
+deployment_project_keycloak_grafana_client_secret: ""
+deployment_project_keycloak_wikijs_client_id: "wikijs"
+deployment_project_keycloak_wikijs_client_secret: ""
+deployment_project_keycloak_semaphoreui_client_id: "semaphoreui"
+deployment_project_keycloak_semaphoreui_client_secret: ""
+deployment_project_keycloak_rocketchat_client_id: "rocketchat"
+deployment_project_keycloak_rocketchat_client_secret: ""
+deployment_project_keycloak_gitlab_client_id: "gitlab"
+deployment_project_keycloak_gitlab_client_secret: ""
+deployment_project_wikijs_bootstrap_admin_email: "admin@local.test"
+deployment_project_wikijs_bootstrap_admin_password: ""
+deployment_project_keycloak_admin_username: ""
+deployment_project_keycloak_admin_password: ""
+deployment_project_keycloak_bootstrap_username: "jose.romero"

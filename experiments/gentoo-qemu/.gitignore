@@ -1,0 +1,20 @@
+# Downloaded / generated images
+work/
+images/
+*.qcow2
+*.img
+*.raw
+
+# Runtime outputs and logs
+artifacts/runs/*
+!artifacts/runs/.gitkeep
+*.log
+*.tmp
+
+# Tooling state
+.terraform/
+*.tfstate
+*.tfstate.*
+
+# Editors / OS
+.DS_Store

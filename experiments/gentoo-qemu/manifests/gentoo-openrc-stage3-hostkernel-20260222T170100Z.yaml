@@ -1,0 +1,37 @@
+id: gentoo-openrc-stage3-hostkernel-20260222T170100Z
+kind: experimental-build-input
+target: qemu-libvirt
+arch: amd64
+os: gentoo
+init_system: openrc
+cloud_init_support: image-built
+source:
+  type: stage3-tarball
+  url: https://distfiles.gentoo.org/releases/amd64/autobuilds/20260222T170100Z/stage3-amd64-openrc-20260222T170100Z.tar.xz
+  sha256: 75d385060630fce54cfc4d10567e2e8524dcc0a336b81dfe7f3b21f6606234ef
+  checksum_url: https://distfiles.gentoo.org/releases/amd64/autobuilds/20260222T170100Z/stage3-amd64-openrc-20260222T170100Z.tar.xz.sha256
+build_strategy:
+  rootfs: Gentoo stage3 OpenRC
+  packages:
+    install_mode: binpkg-only
+    required:
+      - net-misc/openssh
+      - app-emulation/cloud-init
+      - app-admin/sudo
+  boot:
+    kernel_source: host-kernel-copy
+    bootloader: host-grub-install (i386-pc / BIOS)
+    notes:
+      - Uses the builder host kernel, initrd and /lib/modules as a pragmatic v1 bootstrap.
+      - Not a distro-native Gentoo kernel image yet.
+constraints:
+  - Built image portability is coupled to the builder host kernel artifacts.
+  - Intended for local qemu/libvirt qualification and ansible-ready bootstrap only.
+status: candidate
+support_level: experimental
+qualified_qemu_provisioning: true
+qualified_ansible_ready: true
+qualified_docker_bootstrap: false
+qualification_notes:
+  - OpenRC remains the default Gentoo baseline for qemu provisioning.
+  - Docker bootstrap parity remains explicitly out of scope for this experimental profile.

@@ -1,0 +1,8 @@
+---
+- name: Run baseline system bootstrap
+  hosts: all
+  gather_facts: true
+  become: true
+  roles:
+    - role: system_update
+    - role: docker_git

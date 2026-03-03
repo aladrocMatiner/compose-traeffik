@@ -17,10 +17,6 @@ OUTPUT_DIR="${REPO_ROOT}/services/traefik/dynamic-rendered"
 
 COMPOSE_PROFILES_ENV="${COMPOSE_PROFILES:-}"
 TRAEFIK_DASHBOARD_ENV="${TRAEFIK_DASHBOARD:-}"
-AWX_ENABLED_ENV="${AWX_ENABLED:-}"
-AWX_HOSTNAME_ENV="${AWX_HOSTNAME:-}"
-AWX_HOST_PORT_HTTP_ENV="${AWX_HOST_PORT_HTTP:-}"
-LITELLM_UI_BASIC_AUTH_HTPASSWD_PATH_ENV="${LITELLM_UI_BASIC_AUTH_HTPASSWD_PATH:-}"
 
 if [ -f "${REPO_ROOT}/.env" ]; then
     # shellcheck disable=SC1091
@@ -40,18 +36,6 @@ fi
 if [ -n "${TRAEFIK_DASHBOARD_ENV}" ]; then
     TRAEFIK_DASHBOARD="${TRAEFIK_DASHBOARD_ENV}"
 fi
-if [ -n "${AWX_ENABLED_ENV}" ]; then
-    AWX_ENABLED="${AWX_ENABLED_ENV}"
-fi
-if [ -n "${AWX_HOSTNAME_ENV}" ]; then
-    AWX_HOSTNAME="${AWX_HOSTNAME_ENV}"
-fi
-if [ -n "${AWX_HOST_PORT_HTTP_ENV}" ]; then
-    AWX_HOST_PORT_HTTP="${AWX_HOST_PORT_HTTP_ENV}"
-fi
-if [ -n "${LITELLM_UI_BASIC_AUTH_HTPASSWD_PATH_ENV}" ]; then
-    LITELLM_UI_BASIC_AUTH_HTPASSWD_PATH="${LITELLM_UI_BASIC_AUTH_HTPASSWD_PATH_ENV}"
-fi
 
 if [ -z "${DEV_DOMAIN:-}" ]; then
     echo "ERROR: DEV_DOMAIN is not set. Update .env or .env.example." >&2
@@ -59,18 +43,53 @@ if [ -z "${DEV_DOMAIN:-}" ]; then
 fi
 
 TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH="${TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH:-/etc/traefik/auth/traefik-dashboard.htpasswd.example}"
-LITELLM_UI_BASIC_AUTH_HTPASSWD_PATH="${LITELLM_UI_BASIC_AUTH_HTPASSWD_PATH:-/etc/traefik/auth/litellm-ui.htpasswd.example}"
-AWX_HOSTNAME="${AWX_HOSTNAME:-awx}"
-AWX_HOST_PORT_HTTP="${AWX_HOST_PORT_HTTP:-30080}"
+TRAEFIK_DASHBOARD_HOST="${TRAEFIK_DASHBOARD_HOST:-traefik.${DEV_DOMAIN}}"
+TRAEFIK_DASHBOARD_HOSTS="${TRAEFIK_DASHBOARD_HOSTS:-$TRAEFIK_DASHBOARD_HOST}"
+TLS_CERT_RESOLVER="${TLS_CERT_RESOLVER:-}"
 
 escape_sed() {
     printf '%s' "$1" | sed 's/[&/]/\\&/g'
 }
 
 dashboard_auth_path_escaped=$(escape_sed "$TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH")
-litellm_ui_auth_path_escaped=$(escape_sed "$LITELLM_UI_BASIC_AUTH_HTPASSWD_PATH")
-awx_hostname_escaped=$(escape_sed "$AWX_HOSTNAME")
-awx_host_port_http_escaped=$(escape_sed "$AWX_HOST_PORT_HTTP")
+
+build_dashboard_rule() {
+    local raw="$1"
+    local part trimmed
+    local -a parts=()
+    local -a rules=()
+    local -a seen=()
+
+    IFS=',' read -r -a parts <<< "$raw"
+    for part in "${parts[@]}"; do
+        trimmed="${part#"${part%%[![:space:]]*}"}"
+        trimmed="${trimmed%"${trimmed##*[![:space:]]}"}"
+        if [ -z "$trimmed" ]; then
+            continue
+        fi
+        if [[ " ${seen[*]} " == *" ${trimmed} "* ]]; then
+            continue
+        fi
+        seen+=("$trimmed")
+        rules+=("Host(\`${trimmed}\`)")
+    done
+
+    if [ "${#rules[@]}" -eq 0 ]; then
+        rules+=("Host(\`traefik.${DEV_DOMAIN}\`)")
+    fi
+
+    local rule
+    rule="${rules[0]}"
+    local i
+    for (( i=1; i<${#rules[@]}; i++ )); do
+        rule="${rule} || ${rules[$i]}"
+    done
+
+    printf '%s' "$rule"
+}
+
+dashboard_rule="$(build_dashboard_rule "$TRAEFIK_DASHBOARD_HOSTS")"
+dashboard_rule_escaped=$(escape_sed "$dashboard_rule")
 
 mkdir -p "$OUTPUT_DIR"
 
@@ -84,13 +103,13 @@ if [ "${TRAEFIK_DASHBOARD:-true}" = "false" ]; then
     RENDER_DASHBOARD=false
 fi
 
-RENDER_AWX=false
-if [ "${AWX_ENABLED:-false}" = "true" ]; then
-    RENDER_AWX=true
-fi
-
 for file in "$TEMPLATE_DIR"/*.yml; do
     filename=$(basename "$file")
+    source_file="$file"
+    if [ "$filename" = "tls.yml" ] && [ -n "${TLS_CERT_RESOLVER}" ]; then
+        rm -f "${OUTPUT_DIR}/${filename}"
+        continue
+    fi
     if [ "$filename" = "tls-certbot.yml" ] && [ "$RENDER_CERTBOT_TLS" != "true" ]; then
         rm -f "${OUTPUT_DIR}/${filename}"
         continue
@@ -99,15 +118,13 @@ for file in "$TEMPLATE_DIR"/*.yml; do
         rm -f "${OUTPUT_DIR}/${filename}"
         continue
     fi
-    if [ "$filename" = "awx.yml" ] && [ "$RENDER_AWX" != "true" ]; then
-        rm -f "${OUTPUT_DIR}/${filename}"
-        continue
+    if [ "$filename" = "dashboard.yml" ] && [ -n "${TLS_CERT_RESOLVER}" ]; then
+        source_file="${TEMPLATE_DIR}/dashboard-acme.yml"
     fi
     sed \
         -e "s/__DEV_DOMAIN__/${DEV_DOMAIN}/g" \
+        -e "s/__TLS_CERT_RESOLVER__/${TLS_CERT_RESOLVER}/g" \
+        -e "s/__TRAEFIK_DASHBOARD_RULE__/${dashboard_rule_escaped}/g" \
         -e "s/__TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH__/${dashboard_auth_path_escaped}/g" \
-        -e "s/__LITELLM_UI_BASIC_AUTH_HTPASSWD_PATH__/${litellm_ui_auth_path_escaped}/g" \
-        -e "s/__AWX_HOSTNAME__/${awx_hostname_escaped}/g" \
-        -e "s/__AWX_HOST_PORT_HTTP__/${awx_host_port_http_escaped}/g" \
-        "$file" > "${OUTPUT_DIR}/${filename}"
+        "$source_file" > "${OUTPUT_DIR}/${filename}"
 done

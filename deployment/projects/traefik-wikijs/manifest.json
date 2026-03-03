@@ -1,0 +1,29 @@
+{
+  "id": "traefik-wikijs",
+  "description": "Deploy Wiki.js behind Traefik with StepCA ACME defaults and Keycloak-backed OIDC access contract.",
+  "repo_url": "https://github.com/aladrocMatiner/compose-traeffik.git",
+  "repo_ref": "d57a964daede15d27b9f1d18dc8e94e4b2a29dbf",
+  "compose_profile": "wikijs",
+  "services": [
+    "traefik",
+    "whoami",
+    "wikijs-db",
+    "wikijs"
+  ],
+  "deploy_playbook": "deployment/ansible/playbooks/project_deploy.yml",
+  "required_env": [
+    "BASE_DOMAIN",
+    "DEV_DOMAIN"
+  ],
+  "tls_mode": "stepca-acme",
+  "depends_on_projects": [
+    "traefik-stepca",
+    "traefik-keycloak"
+  ],
+  "oidc": {
+    "enabled": true,
+    "realm": "local.test",
+    "client_id": "wikijs"
+  },
+  "public_host": "wikijs.local.test"
+}

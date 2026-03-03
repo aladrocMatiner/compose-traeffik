@@ -1,0 +1,62 @@
+---
+docker_git_supported_selectors:
+  - ubuntu
+  - debian12
+  - debian13
+  - debian
+  - gentoo
+  - opensuse-leap
+  - almalinux9
+  - rockylinux9
+  - fedora-cloud
+
+docker_git_packages_by_selector:
+  ubuntu:
+    - git
+    - make
+    - docker.io
+    - docker-compose-v2
+  debian12:
+    - git
+    - make
+    - docker.io
+    - docker-compose-v2
+  debian13:
+    - git
+    - make
+    - docker.io
+    - docker-compose-v2
+  debian:
+    - git
+    - make
+    - docker.io
+    - docker-compose-v2
+  gentoo:
+    - dev-vcs/git
+    - sys-devel/make
+    - app-containers/docker
+  opensuse-leap:
+    - git
+    - make
+    - docker
+  almalinux9:
+    - git
+    - make
+    - moby-engine
+  rockylinux9:
+    - git
+    - make
+    - moby-engine
+  fedora-cloud:
+    - git
+    - make
+    - moby-engine
+
+docker_git_service_name_by_selector:
+  default: docker
+  gentoo: docker
+
+docker_git_manage_service: true
+docker_git_enable_service: true
+docker_git_start_service: true
+docker_git_apt_cache_valid_time: 3600

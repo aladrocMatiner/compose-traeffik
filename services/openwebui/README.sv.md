@@ -1,11 +1,11 @@
 [English](README.md) | [Svenska](README.sv.md) | [Espanol](README.es.md)
 
-# OpenWebUI service
+# OpenWebUI-tjanst
 
 <a id="overview"></a>
 ## Oversikt
 
-OpenWebUI ar en valfri webb/chat-modul exponerad bakom Traefik.
+OpenWebUI ger ett webbgranssnitt for lokala LLM-backends och OpenAI-kompatibla API:er, publicerat bakom Traefik.
 
 <a id="location"></a>
 ## Var den finns
@@ -13,21 +13,33 @@ OpenWebUI ar en valfri webb/chat-modul exponerad bakom Traefik.
 - `services/openwebui/compose.yml`
 
 <a id="run"></a>
-## Hur den kor
+## Hur den kors
 
+Starta:
 ```bash
 make webui-up
+```
+
+Status:
+```bash
 make webui-status
 ```
 
-URL (via Traefik): `https://openwebui.${DEV_DOMAIN}`
+Loggar:
+```bash
+make webui-logs
+```
+
+Stoppa:
+```bash
+make webui-down
+```
 
 <a id="configuration"></a>
 ## Konfiguration
 
-Relevanta env vars i `.env.example`:
+Relevanta variabler i `.env.example`:
 - `OPENWEBUI_HOSTNAME`
-- `OPENWEBUI_IMAGE`
 - `OPENWEBUI_ENABLE_SIGNUP`
 - `OPENWEBUI_ENABLE_PERSISTENT_CONFIG`
 - `OPENWEBUI_SECRET_KEY`
@@ -40,23 +52,22 @@ Relevanta env vars i `.env.example`:
 <a id="ports"></a>
 ## Portar, natverk, volymer
 
-- Publika portar: inga (Traefik hanterar publik exponering)
+- Intern port: `8080`
+- Publik route: `https://openwebui.${DEV_DOMAIN}`
 - Natverk: `proxy` (`traefik-proxy`)
 - Volym: `openwebui-data`
 
 <a id="security"></a>
 ## Sakerhetsnoter
 
-- Hall `OPENWEBUI_ENABLE_SIGNUP=false` om oppen registrering inte ar avsiktlig.
-- UI/API exponeras endast via Traefik HTTPS-routing.
+- Hall `OPENWEBUI_ENABLE_SIGNUP=false` for kontrollerad access.
+- Satt `OPENWEBUI_SECRET_KEY` i icke-efemara miljoer.
 
 <a id="troubleshooting"></a>
 ## Felsokning
 
-- Om routen inte svarar:
-  - `make webui-status`
-  - `make webui-logs`
-- Om backend-anrop misslyckas, verifiera OpenAI/Ollama-variabler.
+- Route ej tillganglig: kontrollera `make ps` och Traefik-loggar.
+- Backend-anrop misslyckas: kontrollera `OPENWEBUI_OLLAMA_BASE_URL` / `OPENWEBUI_OPENAI_API_BASE_URLS`.
 
 <a id="related"></a>
 ## Relaterade sidor

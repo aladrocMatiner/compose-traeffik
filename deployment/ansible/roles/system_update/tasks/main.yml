@@ -1,0 +1,149 @@
+---
+- name: Resolve deployment OS selector from gathered facts
+  ansible.builtin.set_fact:
+    system_update_selector: >-
+      {% set distro = ansible_distribution | lower %}
+      {% set major = ansible_distribution_major_version | default('') %}
+      {% if distro == 'ubuntu' %}
+      ubuntu
+      {% elif distro == 'debian' and major == '12' %}
+      debian12
+      {% elif distro == 'debian' and major == '13' %}
+      debian13
+      {% elif distro == 'debian' %}
+      debian
+      {% elif distro == 'gentoo' %}
+      gentoo
+      {% elif distro in ['opensuse leap', 'opensuse-leap'] %}
+      opensuse-leap
+      {% elif distro == 'almalinux' and major == '9' %}
+      almalinux9
+      {% elif distro == 'rocky' and major == '9' %}
+      rockylinux9
+      {% elif distro == 'fedora' %}
+      fedora-cloud
+      {% else %}
+      unsupported
+      {% endif %}
+
+- name: Normalize deployment OS selector
+  ansible.builtin.set_fact:
+    system_update_selector: "{{ system_update_selector | trim }}"
+
+- name: Fail fast on unsupported platforms
+  ansible.builtin.fail:
+    msg: >-
+      Unsupported platform for role system_update:
+      distribution={{ ansible_distribution }} major={{ ansible_distribution_major_version | default('n/a') }}.
+      Supported selectors: {{ system_update_supported_selectors | join(', ') }}.
+  when: system_update_selector not in system_update_supported_selectors
+
+- name: Refresh apt metadata cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: "{{ system_update_apt_cache_valid_time }}"
+  when: ansible_os_family == "Debian"
+
+- name: Apply apt upgrades
+  ansible.builtin.apt:
+    upgrade: "{{ system_update_apt_upgrade_mode }}"
+    update_cache: false
+  when:
+    - ansible_os_family == "Debian"
+    - system_update_apply_upgrades | bool
+
+- name: Refresh dnf metadata cache
+  ansible.builtin.dnf:
+    update_cache: true
+  when: ansible_os_family == "RedHat"
+
+- name: Apply dnf upgrades
+  ansible.builtin.dnf:
+    name: "*"
+    state: latest
+    update_only: false
+  # noqa package-latest
+  when:
+    - ansible_os_family == "RedHat"
+    - system_update_apply_upgrades | bool
+
+- name: Refresh zypper metadata cache
+  ansible.builtin.command: zypper --non-interactive refresh # noqa command-instead-of-module
+  changed_when: false
+  when:
+    - ansible_os_family == "Suse"
+    - not ansible_check_mode
+
+- name: Explain zypper check mode behavior
+  ansible.builtin.debug:
+    msg: "Skipping zypper --non-interactive refresh in check mode on Suse."
+  when:
+    - ansible_os_family == "Suse"
+    - ansible_check_mode
+
+- name: Apply zypper upgrades
+  ansible.builtin.command: zypper --non-interactive update # noqa command-instead-of-module
+  register: system_update_zypper_upgrade
+  changed_when: "'Nothing to do.' not in (system_update_zypper_upgrade.stdout | default(''))"
+  # noqa package-latest
+  when:
+    - ansible_os_family == "Suse"
+    - system_update_apply_upgrades | bool
+    - not ansible_check_mode
+
+- name: Explain zypper update-only behavior
+  ansible.builtin.debug:
+    msg: "Skipping zypper package upgrades because system_update_apply_upgrades=false."
+  when:
+    - ansible_os_family == "Suse"
+    - not (system_update_apply_upgrades | bool)
+
+- name: Explain zypper upgrade check mode behavior
+  ansible.builtin.debug:
+    msg: "Skipping zypper --non-interactive update in check mode on Suse."
+  when:
+    - ansible_os_family == "Suse"
+    - system_update_apply_upgrades | bool
+    - ansible_check_mode
+
+- name: Sync Gentoo portage tree
+  ansible.builtin.command: emerge --sync # noqa command-instead-of-module
+  register: system_update_gentoo_sync
+  changed_when: >-
+    ('No updates to repositories' not in (system_update_gentoo_sync.stdout | default('')))
+    and ('already up to date' not in (system_update_gentoo_sync.stdout | default('')))
+  when:
+    - ansible_os_family == "Gentoo"
+    - not ansible_check_mode
+
+- name: Explain Gentoo sync check mode behavior
+  ansible.builtin.debug:
+    msg: "Skipping emerge --sync in check mode on Gentoo."
+  when:
+    - ansible_os_family == "Gentoo"
+    - ansible_check_mode
+
+- name: Apply Gentoo world upgrades
+  ansible.builtin.command: emerge --update --deep --newuse @world # noqa command-instead-of-module
+  register: system_update_gentoo_upgrade
+  changed_when: "'Total: 0 packages' not in (system_update_gentoo_upgrade.stdout | default(''))"
+  # noqa package-latest
+  when:
+    - ansible_os_family == "Gentoo"
+    - system_update_apply_upgrades | bool
+    - not ansible_check_mode
+
+- name: Explain Gentoo update-only behavior
+  ansible.builtin.debug:
+    msg: "Skipping Gentoo world upgrades because system_update_apply_upgrades=false."
+  when:
+    - ansible_os_family == "Gentoo"
+    - not (system_update_apply_upgrades | bool)
+
+- name: Explain Gentoo upgrade check mode behavior
+  ansible.builtin.debug:
+    msg: "Skipping emerge --update --deep --newuse @world in check mode on Gentoo."
+  when:
+    - ansible_os_family == "Gentoo"
+    - system_update_apply_upgrades | bool
+    - ansible_check_mode

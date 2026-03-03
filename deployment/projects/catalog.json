@@ -1,0 +1,72 @@
+{
+  "projects": [
+    {
+      "id": "traefik-stepca",
+      "manifest": "deployment/projects/traefik-stepca/manifest.json"
+    },
+    {
+      "id": "traefik-keycloak",
+      "manifest": "deployment/projects/traefik-keycloak/manifest.json"
+    },
+    {
+      "id": "traefik-observability",
+      "manifest": "deployment/projects/traefik-observability/manifest.json"
+    },
+    {
+      "id": "traefik-wikijs",
+      "manifest": "deployment/projects/traefik-wikijs/manifest.json"
+    },
+    {
+      "id": "traefik-semaphoreui",
+      "manifest": "deployment/projects/traefik-semaphoreui/manifest.json"
+    },
+    {
+      "id": "traefik-rocketchat",
+      "manifest": "deployment/projects/traefik-rocketchat/manifest.json"
+    },
+    {
+      "id": "traefik-gitlab",
+      "manifest": "deployment/projects/traefik-gitlab/manifest.json"
+    },
+    {
+      "id": "traefik-dns-bind",
+      "manifest": "deployment/projects/traefik-dns-bind/manifest.json"
+    },
+    {
+      "id": "traefik-litellm",
+      "manifest": "deployment/projects/traefik-litellm/manifest.json"
+    },
+    {
+      "id": "traefik-docling",
+      "manifest": "deployment/projects/traefik-docling/manifest.json"
+    },
+    {
+      "id": "traefik-webui",
+      "manifest": "deployment/projects/traefik-webui/manifest.json"
+    },
+    {
+      "id": "traefik-awx",
+      "manifest": "deployment/projects/traefik-awx/manifest.json"
+    },
+    {
+      "id": "traefik-plane",
+      "manifest": "deployment/projects/traefik-plane/manifest.json"
+    },
+    {
+      "id": "traefik-freeipa",
+      "manifest": "deployment/projects/traefik-freeipa/manifest.json"
+    },
+    {
+      "id": "traefik-quay",
+      "manifest": "deployment/projects/traefik-quay/manifest.json"
+    },
+    {
+      "id": "traefik-n8n",
+      "manifest": "deployment/projects/traefik-n8n/manifest.json"
+    },
+    {
+      "id": "traefik-harbor",
+      "manifest": "deployment/projects/traefik-harbor/manifest.json"
+    }
+  ]
+}

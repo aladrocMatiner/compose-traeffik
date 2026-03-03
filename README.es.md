@@ -72,35 +72,19 @@ Guias de TLS:
 ## Endpoints
 
 - **Whoami**: `https://whoami.${DEV_DOMAIN}` (stack por defecto)
-- **n8n**: `https://n8n.${DEV_DOMAIN}` (perfil `n8n`; opcional)
 - **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth; habilitado por defecto)
 - **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (perfil `stepca`; habilitado por defecto)
-- **CTFd**: `https://ctfd.${DEV_DOMAIN}` (perfil `ctfd`; opcional)
-- **Grafana**: `https://grafana.${DEV_DOMAIN}` (perfil `observability`; opcional)
-- **Plane**: `https://plane.${DEV_DOMAIN}` (perfil `plane`; opcional)
-- **Docling**: `https://docling.${DEV_DOMAIN}` (perfil `docling`; opcional)
-- **FreeIPA**: `https://freeipa.${DEV_DOMAIN}` (perfil `freeipa`; opcional)
-- **OpenWebUI**: `https://openwebui.${DEV_DOMAIN}` (perfil `webui`; opcional)
-- **AWX**: `https://awx.${DEV_DOMAIN}` (modulo hibrido `k3d` + AWX Operator; requiere `make awx-*`)
-- **Prometheus/Loki/Tempo/Pyroscope**: internos por defecto (perfil `observability`; sin endpoint publico)
+- **OpenWebUI**: `https://openwebui.${DEV_DOMAIN}` (perfil `webui`)
 
 <a id="services"></a>
 ## Servicios
 
 - [Traefik](services/traefik/README.es.md) - reverse proxy y nucleo de routing.
 - [Whoami](services/whoami/README.es.md) - servicio demo para pruebas de routing.
-- [n8n](services/n8n/README.es.md) - perfil opcional `n8n` (automatizacion de workflows).
 - [DNS (BIND)](services/dns-bind/README.es.md) - perfil opcional `bind`.
-- [Keycloak](services/keycloak/README.es.md) - perfil opcional `keycloak` (Traefik + PostgreSQL).
+- [OpenWebUI](services/openwebui/README.es.md) - perfil opcional `webui`.
 - [Certbot](services/certbot/README.es.md) - perfil opcional `le`.
 - [Step-CA](services/step-ca/README.es.md) - perfil opcional `stepca`.
-- [CTFd](services/ctfd/README.es.md) - perfil opcional `ctfd` (plataforma CTF + DB + Redis).
-- [Observability](services/observability/README.es.md) - perfil opcional `observability` (Grafana/Prometheus/Loki/Tempo/Pyroscope/Alloy + synthetic checks con k6).
-- [Plane](services/plane/README.es.md) - perfil opcional `plane` (gestion de proyectos + PostgreSQL/Redis/RabbitMQ/MinIO).
-- [Docling](services/docling/README.es.md) - perfil opcional `docling` (API de conversion de documentos + Redis interno para modo async/RQ).
-- [FreeIPA](services/freeipa/README.es.md) - perfil opcional `freeipa` (servicio de gestion de identidad detras de Traefik).
-- [OpenWebUI](services/openwebui/README.es.md) - perfil opcional `webui` (interfaz web/chat detras de Traefik).
-- [AWX](services/awx/README.es.md) - modulo hibrido (`k3d` + AWX Operator) detras de Traefik.
 
 <a id="docs-map"></a>
 ## Mapa de documentos
@@ -122,21 +106,7 @@ Comandos comunes:
 - `make certs-le-issue`, `make certs-le-renew` (perfil `le`)
 - `make stepca-up`, `make stepca-bootstrap`, `make stepca-trust-install`
 - `make bind-up`, `make bind-status`, `make bind-restart`, `make bind-provision`
-- `make ctfd-bootstrap`, `make ctfd-up`, `make ctfd-status`
-- `make observability-bootstrap`, `make observability-up`, `make observability-status`, `make observability-k6`
-- `make plane-bootstrap`, `make plane-up`, `make plane-status`
-- `make docling-bootstrap`, `make docling-up`, `make docling-status`
-- `make freeipa-bootstrap`, `make freeipa-up`, `make freeipa-status`
-- `make webui-up`, `make webui-status`
-- `make awx-bootstrap`, `make awx-k3d-up`, `make awx-up`, `make awx-status`, `make awx-admin-password`
-- `make awx-debug`, `make awx-backup`
-- `make awx-restore AWX_RESTORE_ARGS="--backup-name <name> --confirm"` (puede ser destructivo; requiere confirmacion explicita)
-- `make awx-upgrade AWX_UPGRADE_ARGS="--confirm ..."` (mantenimiento stateful; requiere confirmacion explicita)
 - `make hosts-generate`, `make hosts-apply`, `make hosts-status`
-
-Prerequisitos AWX (modulo hibrido):
-- `docker`, `k3d`, `kubectl`, `helm`
-- Traefik en ejecucion (`make up` o al menos `traefik`) para acceso a `https://awx.${DEV_DOMAIN}`
 
 Archivos auth:
 - `services/traefik/auth/traefik-dashboard.htpasswd.example`
@@ -149,12 +119,6 @@ Defaults de seguridad DNS:
 - `BIND_BIND_ADDRESS` debe mantenerse en loopback por defecto.
 - Para exponer DNS fuera de loopback de forma intencional, usa `BIND_ALLOW_NONLOCAL_BIND=true`.
 
-Nota de hosts:
-- Si gestionas `ENDPOINTS` manualmente, anyade `ctfd`, `grafana`, `plane`, `docling`, `freeipa` y/o `openwebui` antes de `make hosts-apply`.
-- Anyade `awx` tambien si quieres routing local de AWX via Traefik.
-- Anyade `keycloak` tambien si vas a usar Plane con routing local hacia Keycloak.
-- O deja `ENDPOINTS` vacio para auto-discovery por reglas `Host()`.
-
 <a id="testing"></a>
 ## Testing
 
@@ -164,7 +128,6 @@ make test
 ```
 Ve `tests/README.md` para detalles.
 Scripts operativos: ver `scripts/README.md`.
-Suite smoke estatica de GitLab: `make test-gitlab`.
 
 <a id="troubleshooting"></a>
 ## Troubleshooting
@@ -172,8 +135,6 @@ Suite smoke estatica de GitLab: `make test-gitlab`.
 - Verifica que `DEV_DOMAIN` y `BASE_DOMAIN` coincidan con tu hosts/DNS.
 - Si los puertos 80/443 estan en uso, deten servicios en conflicto y reintenta `make up`.
 - Usa `make logs` para ver logs de Traefik y servicios.
-- Para la UI WireGuard, verifica `WG_UI_HOSTNAME`, `WG_SERVER_ENDPOINT` y el mapeo hosts/DNS (`ENDPOINTS` puede necesitar `wg`).
-- Si `make wg-up` falla en preflight, revisa `WG_BIND_ADDRESS`, `WG_ALLOW_NONLOCAL_BIND`, `WG_SERVER_PORT` y `WG_INSECURE`.
 
 <a id="add-service-doc"></a>
 ## Agregar docs de servicio

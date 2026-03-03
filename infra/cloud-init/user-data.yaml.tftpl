@@ -1,0 +1,142 @@
+#cloud-config
+preserve_hostname: false
+hostname: ${hostname}
+fqdn: ${hostname}
+manage_etc_hosts: true
+ssh_pwauth: false
+disable_root: true
+
+users:
+  - name: ${ssh_user}
+    gecos: Deployment Bootstrap User
+%{ if os_family == "ubuntu" ~}
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    groups: [adm, sudo]
+%{ endif ~}
+%{ if os_family == "debian" ~}
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    groups: [sudo]
+%{ endif ~}
+%{ if os_family == "opensuse" ~}
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    groups: [wheel]
+%{ endif ~}
+%{ if os_family == "rhel" || os_family == "fedora" ~}
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    groups: [wheel]
+%{ endif ~}
+%{ if os_family == "gentoo" ~}
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    groups: [wheel]
+%{ endif ~}
+    shell: /bin/bash
+    lock_passwd: true
+    ssh_authorized_keys:
+      - ${ssh_public_key}
+
+%{ if os_family == "ubuntu" || os_family == "debian" ~}
+package_update: true
+package_upgrade: false
+packages:
+  - openssh-server
+  - qemu-guest-agent
+  - python3
+%{ if os_family == "ubuntu" || os_family == "debian" ~}
+  - python3-apt
+%{ endif ~}
+  - curl
+  - ca-certificates
+
+runcmd:
+  - [ sh, -c, "systemctl enable --now ssh || systemctl enable --now sshd || true" ]
+  - [ sh, -c, "systemctl enable --now qemu-guest-agent || true" ]
+%{ endif ~}
+
+%{ if os_family == "opensuse" || os_family == "rhel" || os_family == "fedora" ~}
+package_update: true
+package_upgrade: false
+packages:
+  - openssh-server
+  - qemu-guest-agent
+  - python3
+  - curl
+  - ca-certificates
+
+runcmd:
+  - [ sh, -c, "systemctl enable --now sshd || systemctl enable --now ssh || true" ]
+  - [ sh, -c, "systemctl enable --now qemu-guest-agent || true" ]
+%{ endif ~}
+
+%{ if os_family == "gentoo" && init_system == "systemd" ~}
+write_files:
+  - path: /usr/local/sbin/compose-traeffik-gentoo-systemd-net.sh
+    permissions: "0755"
+    owner: root:root
+    content: |
+      #!/bin/sh
+      set -eu
+      iface="$(ip -o link show | awk -F': ' '$2 != "lo" {print $2; exit}')"
+      iface="$${iface%%@*}"
+      [ -n "$${iface}" ] || exit 1
+      mkdir -p /etc/systemd/network
+      rm -f /etc/systemd/network/20-wired-dhcp.network
+      cat >/etc/systemd/network/10-compose-traeffik-static.network <<NETEOF
+      [Match]
+      Name=$${iface}
+
+      [Network]
+      Address=${vm_ip}/${vm_cidr_prefix}
+      Gateway=${vm_gateway}
+%{ for dns in dns_servers ~}
+      DNS=${dns}
+%{ endfor ~}
+      NETEOF
+      ip -4 addr flush dev "$${iface}" scope global || true
+      systemctl enable --now systemd-networkd systemd-resolved || true
+      ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf || true
+      systemctl restart systemd-networkd || true
+      systemctl restart sshd || systemctl restart ssh || true
+
+runcmd:
+  # Gentoo systemd path: image boots with DHCP (networkd), then cloud-init applies static network.
+  - [ sh, -c, "/usr/local/sbin/compose-traeffik-gentoo-systemd-net.sh" ]
+  - [ sh, -c, "systemctl enable --now sshd || systemctl enable --now ssh || true" ]
+  - [ sh, -c, "systemctl enable --now qemu-guest-agent || true" ]
+%{ endif ~}
+
+%{ if os_family == "gentoo" && init_system == "openrc" ~}
+write_files:
+  - path: /usr/local/sbin/compose-traeffik-gentoo-openrc-net.sh
+    permissions: "0755"
+    owner: root:root
+    content: |
+      #!/bin/sh
+      set -eu
+      iface="$(ip -o link show | awk -F': ' '$2 != "lo" {print $2; exit}')"
+      iface="$${iface%%@*}"
+      [ -n "$${iface}" ] || exit 1
+      printf 'hostname="%s"\n' "${hostname}" > /etc/conf.d/hostname
+      rc-update add hostname boot || true
+      rc-service hostname restart || rc-service hostname start || true
+      hostname "${hostname}" || true
+      cat > /etc/conf.d/net <<NETEOF
+      config_$${iface}="${vm_ip}/${vm_cidr_prefix}"
+      routes_$${iface}="default via ${vm_gateway}"
+      dns_servers_$${iface}="%{ for dns in dns_servers ~}${dns} %{ endfor ~}"
+      NETEOF
+      [ -e "/etc/init.d/net.$${iface}" ] || ln -s /etc/init.d/net.lo "/etc/init.d/net.$${iface}"
+      rc-update add "net.$${iface}" default || true
+      rc-service dhcpcd stop || true
+      dhcpcd -k "$${iface}" || true
+      pkill -x dhcpcd || true
+      ip -4 addr flush dev "$${iface}" scope global || true
+      rc-service "net.$${iface}" restart || rc-service "net.$${iface}" start || true
+      rc-update add sshd default || true
+      rc-service sshd restart || rc-service sshd start || true
+
+runcmd:
+  # Gentoo OpenRC path: cloud-init handles user/SSH key, this script applies static network via netifrc.
+  - [ sh, -c, "/usr/local/sbin/compose-traeffik-gentoo-openrc-net.sh" ]
+%{ endif ~}
+
+final_message: "cloud-init bootstrap finished for ${hostname}"

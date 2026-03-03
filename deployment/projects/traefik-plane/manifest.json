@@ -1,0 +1,28 @@
+{
+  "id": "traefik-plane",
+  "description": "Deploy Plane behind Traefik with StepCA ACME defaults, Keycloak OIDC reconciliation, and observability contract wiring.",
+  "repo_url": "https://github.com/aladrocMatiner/compose-traeffik.git",
+  "repo_ref": "207dac176e0c2070494ae3f72b2310aca31dfa17",
+  "compose_profile": "plane",
+  "services": [
+    "traefik",
+    "plane"
+  ],
+  "deploy_playbook": "deployment/ansible/playbooks/project_deploy.yml",
+  "required_env": [
+    "BASE_DOMAIN",
+    "DEV_DOMAIN"
+  ],
+  "tls_mode": "stepca-acme",
+  "depends_on_projects": [
+    "traefik-stepca",
+    "traefik-keycloak",
+    "traefik-observability"
+  ],
+  "oidc": {
+    "enabled": true,
+    "realm": "local.test",
+    "client_id": "plane"
+  },
+  "public_host": "plane.local.test"
+}

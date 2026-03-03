@@ -7,10 +7,10 @@ services:
       - proxy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.whoami-web.rule=Host(`whoami.${DEV_DOMAIN}`)"
+      - "traefik.http.routers.whoami-web.rule=Host(`${WHOAMI_HOST:-whoami.${DEV_DOMAIN}}`)"
       - "traefik.http.routers.whoami-web.entrypoints=web"
       - "traefik.http.routers.whoami-web.middlewares=${HTTP_TO_HTTPS_MIDDLEWARE:-redirect-to-https@file}"
-      - "traefik.http.routers.whoami-websecure.rule=Host(`whoami.${DEV_DOMAIN}`)"
+      - "traefik.http.routers.whoami-websecure.rule=Host(`${WHOAMI_HOST:-whoami.${DEV_DOMAIN}}`)"
       - "traefik.http.routers.whoami-websecure.entrypoints=websecure"
       - "traefik.http.routers.whoami-websecure.service=whoami-service"
       - "traefik.http.routers.whoami-websecure.tls=true"

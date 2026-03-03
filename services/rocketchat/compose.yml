@@ -1,176 +1,118 @@
 services:
-  rocketchat:
-    image: ${ROCKETCHAT_IMAGE:-registry.rocket.chat/rocketchat/rocket.chat}:${ROCKETCHAT_VERSION:-8.0.1}
-    container_name: rocketchat
+  rocketchat-mongodb:
+    image: ${ROCKETCHAT_MONGODB_IMAGE:-mongo:7.0}
+    container_name: rocketchat-mongodb
+    restart: unless-stopped
     profiles:
       - rocketchat
+    command: ["mongod", "--replSet", "${ROCKETCHAT_MONGODB_REPLICA_SET:-rs0}", "--bind_ip_all"]
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.adminCommand(\"ping\").ok' localhost:27017/test | grep 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+    volumes:
+      - rocketchat-mongodb-data:/data/db
+    networks:
+      - rocketchat-internal
+
+  rocketchat-mongodb-init-replica:
+    image: ${ROCKETCHAT_MONGODB_IMAGE:-mongo:7.0}
+    container_name: rocketchat-mongodb-init-replica
+    restart: "no"
+    profiles:
+      - rocketchat
+    depends_on:
+      rocketchat-mongodb:
+        condition: service_healthy
+    command:
+      - /bin/bash
+      - -lc
+      - |
+        set -euo pipefail
+        for i in $(seq 1 30); do
+          if mongosh --host rocketchat-mongodb:27017 --quiet --eval 'db.adminCommand("ping").ok' | grep -q 1; then
+            break
+          fi
+          sleep 2
+        done
+        mongosh --host rocketchat-mongodb:27017 --quiet --eval '
+          try {
+            rs.status();
+            print("replica set already initialized");
+          } catch (err) {
+            rs.initiate({ _id: "rs0", members: [{ _id: 0, host: "rocketchat-mongodb:27017" }] });
+            print("replica set initialized");
+          }
+        '
+    networks:
+      - rocketchat-internal
+
+  rocketchat:
+    image: ${ROCKETCHAT_IMAGE:-registry.rocket.chat/rocketchat/rocket.chat:7.12.0}
+    container_name: rocketchat
     restart: unless-stopped
-    env_file:
-      - ${ROCKETCHAT_RENDERED_ENV_PATH:-./services/rocketchat/config/rocketchat.env.example}
+    profiles:
+      - rocketchat
+    depends_on:
+      rocketchat-mongodb:
+        condition: service_healthy
+      rocketchat-mongodb-init-replica:
+        condition: service_completed_successfully
+    environment:
+      ROOT_URL: https://${ROCKETCHAT_HOSTNAME:-rocketchat}.${DEV_DOMAIN}
+      PORT: 3000
+      MONGO_URL: mongodb://${ROCKETCHAT_MONGODB_HOST:-rocketchat-mongodb}:27017/rocketchat?replicaSet=${ROCKETCHAT_MONGODB_REPLICA_SET:-rs0}
+      MONGO_OPLOG_URL: mongodb://${ROCKETCHAT_MONGODB_HOST:-rocketchat-mongodb}:27017/local?replicaSet=${ROCKETCHAT_MONGODB_REPLICA_SET:-rs0}
+      OVERWRITE_SETTING_Site_Url: https://${ROCKETCHAT_HOSTNAME:-rocketchat}.${DEV_DOMAIN}
+      OVERWRITE_SETTING_Accounts_OAuth_Dolphin: "false"
+      OVERWRITE_SETTING_Accounts_OAuth_Dolphin_URL: ""
+      OVERWRITE_SETTING_Accounts_OAuth_Dolphin_id: ""
+      OVERWRITE_SETTING_Accounts_OAuth_Dolphin_secret: ""
+      OVERWRITE_SETTING_Accounts_OAuth_Dolphin_button_label_text: ""
+      OVERWRITE_SETTING_API_Wordpress_URL: ""
+      OVERWRITE_SETTING_Accounts_OAuth_Wordpress: "false"
+      Accounts_OAuth_Custom_KEYCLOAK: "true"
+      Accounts_OAuth_Custom_KEYCLOAK_id: ${ROCKETCHAT_OIDC_CLIENT_ID}
+      Accounts_OAuth_Custom_KEYCLOAK_secret: ${ROCKETCHAT_OIDC_CLIENT_SECRET}
+      Accounts_OAuth_Custom_KEYCLOAK_url: ${KEYCLOAK_OIDC_BASE_URL}
+      Accounts_OAuth_Custom_KEYCLOAK_authorize_path: /realms/${KEYCLOAK_REALM}/protocol/openid-connect/auth
+      Accounts_OAuth_Custom_KEYCLOAK_token_path: /realms/${KEYCLOAK_REALM}/protocol/openid-connect/token
+      Accounts_OAuth_Custom_KEYCLOAK_identity_path: /realms/${KEYCLOAK_REALM}/protocol/openid-connect/userinfo
+      Accounts_OAuth_Custom_KEYCLOAK_scope: openid profile email
+      Accounts_OAuth_Custom_KEYCLOAK_token_sent_via: payload
+      Accounts_OAuth_Custom_KEYCLOAK_identity_token_sent_via: header
+      Accounts_OAuth_Custom_KEYCLOAK_key_field: email
+      Accounts_OAuth_Custom_KEYCLOAK_email_field: email
+      Accounts_OAuth_Custom_KEYCLOAK_username_field: preferred_username
+      Accounts_OAuth_Custom_KEYCLOAK_name_field: name
+      Accounts_OAuth_Custom_KEYCLOAK_login_style: redirect
+      Accounts_OAuth_Custom_KEYCLOAK_button_label_text: Sign in with Keycloak
+      NODE_EXTRA_CA_CERTS: /etc/ssl/certs/stepca-root-ca.crt
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-proxy"
+      - "traefik.http.routers.rocketchat-web.rule=Host(`${ROCKETCHAT_HOSTNAME:-rocketchat}.${DEV_DOMAIN}`)"
+      - "traefik.http.routers.rocketchat-web.entrypoints=web"
+      - "traefik.http.routers.rocketchat-web.middlewares=${HTTP_TO_HTTPS_MIDDLEWARE:-redirect-to-https@file}"
+      - "traefik.http.routers.rocketchat-websecure.rule=Host(`${ROCKETCHAT_HOSTNAME:-rocketchat}.${DEV_DOMAIN}`)"
+      - "traefik.http.routers.rocketchat-websecure.entrypoints=websecure"
+      - "traefik.http.routers.rocketchat-websecure.tls=true"
+      - "traefik.http.routers.rocketchat-websecure.tls.certresolver=${TLS_CERT_RESOLVER}"
+      - "traefik.http.routers.rocketchat-websecure.middlewares=security-headers@file"
+      - "traefik.http.routers.rocketchat-websecure.service=rocketchat-service"
+      - "traefik.http.services.rocketchat-service.loadbalancer.server.port=3000"
     networks:
       - proxy
       - rocketchat-internal
-    depends_on:
-      rocketchat-mongodb:
-        condition: service_healthy
-      rocketchat-mongodb-init:
-        condition: service_completed_successfully
-      rocketchat-nats:
-        condition: service_started
-    entrypoint:
-      - sh
-      - -ec
-      - |
-        echo "=====> Waiting for MongoDB and NATS before starting Rocket.Chat...";
-        for i in $(seq 1 60); do
-          if nc -z rocketchat-mongodb 27017 >/dev/null 2>&1 && nc -z rocketchat-nats 4222 >/dev/null 2>&1; then
-            echo "=====> Dependencies are ready - starting Rocket.Chat";
-            exec node main.js;
-          fi;
-          echo "=====> Dependencies not ready yet, retrying in 5 seconds...";
-          sleep 5;
-        done;
-        echo "=====> Giving up waiting for dependencies after 5 minutes";
-        exit 1
-    expose:
-      - "${ROCKETCHAT_PORT:-3000}"
-      - "${ROCKETCHAT_METRICS_PORT:-9458}"
     volumes:
-      - rocketchat-uploads:/app/uploads
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.rocketchat-web.rule=Host(`rocketchat.${DEV_DOMAIN}`)"
-      - "traefik.http.routers.rocketchat-web.entrypoints=web"
-      - "traefik.http.routers.rocketchat-web.middlewares=${HTTP_TO_HTTPS_MIDDLEWARE:-redirect-to-https@file}"
-      - "traefik.http.routers.rocketchat-websecure.rule=Host(`rocketchat.${DEV_DOMAIN}`)"
-      - "traefik.http.routers.rocketchat-websecure.entrypoints=websecure"
-      - "traefik.http.routers.rocketchat-websecure.service=rocketchat-service"
-      - "traefik.http.routers.rocketchat-websecure.tls=true"
-      - "traefik.http.routers.rocketchat-websecure.tls.certresolver=${TLS_CERT_RESOLVER:-}"
-      - "traefik.http.routers.rocketchat-websecure.middlewares=security-headers@file"
-      - "traefik.http.services.rocketchat-service.loadbalancer.server.port=${ROCKETCHAT_PORT:-3000}"
-      - "prometheus.io/scrape=${ROCKETCHAT_OBSERVABILITY_ENABLED:-false}"
-      - "prometheus.io/port=${ROCKETCHAT_METRICS_PORT:-9458}"
-      - "prometheus.io/path=/metrics"
-
-  rocketchat-mongodb-fix-permissions:
-    image: docker.io/mongodb/mongodb-community-server:${ROCKETCHAT_MONGODB_VERSION:-8.2}-ubi8
-    container_name: rocketchat-mongodb-fix-permissions
-    profiles:
-      - rocketchat
-    restart: on-failure
-    user: "0"
-    networks:
-      - rocketchat-internal
-    volumes:
-      - rocketchat-mongodb-data:/data/db:rw
-    environment:
-      ROCKETCHAT_MONGODB_USER_ID: ${ROCKETCHAT_MONGODB_USER_ID:-1001}
-    entrypoint:
-      - sh
-      - -ec
-      - |
-        owner="$$(stat -c %u /data/db 2>/dev/null || echo '')";
-        if [ "$$owner" != "$$ROCKETCHAT_MONGODB_USER_ID" ]; then
-          echo "=====> Fixing MongoDB data ownership to uid $$ROCKETCHAT_MONGODB_USER_ID";
-          chown -R "$$ROCKETCHAT_MONGODB_USER_ID" /data/db;
-        else
-          echo "=====> MongoDB data ownership already correct";
-        fi
-
-  rocketchat-mongodb:
-    image: docker.io/mongodb/mongodb-community-server:${ROCKETCHAT_MONGODB_VERSION:-8.2}-ubi8
-    container_name: rocketchat-mongodb
-    profiles:
-      - rocketchat
-    restart: unless-stopped
-    depends_on:
-      rocketchat-mongodb-fix-permissions:
-        condition: service_completed_successfully
-    networks:
-      - rocketchat-internal
-    user: "${ROCKETCHAT_MONGODB_USER_ID:-1001}"
-    volumes:
-      - rocketchat-mongodb-data:/data/db:rw
-    environment:
-      ROCKETCHAT_MONGODB_USER_ID: ${ROCKETCHAT_MONGODB_USER_ID:-1001}
-      ROCKETCHAT_MONGODB_REPLICA_SET_NAME: ${ROCKETCHAT_MONGODB_REPLICA_SET_NAME:-rs0}
-      ROCKETCHAT_MONGODB_PORT: 27017
-    expose:
-      - "27017"
-    entrypoint:
-      - sh
-      - -ec
-      - |
-        echo "=====> Waiting for /data/db to be owned by uid=$$ROCKETCHAT_MONGODB_USER_ID ...";
-        for i in $(seq 1 60); do
-          owner="$$(stat -c %u /data/db 2>/dev/null || true)";
-          if [ "$$owner" = "$$ROCKETCHAT_MONGODB_USER_ID" ]; then
-            echo "=====> Ownership OK ($$owner) - starting MongoDB";
-            exec mongod --replSet "$$ROCKETCHAT_MONGODB_REPLICA_SET_NAME" --bind_ip_all;
-          fi;
-          echo "=====> Current owner '$$owner' (expected $$ROCKETCHAT_MONGODB_USER_ID), retrying in 5 seconds...";
-          sleep 5;
-        done;
-        echo "=====> Giving up waiting for /data/db ownership after 5 minutes";
-        exit 1
-    healthcheck:
-      test:
-        - CMD
-        - mongosh
-        - mongodb://rocketchat-mongodb:27017/?directConnection=true
-        - --eval
-        - db.adminCommand('ping')
-      interval: 30s
-      timeout: 10s
-      retries: 10
-      start_period: 30s
-
-  rocketchat-mongodb-init:
-    image: docker.io/mongodb/mongodb-community-server:${ROCKETCHAT_MONGODB_VERSION:-8.2}-ubi8
-    container_name: rocketchat-mongodb-init
-    profiles:
-      - rocketchat
-    restart: on-failure
-    depends_on:
-      rocketchat-mongodb:
-        condition: service_healthy
-    networks:
-      - rocketchat-internal
-    entrypoint:
-      - sh
-      - -ec
-      - |
-        URI="mongodb://rocketchat-mongodb:27017/?directConnection=true";
-        echo "=====> Waiting for MongoDB to answer ping before replica set init...";
-        until mongosh "$$URI" --eval "db.adminCommand('ping')" >/dev/null 2>&1; do
-          sleep 5;
-        done;
-        if mongosh "$$URI" --quiet --eval 'try { rs.status().ok } catch (e) { 0 }' | grep -q '1'; then
-          echo "=====> Replica set already initialized";
-          exit 0;
-        fi;
-        echo "=====> Initializing replica set $$ROCKETCHAT_MONGODB_REPLICA_SET_NAME...";
-        mongosh "$$URI" --eval "rs.initiate({_id: '$$ROCKETCHAT_MONGODB_REPLICA_SET_NAME', members: [{ _id: 0, host: 'rocketchat-mongodb:27017' }]})";
-        echo "=====> Replica set initialization completed"
-
-  rocketchat-nats:
-    image: docker.io/nats:${ROCKETCHAT_NATS_VERSION:-2.11-alpine}
-    container_name: rocketchat-nats
-    profiles:
-      - rocketchat
-    restart: unless-stopped
-    networks:
-      - rocketchat-internal
-    command: --http_port 8222
-    expose:
-      - "4222"
-      - "8222"
+      - ./services/step-ca/certs/root_ca.crt:/etc/ssl/certs/stepca-root-ca.crt:ro
 
 networks:
   rocketchat-internal:
+    name: rocketchat-internal
     internal: true
 
 volumes:
-  rocketchat-uploads:
   rocketchat-mongodb-data:
+    name: rocketchat-mongodb-data

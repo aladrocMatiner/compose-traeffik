@@ -1,0 +1,30 @@
+{
+  "id": "traefik-rocketchat",
+  "description": "Deploy Rocket.Chat behind Traefik with StepCA ACME defaults and Keycloak-backed OIDC contract.",
+  "repo_url": "https://github.com/aladrocMatiner/compose-traeffik.git",
+  "repo_ref": "c880b662e388196ab9ee1453ff79919684939de1",
+  "compose_profile": "rocketchat",
+  "services": [
+    "traefik",
+    "whoami",
+    "rocketchat-mongodb",
+    "rocketchat-mongodb-init-replica",
+    "rocketchat"
+  ],
+  "deploy_playbook": "deployment/ansible/playbooks/project_deploy.yml",
+  "required_env": [
+    "BASE_DOMAIN",
+    "DEV_DOMAIN"
+  ],
+  "tls_mode": "stepca-acme",
+  "depends_on_projects": [
+    "traefik-stepca",
+    "traefik-keycloak"
+  ],
+  "oidc": {
+    "enabled": true,
+    "realm": "local.test",
+    "client_id": "rocketchat"
+  },
+  "public_host": "rocketchat.local.test"
+}

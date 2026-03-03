@@ -13,6 +13,7 @@ services/certbot/www/
 # Step-CA data and config
 services/step-ca/config/
 services/step-ca/secrets/
+services/step-ca/certs/
 stepca-data/
 
 # WireGuard (wg-easy) runtime state
@@ -29,7 +30,11 @@ services/traefik/auth/*.htpasswd
 !services/traefik/auth/*.htpasswd.example
 
 # Rendered Traefik dynamic config
+services/traefik/traefik-rendered.yml
 services/traefik/dynamic-rendered/
+services/gitlab/rendered/
+services/n8n/rendered/
+services/wikijs/rendered/
 
 # GitLab rendered Omnibus config and secrets
 services/gitlab/rendered/
@@ -61,3 +66,16 @@ services/awx/k8s/rendered/
 # Build artifacts
 *.log
 *.tmp
+
+# --- Terraform / IaC local artifacts ---
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+crash.*.log
+deployment/state/
+infra/terraform/state/
+infra/images/
+.tools/

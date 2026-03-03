@@ -5,7 +5,7 @@
 <a id="overview"></a>
 ## Overview
 
-OpenWebUI is an optional chat/web UI module exposed behind Traefik.
+OpenWebUI provides a browser UI for local LLM backends and OpenAI-compatible APIs, published behind Traefik.
 
 <a id="location"></a>
 ## Where it lives
@@ -15,19 +15,31 @@ OpenWebUI is an optional chat/web UI module exposed behind Traefik.
 <a id="run"></a>
 ## How it runs
 
+Start:
 ```bash
 make webui-up
+```
+
+Status:
+```bash
 make webui-status
 ```
 
-URL (via Traefik): `https://openwebui.${DEV_DOMAIN}`
+Logs:
+```bash
+make webui-logs
+```
+
+Stop:
+```bash
+make webui-down
+```
 
 <a id="configuration"></a>
 ## Configuration
 
 Relevant env vars in `.env.example`:
 - `OPENWEBUI_HOSTNAME`
-- `OPENWEBUI_IMAGE`
 - `OPENWEBUI_ENABLE_SIGNUP`
 - `OPENWEBUI_ENABLE_PERSISTENT_CONFIG`
 - `OPENWEBUI_SECRET_KEY`
@@ -40,23 +52,22 @@ Relevant env vars in `.env.example`:
 <a id="ports"></a>
 ## Ports, networks, volumes
 
-- Public ports: none (Traefik handles public exposure)
+- Internal port: `8080`
+- Public route: `https://openwebui.${DEV_DOMAIN}`
 - Network: `proxy` (`traefik-proxy`)
 - Volume: `openwebui-data`
 
 <a id="security"></a>
 ## Security notes
 
-- Keep `OPENWEBUI_ENABLE_SIGNUP=false` unless open registration is intentional.
-- API/UI is exposed through Traefik HTTPS routing only.
+- Keep `OPENWEBUI_ENABLE_SIGNUP=false` for controlled access.
+- Set `OPENWEBUI_SECRET_KEY` in non-ephemeral environments.
 
 <a id="troubleshooting"></a>
 ## Troubleshooting
 
-- If route is not reachable:
-  - `make webui-status`
-  - `make webui-logs`
-- If backend calls fail, validate OpenAI/Ollama variables.
+- Route not reachable: verify `make ps` and Traefik logs.
+- Backend calls fail: check `OPENWEBUI_OLLAMA_BASE_URL` / `OPENWEBUI_OPENAI_API_BASE_URLS`.
 
 <a id="related"></a>
 ## Related pages

@@ -32,6 +32,11 @@ Check status:
 make bind-status
 ```
 
+Run host port preflight:
+```bash
+make bind-port-check
+```
+
 Restart after config updates:
 ```bash
 make bind-restart
@@ -77,6 +82,7 @@ Zone file path:
 ## Troubleshooting
 
 - Port 53 already in use: stop the conflicting service or change `BIND_BIND_ADDRESS`.
+- Run `make bind-port-check` to list local listeners on port 53 before starting.
 - Missing zone file: run `make bind-provision` before starting the service.
 
 <a id="related"></a>

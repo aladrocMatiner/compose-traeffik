@@ -30,6 +30,59 @@ check_root() {
     fi
 }
 
+resolve_trust_user() {
+    if [ -n "${STEPCA_TRUST_USER:-}" ]; then
+        printf '%s\n' "${STEPCA_TRUST_USER}"
+        return
+    fi
+    if [ -n "${SUDO_USER:-}" ] && [ "${SUDO_USER}" != "root" ]; then
+        printf '%s\n' "${SUDO_USER}"
+        return
+    fi
+    printf '%s\n' "root"
+}
+
+resolve_user_home() {
+    local user="$1"
+    getent passwd "$user" | cut -d: -f6
+}
+
+install_nss_trust() {
+    local cert_path="$1"
+    local trust_user="$2"
+    local user_home
+    user_home="$(resolve_user_home "$trust_user")"
+
+    if [ -z "$user_home" ] || [ ! -d "$user_home" ]; then
+        log_warn "Skipping NSS trust: cannot resolve home for user '$trust_user'."
+        return
+    fi
+
+    if ! command -v certutil >/dev/null 2>&1; then
+        log_warn "Skipping NSS trust: 'certutil' not found. Install with: sudo apt-get install -y libnss3-tools"
+        return
+    fi
+
+    local db
+    local dbs=(
+        "${user_home}/.pki/nssdb"
+        "${user_home}/snap/chromium/current/.pki/nssdb"
+        "${user_home}/snap/chrome/current/.pki/nssdb"
+    )
+
+    for db in "${dbs[@]}"; do
+        if [ ! -d "$db" ]; then
+            continue
+        fi
+        if [ ! -f "$db/cert9.db" ]; then
+            sudo -u "$trust_user" certutil -d "sql:${db}" -N --empty-password >/dev/null 2>&1 || true
+        fi
+        sudo -u "$trust_user" certutil -d "sql:${db}" -D -n "stepca-root-local" >/dev/null 2>&1 || true
+        sudo -u "$trust_user" certutil -d "sql:${db}" -A -t "CT,C,C" -n "stepca-root-local" -i "$cert_path" >/dev/null
+        log_info "Installed NSS trust in ${db} (user: ${trust_user})"
+    done
+}
+
 CA_CERT_PATH="${STEPCA_CA_CERT_PATH:-./services/step-ca/config/ca.crt}"
 INSTALL_CERT_NAME="step-ca-root.crt"
 INSTALL_CERT_PATH="/usr/local/share/ca-certificates/${INSTALL_CERT_NAME}"
@@ -58,5 +111,6 @@ fi
 log_info "Installing Step-CA root certificate to system trust store..."
 install -m 0644 "$CA_CERT_PATH" "$INSTALL_CERT_PATH"
 update-ca-certificates >/dev/null
+install_nss_trust "$CA_CERT_PATH" "$(resolve_trust_user)"
 
 log_success "Installed Step-CA root certificate at '$INSTALL_CERT_PATH'."

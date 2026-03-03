@@ -1,0 +1,26 @@
+{
+  "id": "traefik-n8n",
+  "description": "Deploy n8n behind Traefik with StepCA ACME defaults and optional Keycloak OIDC integration.",
+  "repo_url": "https://github.com/aladrocMatiner/compose-traeffik.git",
+  "repo_ref": "207dac176e0c2070494ae3f72b2310aca31dfa17",
+  "compose_profile": "n8n",
+  "services": [
+    "traefik",
+    "n8n"
+  ],
+  "deploy_playbook": "deployment/ansible/playbooks/project_deploy.yml",
+  "required_env": [
+    "BASE_DOMAIN",
+    "DEV_DOMAIN"
+  ],
+  "tls_mode": "stepca-acme",
+  "depends_on_projects": [
+    "traefik-stepca"
+  ],
+  "oidc": {
+    "enabled": false,
+    "realm": "local.test",
+    "client_id": "n8n"
+  },
+  "public_host": "n8n.local.test"
+}

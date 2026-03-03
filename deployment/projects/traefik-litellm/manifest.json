@@ -1,0 +1,29 @@
+{
+  "id": "traefik-litellm",
+  "description": "Deploy LiteLLM full stack (proxy + UI + PostgreSQL) behind Traefik with StepCA ACME defaults.",
+  "repo_url": "https://github.com/aladrocMatiner/compose-traeffik.git",
+  "repo_ref": "2a22fcb33c9b164ffaabc66a7dadff1b3310ca7d",
+  "compose_profile": "litellm",
+  "services": [
+    "traefik",
+    "litellm-db",
+    "litellm"
+  ],
+  "deploy_playbook": "deployment/ansible/playbooks/project_deploy.yml",
+  "required_env": [
+    "BASE_DOMAIN",
+    "DEV_DOMAIN",
+    "OPENAI_API_KEY"
+  ],
+  "tls_mode": "stepca-acme",
+  "depends_on_projects": [
+    "traefik-stepca",
+    "traefik-keycloak"
+  ],
+  "oidc": {
+    "enabled": true,
+    "realm": "local.test",
+    "client_id": "litellm"
+  },
+  "public_host": "litellm.local.test"
+}

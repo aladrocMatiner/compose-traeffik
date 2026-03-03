@@ -1,0 +1,21 @@
+{
+  "id": "traefik-docling",
+  "description": "Deployment-only project contract for Docling behind Traefik. Runtime service implementation is pending.",
+  "repo_url": "https://github.com/aladrocMatiner/compose-traeffik.git",
+  "repo_ref": "32cca31f3f3fc47f7f4d506fff69c0fc0ed10ecf",
+  "compose_profile": "docling",
+  "services": [
+    "traefik",
+    "docling"
+  ],
+  "deploy_playbook": "deployment/ansible/playbooks/project_deploy.yml",
+  "required_env": [
+    "BASE_DOMAIN",
+    "DEV_DOMAIN"
+  ],
+  "tls_mode": "stepca-acme",
+  "depends_on_projects": [
+    "traefik-stepca"
+  ],
+  "public_host": "docling.local.test"
+}

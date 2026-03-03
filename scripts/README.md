@@ -2,6 +2,8 @@
 
 This directory contains helper scripts used to operate the stack. Prefer running them via Make targets where available so environment loading and compose layering stay consistent.
 
+Deployment lifecycle scripts are kept under `deployment/scripts/` and are called via `make deployment-*` targets.
+
 ## How to use
 
 - Preferred: `make <target>` (see `make help` for a list).
@@ -10,14 +12,11 @@ This directory contains helper scripts used to operate the stack. Prefer running
 Prerequisites:
 - bash
 - Docker + Docker Compose v2
-- python3 (required by docs tooling and GitLab config rendering)
 - `.env` file (copy from `.env.example`)
 
 Preflight validation:
 - `scripts/validate-env.sh` runs before `make up` and any `scripts/compose.sh` call.
 - It enforces safe defaults for admin UIs (Traefik dashboard) and validates profile syntax.
-- It also validates module-specific requirements for `ctfd`, `observability`, `plane`, `docling`, and `freeipa` when those profiles are enabled, including optional integration toggles.
-- When `AWX_ENABLED=true`, it validates AWX/k3d guardrails via `scripts/validate-awx-env.sh`.
 - Create htpasswd files under `services/traefik/auth/`, for example:
   - `htpasswd -nbB admin 'change-me' > services/traefik/auth/traefik-dashboard.htpasswd`
 - Set the container paths in `.env`:
@@ -44,24 +43,12 @@ Preflight validation:
 | `scripts/ca-config-verify.sh` | Validate shared CA configuration | `./scripts/ca-config-verify.sh` | `DEV_DOMAIN`, `CA_*`, `LEAF_*` (or legacy `STEP_CA_*`) | Prints effective CA configuration |
 | `scripts/hosts-subdomains.sh` | Manage hosts block for loopback subdomains | `make hosts-apply` | `BASE_DOMAIN`, `LOOPBACK_X` | Modifies hosts file (with sudo) |
 | `scripts/bind-provision.sh` | Generate BIND zone file from ENDPOINTS | `make bind-provision` | `BASE_DOMAIN`, `LOOPBACK_X`, `ENDPOINTS` | Writes `services/dns-bind/zones` |
-| `scripts/awx-bootstrap.sh` | Generate/persist AWX bootstrap secrets and defaults | `make awx-bootstrap` | `AWX_*`, `K3D_*` | Writes `.env` values |
-| `scripts/awx-k3d-up.sh` | Create/ensure local k3d cluster for AWX | `make awx-k3d-up` | `AWX_K3D_CLUSTER_NAME`, `AWX_*`, `K3D_K3S_IMAGE` | Creates local k3d cluster, writes kubeconfig |
-| `scripts/awx-k3d-down.sh` | Delete local k3d cluster for AWX | `make awx-k3d-down` | `AWX_K3D_CLUSTER_NAME` | Deletes local k3d cluster |
-| `scripts/awx-up.sh` | Install/upgrade AWX Operator and apply AWX instance | `make awx-up` | `AWX_*`, `K3D_*`, `DEV_DOMAIN` | Applies Kubernetes resources, renders Traefik AWX route |
-| `scripts/awx-down.sh` | Delete AWX instance (keeps cluster) | `make awx-down` | `AWX_*` | Deletes AWX CR |
-| `scripts/awx-status.sh` | Show AWX/operator cluster status | `make awx-status` | `AWX_*` | Reads Kubernetes resources |
-| `scripts/awx-logs.sh` | List/follow AWX/operator logs | `make awx-logs [ROLE=...]` | `AWX_*` | Streams pod logs |
-| `scripts/awx-admin-password.sh` | Print AWX admin password from Kubernetes secret | `make awx-admin-password` | `AWX_*` | Reads secret value |
-| `scripts/awx-debug.sh` | Collect AWX operator/web/task snapshots and recent logs into a local bundle | `make awx-debug` | `AWX_*` | Writes `.local/awx/debug/...` |
-| `scripts/awx-backup.sh` | Create operator-managed `AWXBackup` CR and save local metadata bundle | `make awx-backup` | `AWX_*` | Creates `AWXBackup` CR, writes `.local/awx/backups/...` |
-| `scripts/awx-restore.sh` | Create `AWXRestore` CR from an existing backup (requires explicit confirmation) | `make awx-restore AWX_RESTORE_ARGS='--backup-name <name> --confirm'` | `AWX_*` | Creates `AWXRestore` CR, writes restore metadata bundle |
-| `scripts/awx-upgrade.sh` | Reapply/upgrade operator + AWX target pins (requires explicit confirmation) | `make awx-upgrade AWX_UPGRADE_ARGS='--confirm [--operator-chart-version ...] [--awx-version-target ...]'` | `AWX_*` | Updates `.env` pins and reapplies AWX |
-| `scripts/validate-awx-env.sh` | Validate AWX/k3d env inputs before AWX lifecycle ops | `./scripts/validate-awx-env.sh` | `AWX_*`, `K3D_*` | Fails fast on invalid values |
-| `scripts/ctfd-bootstrap.sh` | Generate/persist CTFd secrets in `.env` | `make ctfd-bootstrap` | `CTFD_*` (writes missing values) | Updates `.env` |
-| `scripts/observability-bootstrap.sh` | Generate/persist Grafana secrets in `.env` | `make observability-bootstrap` | `GRAFANA_*` (writes missing values) | Updates `.env` |
-| `scripts/plane-bootstrap.sh` | Generate/persist Plane secrets in `.env` | `make plane-bootstrap` | `PLANE_*` (writes missing values) | Updates `.env` |
-| `scripts/docling-bootstrap.sh` | Generate/persist Docling secrets in `.env` | `make docling-bootstrap` | `DOCLING_*` (writes missing values) | Updates `.env` |
-| `scripts/freeipa-bootstrap.sh` | Generate/persist FreeIPA secrets in `.env` | `make freeipa-bootstrap` | `FREEIPA_*` (writes missing values) | Updates `.env` |
+| `deployment/scripts/infra-provision.sh` | Provision/destroy deployment VMs (interface: `target=libvirt|qemu|proxmox`, `os=ubuntu|debian12|debian13|gentoo|opensuse-leap|almalinux9|rockylinux9|fedora-cloud`; Gentoo `init=openrc|systemd`; `debian` alias -> `debian13`) with Terraform + cloud-init | `make deployment`, `make deployment-destroy` | `DEPLOYMENT_*` / `PROXMOX_*` overrides (optional) | Creates/destroys VM resources, downloads/verifies cloud images for libvirt |
+| `deployment/scripts/infra-validate.sh` | Validate Terraform layout for infra targets (`fmt`, `init -backend=false`, `validate`) | `make deployment-validate` | none | Reads Terraform config and plugins |
+| `deployment/scripts/deployment-access.sh` | List/select deployment VMs by backend (`qemu` and `proxmox`) | `make deployment-list target=qemu`, `make deployment-list target=proxmox`, `make deployment-ssh target=<qemu\\|proxmox> name=<vm>` | `DEPLOYMENT_MANAGED_PREFIX`, optional `DEPLOYMENT_SSH_USER`, for proxmox `PROXMOX_API_URL` + `PROXMOX_API_TOKEN` | Reads hypervisor inventory and opens SSH |
+| `deployment/scripts/host-wait-ssh.sh` | Wait for SSH reachability and cloud-init completion on a provisioned VM | `make deployment-wait` | Terraform state (default) or host/user args | Waits/polls remote host |
+| `deployment/scripts/host-bootstrap.sh` | Install Docker Engine + Compose plugin over SSH on a provisioned Ubuntu/Debian (12/13) VM | `make deployment-bootstrap` | Terraform state (default) or host/user args | Modifies remote host packages and Docker config |
+| `deployment/scripts/host-bootstrap-check.sh` | Verify SSH/Python/Docker readiness on a provisioned Ubuntu/Debian (12/13) VM | `make deployment-bootstrap-check` | Terraform state (default) or host/user args | Reads remote host state |
 | `scripts/common.sh` | Shared helpers | sourced by other scripts | none | none |
 
 ## Workflows
@@ -86,66 +73,58 @@ make bind-logs
 make bind-down
 ```
 
-### AWX (k3d hybrid module)
+### VM provisioning and host bootstrap (Phase 1)
 
 ```bash
-make awx-bootstrap
-make awx-k3d-up
-make awx-up
-make awx-status
-make awx-admin-password
-make awx-debug
-make awx-backup
-# restore/upgrade require explicit confirmation flags:
-# make awx-restore AWX_RESTORE_ARGS="--backup-name awx-backup-... --confirm"
-# make awx-upgrade AWX_UPGRADE_ARGS="--confirm --operator-chart-version 3.2.0"
+make deployment                # provision Ubuntu VM (libvirt target, default)
+make deployment os=ubuntu      # explicit selector syntax (implemented)
+make deployment os=debian12    # Debian 12 qemu/libvirt image profile
+make deployment os=debian13    # Debian 13 qemu/libvirt (implemented)
+make deployment os=debian      # alias of debian13
+make deployment os=gentoo      # Gentoo qemu/libvirt experimental (default init=openrc)
+make deployment os=gentoo init=systemd  # explicit experimental variant selection
+make deployment os=opensuse-leap
+make deployment os=almalinux9
+make deployment os=rockylinux9
+make deployment os=fedora-cloud
+make deployment target=proxmox os=ubuntu  # proxmox target (requires PROXMOX_* vars)
+make deployment-list-os       # list supported OS selectors (one per line)
+make deployment-list-targets  # list supported targets (one per line; current phase: qemu)
+make deployment-wait           # wait for SSH + cloud-init
+make deployment-output         # inspect outputs (IP, SSH user, metadata)
+make deployment-ssh            # connect to the VM
+make deployment-ssh target=qemu name=compose-traeffik-ubuntu
+make deployment-list target=qemu
+make deployment-list target=proxmox
+make deployment-ssh target=proxmox name=compose-traeffik-ubuntu-pve
+make deployment-bootstrap      # install Docker + Compose plugin
+make deployment-bootstrap-check
+make deployment-ready          # end-to-end provisioning + Docker-ready host
+make deployment-validate       # terraform fmt/validate for libvirt+proxmox targets
 ```
 
-### CTFd module
+Notes:
+- `init=` is only valid with `os=gentoo`.
+- `target=qemu` is a UX alias for `target=libvirt`.
+- `target=proxmox` currently supports `os=ubuntu` in the provisioning wrapper.
+- `deployment-list-targets` is intentionally scoped to the currently supported target list and returns `qemu` in this phase.
+- `deployment-access.sh` for `target=proxmox` requires API credentials (`PROXMOX_API_URL`, `PROXMOX_API_TOKEN`) and resolves IP via guest-agent when possible.
+- Docker bootstrap/check scripts currently support `ubuntu`, `debian12` and `debian13`.
+- Gentoo provisioning is experimental; Docker bootstrap/check for Gentoo are not implemented in these scripts.
 
-```bash
-make ctfd-bootstrap
-make ctfd-up
-make ctfd-status
-make ctfd-logs
-```
+#### QEMU image profile defaults
 
-### Observability module
+| OS selector | Pinned image default | Integrity policy | Default SSH user | Bootstrap parity |
+| --- | --- | --- | --- | --- |
+| `debian12` | Debian cloud `bookworm/20260129-2372` qcow2 | SHA512 (remote sums + local file verify) | `debian` | supported |
+| `debian13` / `debian` | Debian cloud `trixie/20260220-2394` qcow2 | SHA512 (remote sums + local file verify) | `debian` | supported |
+| `opensuse-leap` | openSUSE Leap 15.6 cloud qcow2 | SHA256 (`.sha256` + local file verify) | `opensuse` | not implemented |
+| `almalinux9` | AlmaLinux 9.7 GenericCloud qcow2 | SHA256 (`CHECKSUM` + local file verify) | `cloud-user` | not implemented |
+| `rockylinux9` | Rocky Linux 9.7 GenericCloud qcow2 | SHA256 (`CHECKSUM` + local file verify) | `rocky` | not implemented |
+| `fedora-cloud` | Fedora Cloud 41-1.4 Generic qcow2 | SHA256 (`CHECKSUM` + local file verify) | `fedora` | not implemented |
+| `gentoo` (`openrc`/`systemd`) | Experimental project-built qcow2 image | Manifest-gated variant + builder checks | `gentoo` | not implemented |
 
-```bash
-make observability-bootstrap
-make observability-up
-make observability-status
-make observability-logs
-make observability-k6
-```
-
-### Plane module
-
-```bash
-make plane-bootstrap
-make plane-up
-make plane-status
-make plane-logs
-```
-
-### Docling module
-
-```bash
-make docling-bootstrap
-make docling-up
-make docling-status
-make docling-logs
-```
-
-### FreeIPA module
-
-```bash
-make freeipa-bootstrap
-make freeipa-up
-make freeipa-status
-make freeipa-logs
-```
+The full override surface is documented in `.env.example` under `Deployment VM Provisioning`.
 
 ### Certificates
 
@@ -174,9 +153,6 @@ COMPOSE_PROFILES=stepca make up
 - Safe to rerun: `up.sh`, `down.sh`, `logs.sh`, `healthcheck.sh`, `hosts-subdomains.sh` (apply/remove).
 - Modifies system state: `stepca-trust-install.sh`, `stepca-trust-uninstall.sh`, `hosts-subdomains.sh` (when applied to `/etc/hosts`).
 - Scripts that write files: `certs-selfsigned-generate.sh`, `traefik-render-dynamic.sh`, `certbot-issue.sh`.
-- AWX scripts write local artifacts under `.local/` (gitignored) and repo-rendered manifests under `services/awx/k8s/rendered/`.
-- AWX day-2 scripts (`awx-restore`, `awx-upgrade`) require explicit `--confirm` to reduce accidental destructive operations.
-- `awx-backup` stores an operator-managed backup in-cluster (backup PVC) and writes a local metadata bundle with backup identifiers for restore workflows.
 
 ## Troubleshooting
 
@@ -185,7 +161,6 @@ COMPOSE_PROFILES=stepca make up
 - Permission denied (certs or trust store): re-run with `sudo` where required.
 - Profile not enabled: use `COMPOSE_PROFILES=<profile> make up` when needed.
 - BIND exposed on non-loopback: set `BIND_ALLOW_NONLOCAL_BIND=true` explicitly if this is intentional.
-- AWX restore/upgrade blocked: pass explicit `AWX_RESTORE_ARGS='... --confirm'` or `AWX_UPGRADE_ARGS='--confirm ...'` after reviewing the runbook.
 
 Useful commands:
 ```bash

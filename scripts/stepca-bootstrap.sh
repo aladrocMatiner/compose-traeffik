@@ -23,9 +23,9 @@ check_env_var "DEV_DOMAIN"
 check_env_var "STEP_CA_ADMIN_PROVISIONER_PASSWORD"
 check_env_var "STEP_CA_PASSWORD"
 
-CA_NAME="${CA_NAME:-${STEP_CA_NAME:-}}"
+CA_NAME="${CA_NAME:-${STEP_CA_NAME:-${CA_SUBJECT_CN:-}}}"
 if [ -z "${CA_NAME}" ]; then
-    log_error "CA_NAME or STEP_CA_NAME must be set in .env."
+    log_error "CA_NAME, STEP_CA_NAME, or CA_SUBJECT_CN must be set in .env."
 fi
 
 CA_DNS_RAW="${CA_DNS:-}"
@@ -70,7 +70,7 @@ log_info "Ensuring step-ca service is running..."
 # Use eval to allow COMPOSE_PROFILES_ARG to be empty if not set
 if ! ./scripts/compose.sh --profile stepca ps -q "$CA_CONTAINER_NAME" | grep -q .; then
     log_info "Starting $CA_CONTAINER_NAME with 'stepca' profile..."
-    make stepca-up # Use make target to handle profiles
+    ./scripts/compose.sh --profile stepca up -d "$CA_CONTAINER_NAME"
     sleep 5 # Give it a moment to start
 fi
 

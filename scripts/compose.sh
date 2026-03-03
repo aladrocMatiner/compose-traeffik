@@ -8,31 +8,13 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 REPO_ROOT=$(cd "${SCRIPT_DIR}/.." && pwd)
 ENV_FILE="${REPO_ROOT}/.env"
 
-COMPOSE_FILES=(
-  -f "${REPO_ROOT}/compose/base.yml"
-  -f "${REPO_ROOT}/services/traefik/compose.yml"
-  -f "${REPO_ROOT}/services/whoami/compose.yml"
-  -f "${REPO_ROOT}/services/keycloak/compose.yml"
-  -f "${REPO_ROOT}/services/gitlab/compose.yml"
-  -f "${REPO_ROOT}/services/n8n/compose.yml"
-  -f "${REPO_ROOT}/services/rocketchat/compose.yml"
-  -f "${REPO_ROOT}/services/semaphoreui/compose.yml"
-  -f "${REPO_ROOT}/services/wg-easy/compose.yml"
-  -f "${REPO_ROOT}/services/wikijs/compose.yml"
-  -f "${REPO_ROOT}/services/litellm/compose.yml"
-  -f "${REPO_ROOT}/services/dns-bind/compose.yml"
-  -f "${REPO_ROOT}/services/certbot/compose.yml"
-  -f "${REPO_ROOT}/services/step-ca/compose.yml"
-  -f "${REPO_ROOT}/services/ctfd/compose.yml"
-  -f "${REPO_ROOT}/services/observability/compose.yml"
-  -f "${REPO_ROOT}/services/plane/compose.yml"
-  -f "${REPO_ROOT}/services/docling/compose.yml"
-  -f "${REPO_ROOT}/services/freeipa/compose.yml"
-  -f "${REPO_ROOT}/services/openwebui/compose.yml"
-)
-
 run_preflight() {
-  (cd "${REPO_ROOT}" && "${SCRIPT_DIR}/validate-env.sh")
+  (
+    cd "${REPO_ROOT}"
+    "${SCRIPT_DIR}/validate-env.sh"
+    "${SCRIPT_DIR}/traefik-render-static.sh"
+    "${SCRIPT_DIR}/traefik-render-dynamic.sh"
+  )
 }
 
 run_preflight
@@ -48,6 +30,35 @@ fi
 
 if [ -z "${ENV_FILE:-}" ]; then
   ENV_FILE="${REPO_ROOT}/.env"
+fi
+
+COMPOSE_FILES=(
+  -f "${REPO_ROOT}/compose/base.yml"
+)
+
+append_compose_file_if_exists() {
+  local compose_file="$1"
+  if [ -f "${compose_file}" ]; then
+    COMPOSE_FILES+=(-f "${compose_file}")
+  fi
+}
+
+append_compose_file_if_exists "${REPO_ROOT}/services/traefik/compose.yml"
+append_compose_file_if_exists "${REPO_ROOT}/services/whoami/compose.yml"
+append_compose_file_if_exists "${REPO_ROOT}/services/dns-bind/compose.yml"
+append_compose_file_if_exists "${REPO_ROOT}/services/certbot/compose.yml"
+append_compose_file_if_exists "${REPO_ROOT}/services/keycloak/compose.yml"
+append_compose_file_if_exists "${REPO_ROOT}/services/observability/compose.yml"
+append_compose_file_if_exists "${REPO_ROOT}/services/wikijs/compose.yml"
+append_compose_file_if_exists "${REPO_ROOT}/services/semaphoreui/compose.yml"
+append_compose_file_if_exists "${REPO_ROOT}/services/rocketchat/compose.yml"
+append_compose_file_if_exists "${REPO_ROOT}/services/gitlab/compose.yml"
+append_compose_file_if_exists "${REPO_ROOT}/services/litellm/compose.yml"
+append_compose_file_if_exists "${REPO_ROOT}/services/openwebui/compose.yml"
+
+COMPOSE_INCLUDE_STEPCA="${COMPOSE_INCLUDE_STEPCA:-true}"
+if [ "${COMPOSE_INCLUDE_STEPCA}" = "true" ]; then
+  append_compose_file_if_exists "${REPO_ROOT}/services/step-ca/compose.yml"
 fi
 
 COMPOSE_PROJECT_NAME_VALUE="${COMPOSE_PROJECT_NAME:-}"

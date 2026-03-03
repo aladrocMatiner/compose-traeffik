@@ -72,35 +72,19 @@ Detaljerade TLS-floden:
 ## Endpoints
 
 - **Whoami**: `https://whoami.${DEV_DOMAIN}` (standardstack)
-- **n8n**: `https://n8n.${DEV_DOMAIN}` (profil `n8n`; valfri)
 - **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth; aktiverad som standard)
 - **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (profil `stepca`; aktiverad som standard)
-- **CTFd**: `https://ctfd.${DEV_DOMAIN}` (profil `ctfd`; valfri)
-- **Grafana**: `https://grafana.${DEV_DOMAIN}` (profil `observability`; valfri)
-- **Plane**: `https://plane.${DEV_DOMAIN}` (profil `plane`; valfri)
-- **Docling**: `https://docling.${DEV_DOMAIN}` (profil `docling`; valfri)
-- **FreeIPA**: `https://freeipa.${DEV_DOMAIN}` (profil `freeipa`; valfri)
-- **OpenWebUI**: `https://openwebui.${DEV_DOMAIN}` (profil `webui`; valfri)
-- **AWX**: `https://awx.${DEV_DOMAIN}` (hybridmodul `k3d` + AWX Operator; kraver `make awx-*`)
-- **Prometheus/Loki/Tempo/Pyroscope**: interna som standard (profil `observability`; ingen publik endpoint)
+- **OpenWebUI**: `https://openwebui.${DEV_DOMAIN}` (profil `webui`)
 
 <a id="services"></a>
 ## Tjanster
 
 - [Traefik](services/traefik/README.sv.md) - reverse proxy och routing-karnan.
 - [Whoami](services/whoami/README.sv.md) - demo-service for routingtester.
-- [n8n](services/n8n/README.sv.md) - valfri profil `n8n` (workflow-automation).
 - [DNS (BIND)](services/dns-bind/README.sv.md) - valfri profil `bind`.
-- [Keycloak](services/keycloak/README.sv.md) - valfri profil `keycloak` (Traefik + PostgreSQL).
+- [OpenWebUI](services/openwebui/README.sv.md) - valfri profil `webui`.
 - [Certbot](services/certbot/README.sv.md) - valfri profil `le`.
 - [Step-CA](services/step-ca/README.sv.md) - valfri profil `stepca`.
-- [CTFd](services/ctfd/README.sv.md) - valfri profil `ctfd` (CTF-plattform + DB + Redis).
-- [Observability](services/observability/README.sv.md) - valfri profil `observability` (Grafana/Prometheus/Loki/Tempo/Pyroscope/Alloy + k6 synthetic checks).
-- [Plane](services/plane/README.sv.md) - valfri profil `plane` (projektledning + PostgreSQL/Redis/RabbitMQ/MinIO).
-- [Docling](services/docling/README.sv.md) - valfri profil `docling` (dokumentkonverterings-API + intern Redis for async/RQ-lage).
-- [FreeIPA](services/freeipa/README.sv.md) - valfri profil `freeipa` (identitetshanteringstjanst bakom Traefik).
-- [OpenWebUI](services/openwebui/README.sv.md) - valfri profil `webui` (webb/chat UI bakom Traefik).
-- [AWX](services/awx/README.sv.md) - hybridmodul (`k3d` + AWX Operator) bakom Traefik.
 
 <a id="docs-map"></a>
 ## Dokumentkarta
@@ -122,21 +106,7 @@ Vanliga kommandon:
 - `make certs-le-issue`, `make certs-le-renew` (profil `le`)
 - `make stepca-up`, `make stepca-bootstrap`, `make stepca-trust-install`
 - `make bind-up`, `make bind-status`, `make bind-restart`, `make bind-provision`
-- `make ctfd-bootstrap`, `make ctfd-up`, `make ctfd-status`
-- `make observability-bootstrap`, `make observability-up`, `make observability-status`, `make observability-k6`
-- `make plane-bootstrap`, `make plane-up`, `make plane-status`
-- `make docling-bootstrap`, `make docling-up`, `make docling-status`
-- `make freeipa-bootstrap`, `make freeipa-up`, `make freeipa-status`
-- `make webui-up`, `make webui-status`
-- `make awx-bootstrap`, `make awx-k3d-up`, `make awx-up`, `make awx-status`, `make awx-admin-password`
-- `make awx-debug`, `make awx-backup`
-- `make awx-restore AWX_RESTORE_ARGS="--backup-name <name> --confirm"` (kan vara destruktivt; krav pa explicit bekräftelse)
-- `make awx-upgrade AWX_UPGRADE_ARGS="--confirm ..."` (stateful underhall; krav pa explicit bekräftelse)
 - `make hosts-generate`, `make hosts-apply`, `make hosts-status`
-
-AWX-forutsattningar (hybridmodul):
-- `docker`, `k3d`, `kubectl`, `helm`
-- Traefik maste vara igang (`make up` eller minst `traefik`) for `https://awx.${DEV_DOMAIN}`
 
 Auth-filer:
 - `services/traefik/auth/traefik-dashboard.htpasswd.example`
@@ -149,12 +119,6 @@ DNS-sakerhetsdefaults:
 - `BIND_BIND_ADDRESS` bor vara loopback som standard.
 - For avsiktlig exponering utanfor loopback, satt `BIND_ALLOW_NONLOCAL_BIND=true`.
 
-Hosts-not:
-- Om du hanterar `ENDPOINTS` manuellt, lagg till `ctfd`, `grafana`, `plane`, `docling`, `freeipa` och/eller `openwebui` innan `make hosts-apply`.
-- Lagg till `awx` ocksa om du vill ha lokal routing for AWX via Traefik.
-- Lagg till `keycloak` ocksa om du planerar Plane med lokal Keycloak-routing.
-- Eller lamna `ENDPOINTS` tomt for auto-discovery via `Host()`-regler.
-
 <a id="testing"></a>
 ## Tester
 
@@ -164,7 +128,6 @@ make test
 ```
 Se `tests/README.md` for detaljer.
 Operativa script: se `scripts/README.md`.
-Statisk GitLab smoke-suite: `make test-gitlab`.
 
 <a id="troubleshooting"></a>
 ## Felsokning
@@ -172,8 +135,6 @@ Statisk GitLab smoke-suite: `make test-gitlab`.
 - Kontrollera att `DEV_DOMAIN` och `BASE_DOMAIN` matchar din hosts/DNS.
 - Om portar 80/443 ar upptagna, stoppa konflikter och forsok `make up` igen.
 - Anvand `make logs` for att se Traefik och service-loggar.
-- For WireGuard UI: kontrollera `WG_UI_HOSTNAME`, `WG_SERVER_ENDPOINT` och hosts/DNS-mappning (`ENDPOINTS` kan behova `wg`).
-- Om `make wg-up` stoppas av preflight, granska `WG_BIND_ADDRESS`, `WG_ALLOW_NONLOCAL_BIND`, `WG_SERVER_PORT` och `WG_INSECURE`.
 
 <a id="add-service-doc"></a>
 ## Lagg till en service-doc

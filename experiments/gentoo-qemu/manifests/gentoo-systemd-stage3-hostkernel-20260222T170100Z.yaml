@@ -1,0 +1,37 @@
+id: gentoo-systemd-stage3-hostkernel-20260222T170100Z
+kind: experimental-build-input
+target: qemu-libvirt
+arch: amd64
+os: gentoo
+init_system: systemd
+cloud_init_support: image-built
+source:
+  type: stage3-tarball
+  url: https://distfiles.gentoo.org/releases/amd64/autobuilds/20260222T170100Z/stage3-amd64-systemd-20260222T170100Z.tar.xz
+  sha256: 41f585bba48bd1c979868d035b78c06d690f1819a249e059ee82a4172d3fb813
+  checksum_url: https://distfiles.gentoo.org/releases/amd64/autobuilds/20260222T170100Z/stage3-amd64-systemd-20260222T170100Z.tar.xz.sha256
+build_strategy:
+  rootfs: Gentoo stage3 systemd
+  packages:
+    install_mode: binpkg-only
+    required:
+      - net-misc/openssh
+      - app-emulation/cloud-init
+      - app-admin/sudo
+  boot:
+    kernel_source: host-kernel-copy
+    bootloader: host-grub-install (i386-pc / BIOS)
+    notes:
+      - Uses the builder host kernel, initrd and /lib/modules as a pragmatic v1 bootstrap.
+      - Not a distro-native Gentoo kernel image yet.
+constraints:
+  - Built image portability is coupled to the builder host kernel artifacts.
+  - Intended for local qemu/libvirt qualification and ansible-ready bootstrap only.
+status: candidate
+support_level: experimental
+qualified_qemu_provisioning: true
+qualified_ansible_ready: false
+qualified_docker_bootstrap: false
+qualification_notes:
+  - systemd variant is available as an explicit experimental override (`init=systemd`).
+  - OpenRC remains the default Gentoo baseline.

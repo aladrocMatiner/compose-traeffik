@@ -1,0 +1,7 @@
+---
+- name: Deploy a catalog project on target host
+  hosts: all
+  gather_facts: true
+  become: true
+  roles:
+    - role: project_deploy

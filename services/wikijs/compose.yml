@@ -1,62 +1,93 @@
 services:
+  wikijs-db:
+    image: ${WIKIJS_DB_IMAGE:-postgres:16-alpine}
+    container_name: wikijs-db
+    restart: unless-stopped
+    profiles:
+      - wikijs
+    environment:
+      POSTGRES_DB: ${WIKIJS_DB_NAME:-wikijs}
+      POSTGRES_USER: ${WIKIJS_DB_USER:-wikijs}
+      POSTGRES_PASSWORD: ${WIKIJS_DB_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${WIKIJS_DB_USER:-wikijs} -d ${WIKIJS_DB_NAME:-wikijs}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    volumes:
+      - wikijs-db-data:/var/lib/postgresql/data
+    networks:
+      - wikijs-internal
+
   wikijs:
     image: ${WIKIJS_IMAGE:-ghcr.io/requarks/wiki:2}
     container_name: wikijs
+    restart: unless-stopped
     profiles:
       - wikijs
-    restart: unless-stopped
     depends_on:
       wikijs-db:
         condition: service_healthy
-    env_file:
-      - ./services/wikijs/config/wikijs.env.example
-      - ./services/wikijs/rendered/wikijs.env
     environment:
-      TZ: ${TZ:-UTC}
+      DB_TYPE: postgres
+      DB_HOST: wikijs-db
+      DB_PORT: 5432
+      DB_USER: ${WIKIJS_DB_USER:-wikijs}
+      DB_PASS: ${WIKIJS_DB_PASSWORD}
+      DB_NAME: ${WIKIJS_DB_NAME:-wikijs}
+      NODE_EXTRA_CA_CERTS: /etc/ssl/certs/stepca-root-ca.crt
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-proxy"
+      - "traefik.http.routers.wikijs-web.rule=Host(`${WIKIJS_HOSTNAME:-wikijs}.${DEV_DOMAIN}`)"
+      - "traefik.http.routers.wikijs-web.entrypoints=web"
+      - "traefik.http.routers.wikijs-web.middlewares=${HTTP_TO_HTTPS_MIDDLEWARE:-redirect-to-https@file}"
+      - "traefik.http.routers.wikijs-websecure.rule=Host(`${WIKIJS_HOSTNAME:-wikijs}.${DEV_DOMAIN}`)"
+      - "traefik.http.routers.wikijs-websecure.entrypoints=websecure"
+      - "traefik.http.routers.wikijs-websecure.tls=true"
+      - "traefik.http.routers.wikijs-websecure.tls.certresolver=${TLS_CERT_RESOLVER}"
+      - "traefik.http.routers.wikijs-websecure.middlewares=security-headers@file"
+      - "traefik.http.routers.wikijs-websecure.service=wikijs-service"
+      - "traefik.http.services.wikijs-service.loadbalancer.server.port=3000"
+    volumes:
+      - wikijs-data:/wiki/data
+      - ./services/step-ca/certs/root_ca.crt:/etc/ssl/certs/stepca-root-ca.crt:ro
     networks:
       - proxy
       - wikijs-internal
-    volumes:
-      - wikijs-data:/wiki/data
-      - ./services/wikijs/rendered/stepca-root-ca.crt:/wiki/certs/stepca-root-ca.crt:ro
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.wikijs-web.rule=Host(`${WIKIJS_HOSTNAME:-wiki}.${DEV_DOMAIN}`)"
-      - "traefik.http.routers.wikijs-web.entrypoints=web"
-      - "traefik.http.routers.wikijs-web.middlewares=${HTTP_TO_HTTPS_MIDDLEWARE:-redirect-to-https@file}"
-      - "traefik.http.routers.wikijs-websecure.rule=Host(`${WIKIJS_HOSTNAME:-wiki}.${DEV_DOMAIN}`)"
-      - "traefik.http.routers.wikijs-websecure.entrypoints=websecure"
-      - "traefik.http.routers.wikijs-websecure.service=wikijs-service"
-      - "traefik.http.routers.wikijs-websecure.tls=true"
-      - "traefik.http.routers.wikijs-websecure.tls.certresolver=${TLS_CERT_RESOLVER:-}"
-      - "traefik.http.routers.wikijs-websecure.middlewares=security-headers@file"
-      # Traefik handles WebSocket upgrades automatically for HTTP services.
-      - "traefik.http.services.wikijs-service.loadbalancer.server.port=${WIKIJS_PORT:-3000}"
 
-  wikijs-db:
-    image: ${WIKIJS_POSTGRES_IMAGE:-postgres:15-alpine}
-    container_name: wikijs-db
-    profiles:
-      - wikijs
+  wikijs-oauth2-proxy:
+    image: ${WIKIJS_OAUTH2_PROXY_IMAGE:-quay.io/oauth2-proxy/oauth2-proxy:v7.8.1}
+    container_name: wikijs-oauth2-proxy
     restart: unless-stopped
+    profiles:
+      - wikijs-oauth2-proxy
+    depends_on:
+      - wikijs
     environment:
-      POSTGRES_DB: ${WIKIJS_DB_NAME:-wiki}
-      POSTGRES_USER: ${WIKIJS_DB_USER:-wikijs}
-      POSTGRES_PASSWORD: ${WIKIJS_DB_PASSWORD:-changeme}
-    command:
-      - postgres
-      - -c
-      - max_connections=${WIKIJS_DB_MAX_CONNECTIONS:-200}
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 20s
-    networks:
-      - wikijs-internal
+      OAUTH2_PROXY_PROVIDER: oidc
+      OAUTH2_PROXY_OIDC_ISSUER_URL: ${WIKIJS_OIDC_ISSUER_URL}
+      OAUTH2_PROXY_CLIENT_ID: ${WIKIJS_OIDC_CLIENT_ID}
+      OAUTH2_PROXY_CLIENT_SECRET: ${WIKIJS_OIDC_CLIENT_SECRET}
+      OAUTH2_PROXY_COOKIE_SECRET: ${WIKIJS_OAUTH2_COOKIE_SECRET}
+      OAUTH2_PROXY_UPSTREAMS: http://wikijs:3000/
+      OAUTH2_PROXY_HTTP_ADDRESS: 0.0.0.0:4180
+      OAUTH2_PROXY_REDIRECT_URL: https://${WIKIJS_HOSTNAME:-wikijs}.${DEV_DOMAIN}/oauth2/callback
+      OAUTH2_PROXY_EMAIL_DOMAINS: "*"
+      OAUTH2_PROXY_WHITELIST_DOMAINS: ".${DEV_DOMAIN}"
+      OAUTH2_PROXY_INSECURE_OIDC_ALLOW_UNVERIFIED_EMAIL: "true"
+      OAUTH2_PROXY_REVERSE_PROXY: "true"
+      OAUTH2_PROXY_SET_XAUTHREQUEST: "true"
+      OAUTH2_PROXY_PASS_AUTHORIZATION_HEADER: "true"
+      OAUTH2_PROXY_SKIP_PROVIDER_BUTTON: "true"
+      OAUTH2_PROXY_PROVIDER_CA_FILE: /etc/ssl/certs/stepca-root-ca.crt
+    labels:
+      - "traefik.enable=false"
     volumes:
-      - wikijs-db-data:/var/lib/postgresql/data
+      - ./services/step-ca/certs/root_ca.crt:/etc/ssl/certs/stepca-root-ca.crt:ro
+    networks:
+      - proxy
+      - wikijs-internal
 
 networks:
   wikijs-internal:
@@ -64,7 +95,7 @@ networks:
     internal: true
 
 volumes:
-  wikijs-data:
-    name: wikijs-data
   wikijs-db-data:
     name: wikijs-db-data
+  wikijs-data:
+    name: wikijs-data

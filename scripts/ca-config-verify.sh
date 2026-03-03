@@ -31,9 +31,11 @@ CA_SUBJECT_ST="${CA_SUBJECT_ST:-Local}"
 CA_SUBJECT_L="${CA_SUBJECT_L:-Local}"
 CA_SUBJECT_O="${CA_SUBJECT_O:-$CA_NAME}"
 CA_SUBJECT_CN="${CA_SUBJECT_CN:-LocalDevRootCA}"
+CA_SUBJECT_OU="${CA_SUBJECT_OU:-}"
 
 LEAF_SUBJECT_O="${LEAF_SUBJECT_O:-Local Dev}"
 LEAF_SUBJECT_CN="${LEAF_SUBJECT_CN:-*.${DEV_DOMAIN}}"
+LEAF_SUBJECT_OU="${LEAF_SUBJECT_OU:-}"
 
 LEAF_DNS="${LEAF_DNS:-whoami.${DEV_DOMAIN},traefik.${DEV_DOMAIN},step-ca.${DEV_DOMAIN},localhost}"
 LEAF_IPS="${LEAF_IPS:-127.0.0.1}"
@@ -67,8 +69,18 @@ fi
 
 log_success "Effective CA configuration:"
 log_info "CA_NAME=${CA_NAME}"
-log_info "CA_SUBJECT=/C=${CA_SUBJECT_C}/ST=${CA_SUBJECT_ST}/L=${CA_SUBJECT_L}/O=${CA_SUBJECT_O}/CN=${CA_SUBJECT_CN}"
+ca_subject="/C=${CA_SUBJECT_C}/ST=${CA_SUBJECT_ST}/L=${CA_SUBJECT_L}/O=${CA_SUBJECT_O}"
+if [ -n "${CA_SUBJECT_OU}" ]; then
+    ca_subject="${ca_subject}/OU=${CA_SUBJECT_OU}"
+fi
+ca_subject="${ca_subject}/CN=${CA_SUBJECT_CN}"
+log_info "CA_SUBJECT=${ca_subject}"
 log_info "CA_DNS_LIST=${CA_DNS_LIST}"
-log_info "LEAF_SUBJECT=/C=${CA_SUBJECT_C}/ST=${CA_SUBJECT_ST}/L=${CA_SUBJECT_L}/O=${LEAF_SUBJECT_O}/CN=${LEAF_SUBJECT_CN}"
+leaf_subject="/C=${CA_SUBJECT_C}/ST=${CA_SUBJECT_ST}/L=${CA_SUBJECT_L}/O=${LEAF_SUBJECT_O}"
+if [ -n "${LEAF_SUBJECT_OU}" ]; then
+    leaf_subject="${leaf_subject}/OU=${LEAF_SUBJECT_OU}"
+fi
+leaf_subject="${leaf_subject}/CN=${LEAF_SUBJECT_CN}"
+log_info "LEAF_SUBJECT=${leaf_subject}"
 log_info "LEAF_DNS=${LEAF_DNS}"
 log_info "LEAF_IPS=${LEAF_IPS}"

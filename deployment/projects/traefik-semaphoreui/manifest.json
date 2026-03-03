@@ -1,0 +1,29 @@
+{
+  "id": "traefik-semaphoreui",
+  "description": "Deploy Semaphore UI behind Traefik with StepCA ACME defaults and Keycloak-backed OIDC sign-in contract.",
+  "repo_url": "https://github.com/aladrocMatiner/compose-traeffik.git",
+  "repo_ref": "62e127a4994035d6d73fd602da7dfa96c9dbde39",
+  "compose_profile": "semaphoreui",
+  "services": [
+    "traefik",
+    "whoami",
+    "semaphoreui-db",
+    "semaphoreui"
+  ],
+  "deploy_playbook": "deployment/ansible/playbooks/project_deploy.yml",
+  "required_env": [
+    "BASE_DOMAIN",
+    "DEV_DOMAIN"
+  ],
+  "tls_mode": "stepca-acme",
+  "depends_on_projects": [
+    "traefik-stepca",
+    "traefik-keycloak"
+  ],
+  "oidc": {
+    "enabled": true,
+    "realm": "local.test",
+    "client_id": "semaphoreui"
+  },
+  "public_host": "semaphoreui.local.test"
+}

@@ -72,35 +72,19 @@ For detailed TLS workflows, see:
 ## Endpoints
 
 - **Whoami**: `https://whoami.${DEV_DOMAIN}` (default stack; uses Traefik HTTPS)
-- **n8n**: `https://n8n.${DEV_DOMAIN}` (profile `n8n`; optional)
 - **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth; enabled by default)
 - **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (profile `stepca`; enabled by default)
-- **CTFd**: `https://ctfd.${DEV_DOMAIN}` (profile `ctfd`; optional)
-- **Grafana**: `https://grafana.${DEV_DOMAIN}` (profile `observability`; optional)
-- **Plane**: `https://plane.${DEV_DOMAIN}` (profile `plane`; optional)
-- **Docling**: `https://docling.${DEV_DOMAIN}` (profile `docling`; optional)
-- **FreeIPA**: `https://freeipa.${DEV_DOMAIN}` (profile `freeipa`; optional)
-- **OpenWebUI**: `https://openwebui.${DEV_DOMAIN}` (profile `webui`; optional)
-- **AWX**: `https://awx.${DEV_DOMAIN}` (hybrid `k3d` + AWX Operator module; requires `make awx-*`)
-- **Prometheus/Loki/Tempo/Pyroscope**: internal-only by default (profile `observability`; no public endpoint)
+- **OpenWebUI**: `https://openwebui.${DEV_DOMAIN}` (profile `webui`)
 
 <a id="services"></a>
 ## Services
 
 - [Traefik](services/traefik/README.md) - reverse proxy and routing core.
 - [Whoami](services/whoami/README.md) - demo service used for routing tests.
-- [n8n](services/n8n/README.md) - optional profile `n8n` (workflow automation).
 - [DNS (BIND)](services/dns-bind/README.md) - optional profile `bind`.
-- [Keycloak](services/keycloak/README.md) - optional profile `keycloak` (Traefik + PostgreSQL, reverse-proxy aware).
+- [OpenWebUI](services/openwebui/README.md) - optional profile `webui`.
 - [Certbot](services/certbot/README.md) - optional profile `le`.
 - [Step-CA](services/step-ca/README.md) - optional profile `stepca`.
-- [CTFd](services/ctfd/README.md) - optional profile `ctfd` (CTF platform + DB + Redis).
-- [Observability](services/observability/README.md) - optional profile `observability` (Grafana/Prometheus/Loki/Tempo/Pyroscope/Alloy + k6 synthetic checks).
-- [Plane](services/plane/README.md) - optional profile `plane` (project management app + PostgreSQL/Redis/RabbitMQ/MinIO).
-- [Docling](services/docling/README.md) - optional profile `docling` (document conversion API + internal Redis for async/RQ mode).
-- [FreeIPA](services/freeipa/README.md) - optional profile `freeipa` (identity management service behind Traefik).
-- [OpenWebUI](services/openwebui/README.md) - optional profile `webui` (chat/web UI behind Traefik).
-- [AWX](services/awx/README.md) - hybrid module (`k3d` + AWX Operator) behind Traefik.
 
 <a id="docs-map"></a>
 ## Docs map
@@ -122,21 +106,7 @@ Common commands:
 - `make certs-le-issue`, `make certs-le-renew` (profile `le`)
 - `make stepca-up`, `make stepca-bootstrap`, `make stepca-trust-install`
 - `make bind-up`, `make bind-status`, `make bind-restart`, `make bind-provision`
-- `make ctfd-bootstrap`, `make ctfd-up`, `make ctfd-status`
-- `make observability-bootstrap`, `make observability-up`, `make observability-status`, `make observability-k6`
-- `make plane-bootstrap`, `make plane-up`, `make plane-status`
-- `make docling-bootstrap`, `make docling-up`, `make docling-status`
-- `make freeipa-bootstrap`, `make freeipa-up`, `make freeipa-status`
-- `make webui-up`, `make webui-status`
-- `make awx-bootstrap`, `make awx-k3d-up`, `make awx-up`, `make awx-status`, `make awx-admin-password`
-- `make awx-debug`, `make awx-backup`
-- `make awx-restore AWX_RESTORE_ARGS="--backup-name <name> --confirm"` (destructive-capable, explicit confirmation required)
-- `make awx-upgrade AWX_UPGRADE_ARGS="--confirm ..."` (stateful maintenance, explicit confirmation required)
 - `make hosts-generate`, `make hosts-apply`, `make hosts-status`
-
-AWX prerequisites (hybrid module):
-- `docker`, `k3d`, `kubectl`, `helm`
-- Traefik running (`make up` or at least `traefik`) for `https://awx.${DEV_DOMAIN}` access
 
 Auth files:
 - `services/traefik/auth/traefik-dashboard.htpasswd.example` (Traefik dashboard BasicAuth)
@@ -148,21 +118,10 @@ Auth files:
 Compose project pinning:
 - The compose wrapper pins `--project-directory` and `--project-name` to avoid cross‑CWD conflicts. Override with `COMPOSE_PROJECT_NAME` in `.env` if needed.
 
-WireGuard bootstrap and exposure defaults:
-- Run `make wg-bootstrap` before the first `make wg-up` to populate `WG_INIT_*` admin bootstrap variables in `.env`.
-- `WG_BIND_ADDRESS` defaults to loopback. For intentional remote WireGuard exposure, set a non-loopback bind and `WG_ALLOW_NONLOCAL_BIND=true`.
-- If you use `make hosts-*` for local UI resolution, add `wg` to `ENDPOINTS`.
-
 DNS security defaults:
 - BIND runs as authoritative local DNS with recursion disabled and AXFR blocked.
 - `BIND_BIND_ADDRESS` controls the bind interface.
 - Non-loopback exposure requires `BIND_ALLOW_NONLOCAL_BIND=true`.
-
-Hosts endpoint mapping note:
-- If you manage `ENDPOINTS` manually, add `ctfd`, `grafana`, `plane`, `docling`, `freeipa`, and/or `openwebui` before running `make hosts-apply`.
-- Add `awx` too if you want local routing for AWX through Traefik.
-- Add `keycloak` too if you plan to use Plane with local Keycloak routing.
-- Or leave `ENDPOINTS` empty to use host auto-discovery from service `Host()` rules.
 
 <a id="testing"></a>
 ## Testing
@@ -173,7 +132,6 @@ make test
 ```
 See `tests/README.md` for details.
 Operational scripts: see `scripts/README.md`.
-Run the GitLab static smoke suite only with `make test-gitlab`.
 
 <a id="troubleshooting"></a>
 ## Troubleshooting
@@ -181,8 +139,6 @@ Run the GitLab static smoke suite only with `make test-gitlab`.
 - Check that `DEV_DOMAIN` and `BASE_DOMAIN` match your hosts/DNS setup.
 - If ports 80/443 are in use, stop conflicting services and retry `make up`.
 - Use `make logs` to inspect Traefik and service logs.
-- For WireGuard UI, verify `WG_UI_HOSTNAME`, `WG_SERVER_ENDPOINT`, and hosts/DNS mapping (`ENDPOINTS` may need `wg`).
-- If `make wg-up` fails preflight, review `WG_BIND_ADDRESS`, `WG_ALLOW_NONLOCAL_BIND`, `WG_SERVER_PORT`, and `WG_INSECURE`.
 
 <a id="add-service-doc"></a>
 ## Add a service doc

@@ -6,7 +6,7 @@
 http:
   routers:
     traefik-dashboard:
-      rule: "Host(`traefik.__DEV_DOMAIN__`)"
+      rule: "__TRAEFIK_DASHBOARD_RULE__"
       entryPoints:
         - websecure
       middlewares:

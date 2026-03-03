@@ -48,14 +48,6 @@
       }
     },
     {
-      "slug": "n8n",
-      "title": {
-        "en": "n8n",
-        "sv": "n8n",
-        "es": "n8n"
-      }
-    },
-    {
       "slug": "certbot",
       "title": {
         "en": "Certbot",
@@ -80,59 +72,11 @@
       }
     },
     {
-      "slug": "ctfd",
-      "title": {
-        "en": "CTFd",
-        "sv": "CTFd",
-        "es": "CTFd"
-      }
-    },
-    {
-      "slug": "observability",
-      "title": {
-        "en": "Observability",
-        "sv": "Observability",
-        "es": "Observability"
-      }
-    },
-    {
-      "slug": "plane",
-      "title": {
-        "en": "Plane",
-        "sv": "Plane",
-        "es": "Plane"
-      }
-    },
-    {
-      "slug": "docling",
-      "title": {
-        "en": "Docling",
-        "sv": "Docling",
-        "es": "Docling"
-      }
-    },
-    {
-      "slug": "freeipa",
-      "title": {
-        "en": "FreeIPA",
-        "sv": "FreeIPA",
-        "es": "FreeIPA"
-      }
-    },
-    {
       "slug": "openwebui",
       "title": {
         "en": "OpenWebUI",
         "sv": "OpenWebUI",
         "es": "OpenWebUI"
-      }
-    },
-    {
-      "slug": "awx",
-      "title": {
-        "en": "AWX",
-        "sv": "AWX",
-        "es": "AWX"
       }
     }
   ]

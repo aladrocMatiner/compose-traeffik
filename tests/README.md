@@ -1,7 +1,6 @@
 # Smoke Tests for Traefik Edge Stack
 
 This directory contains smoke tests that verify Traefik readiness, routing, TLS, and auxiliary tooling (hosts scripts). The tests are designed to be fast and provide immediate feedback on the stack state.
-It also contains static smoke tests for optional service modules (for example BIND and n8n) that validate wiring, guardrails, and render scripts without requiring runtime startup.
 
 ## How to run
 
@@ -15,37 +14,13 @@ It also contains static smoke tests for optional service modules (for example BI
    ```bash
    make test
    ```
-This runs `scripts/healthcheck.sh` in service-aware mode:
-- always runs common utility smoke tests
-- runs service/module suites only when their containers are currently running (`traefik+whoami`, `bind`, `ctfd`, `observability`, `plane`, `docling`, `freeipa`, `openwebui`)
-
-   Use service-scoped targets when you want to run a specific suite regardless of what is running:
-   ```bash
-   make test-core
-   make test-dns
-   make test-ctfd
-make test-observability
-make test-plane
-make test-docling
-make test-freeipa
-make test-webui
-```
-
-   GitLab-only static smoke suite:
-   ```bash
-   make test-gitlab
-   ```
+   This runs `scripts/healthcheck.sh`, which executes all scripts in `tests/smoke/`.
 
 3. **Run a single test**
    ```bash
    ./tests/smoke/test_routing.sh
    ```
    Note: `make test` is recommended because it loads `.env` and checks prerequisites.
-
-4. **Run Semaphore UI static smoke tests only**
-   ```bash
-   make test-semaphoreui
-   ```
 
 ## Test inventory
 
@@ -63,43 +38,13 @@ make test-webui
 | `tests/smoke/test_bind_file_permissions.sh` | Validate config/zone file permissions are not world-writable. | `stat`, generated zone file or `bind-provision`. | Template, zone dir, and zone file reject world-writable modes. |
 | `tests/smoke/test_bind_provisioning_validation.sh` | Validate `bind-provision` rejects invalid domain and endpoint labels. | `mktemp`, `scripts/bind-provision.sh`. | Invalid `BASE_DOMAIN` or endpoint labels fail with non-zero exit. |
 | `tests/smoke/test_bind_security_runtime.sh` | Validate runtime DNS security behavior (no recursion, AXFR denied, hidden CHAOS metadata, expected listener). | `dig`, `docker`, `make`, loopback test address. | Security checks pass and BIND responds only on the expected test bind address. |
-| `tests/smoke/test_awx_make_targets.sh` | Validate AWX Make targets exist (`awx-*`, `test-awx`). | `Makefile`, `grep`. | Required AWX lifecycle/test targets are present. |
-| `tests/smoke/test_awx_guardrails.sh` | Validate AWX/k3d env guardrails (`validate-awx-env.sh`) for secrets and NodePort ranges. | `.env.example`, `scripts/validate-awx-env.sh`, `mktemp`. | Placeholder secrets and invalid ports fail; valid values pass. |
-| `tests/smoke/test_awx_k8s_templates.sh` | Validate AWX namespace/operator/AWX CR templates exist and include key placeholders. | `services/awx/k8s/*`, `grep`. | Templates exist and AWX CR includes NodePort placeholders. |
-| `tests/smoke/test_awx_traefik_routing_config.sh` | Validate AWX Traefik route template and host-gateway wiring for Traefik -> k3d NodePort. | `services/traefik/*`, `scripts/traefik-render-dynamic.sh`, `grep`. | AWX route placeholders and `host.docker.internal`/`host-gateway` wiring exist. |
-| `tests/smoke/test_awx_day2_make_targets.sh` | Validate AWX day-2 Make targets (`awx-debug`, `awx-backup`, `awx-restore`, `awx-upgrade`) and arg passthrough wiring. | `Makefile`, `grep`. | Day-2 targets exist and support `AWX_RESTORE_ARGS` / `AWX_UPGRADE_ARGS`. |
-| `tests/smoke/test_awx_day2_confirmation.sh` | Validate day-2 destructive scripts require explicit confirmation. | `scripts/awx-restore.sh`, `scripts/awx-upgrade.sh`, temp env file. | Scripts fail without `--confirm` and explain how to continue safely. |
-| `tests/smoke/test_ctfd_service_config.sh` | Validate CTFd compose wiring (app+db+redis), Traefik labels, no host ports, and startup coordination. | `services/ctfd/compose.yml`, `grep`, `awk`. | Compose fragment contains expected profile, internal network, labels, volumes, and healthchecks. |
-| `tests/smoke/test_ctfd_guardrails.sh` | Validate preflight guardrails for CTFd secrets and hostname label. | `scripts/validate-env.sh`. | Missing/invalid CTFd config fails; valid config passes. |
-| `tests/smoke/test_ctfd_make_targets.sh` | Validate CTFd Make target wiring and compose wrapper usage. | `Makefile`, `awk`, `grep`. | `ctfd-*` targets exist and lifecycle targets use `scripts/compose.sh --profile ctfd`. |
-| `tests/smoke/test_ctfd_bootstrap_env.sh` | Validate `ctfd-bootstrap` secret generation and idempotency. | `.env.example`, `scripts/ctfd-bootstrap.sh`, `mktemp`. | Missing CTFd secrets are generated and preserved on rerun. |
-| `tests/smoke/test_observability_service_config.sh` | Validate observability compose wiring, exposure rules, and Prometheus internal reachability to Traefik. | `services/observability/compose.yml`, `grep`, `awk`. | Grafana is routed, Prometheus/Loki are internal-only, Prometheus joins `proxy`, Alloy mounts are read-only. |
-| `tests/smoke/test_observability_advanced_service_config.sh` | Validate advanced observability services (`tempo`, `pyroscope`, `k6`) and internal-only exposure defaults. | `services/observability/compose.yml`, `grep`, `awk`. | Tempo/Pyroscope are present, internal-only, and retention/synthetic env wiring exists. |
-| `tests/smoke/test_observability_alloy_signal_pipelines.sh` | Validate Alloy multi-signal configuration for logs, traces, and profiles. | `services/observability/alloy/config.alloy`, `grep`. | Loki log pipeline and OTLP-to-Tempo/Pyroscope pipelines are present. |
-| `tests/smoke/test_observability_traefik_config.sh` | Validate Traefik metrics + JSON access logs configuration and sensitive-header redaction settings. | `services/traefik/traefik.yml`, `grep`. | Metrics and access log settings exist with header drops for auth/cookies. |
-| `tests/smoke/test_observability_guardrails.sh` | Validate observability preflight guardrails in generic observability-only mode. | `scripts/validate-env.sh`. | Missing Grafana password fails; observability-only mode passes without unrelated warnings. |
-| `tests/smoke/test_observability_make_targets.sh` | Validate observability Make target wiring and compose wrapper usage. | `Makefile`, `awk`, `grep`. | `observability-*` targets exist and lifecycle targets use `scripts/compose.sh --profile observability`. |
-| `tests/smoke/test_observability_bootstrap_env.sh` | Validate `observability-bootstrap` secret generation and idempotency. | `.env.example`, `scripts/observability-bootstrap.sh`, `mktemp`. | Missing Grafana secrets are generated and preserved on rerun. |
-| `tests/smoke/test_observability_grafana_provisioning.sh` | Validate Grafana datasources and dashboard provisioning assets for core + tracing/profiling packs. | Grafana provisioning files and dashboard JSON. | Prometheus/Loki/Tempo/Pyroscope datasources and dashboard paths/queries are present. |
-| `tests/smoke/test_observability_k6_wiring.sh` | Validate k6 target wiring and script availability for synthetic checks. | `Makefile`, `services/observability/compose.yml`, `services/observability/k6/smoke.js`. | `observability-k6` exists and runs `k6` via compose profile wiring. |
-| `tests/smoke/test_observability_app_pack_tolerance.sh` | Validate core observability assets remain app-agnostic. | Alloy config, `scripts/validate-env.sh`. | No app-specific selectors are present and observability-only preflight still passes cleanly. |
-| `tests/smoke/test_plane_service_config.sh` | Validate Plane compose wiring, Traefik exposure, persistence, and dependency startup coordination. | `services/plane/compose.yml`, `grep`, `awk`. | Plane services/dependencies exist, no host ports are published, and healthcheck wiring exists. |
-| `tests/smoke/test_plane_guardrails.sh` | Validate preflight guardrails for Plane core config. | `scripts/validate-env.sh`. | Missing/invalid Plane config fails; valid config passes. |
-| `tests/smoke/test_plane_make_targets.sh` | Validate Plane Make target wiring and compose wrapper usage. | `Makefile`, `awk`, `grep`. | `plane-*` targets exist and lifecycle targets use `scripts/compose.sh --profile plane`. |
-| `tests/smoke/test_plane_bootstrap_env.sh` | Validate `plane-bootstrap` secret generation and idempotency. | `.env.example`, `scripts/plane-bootstrap.sh`, `mktemp`. | Missing Plane secrets are generated and preserved on rerun. |
-| `tests/smoke/test_plane_optional_integrations.sh` | Validate optional Keycloak/OIDC and observability toggle behavior. | `services/plane/compose.yml`, `scripts/validate-env.sh`. | Disabled toggles do not block startup; enabled OIDC requires complete contract. |
-| `tests/smoke/test_docling_service_config.sh` | Validate Docling compose wiring, Traefik exposure, persistence, and dependency startup coordination. | `services/docling/compose.yml`, `grep`, `awk`. | Docling services/dependencies exist, no host ports are published, and healthcheck wiring exists. |
-| `tests/smoke/test_docling_guardrails.sh` | Validate preflight guardrails for Docling core config. | `scripts/validate-env.sh`. | Missing/invalid Docling config fails; valid config passes. |
-| `tests/smoke/test_docling_make_targets.sh` | Validate Docling Make target wiring and compose wrapper usage. | `Makefile`, `awk`, `grep`. | `docling-*` targets exist and lifecycle targets use `scripts/compose.sh --profile docling`. |
-| `tests/smoke/test_docling_bootstrap_env.sh` | Validate `docling-bootstrap` secret generation and idempotency. | `.env.example`, `scripts/docling-bootstrap.sh`, `mktemp`. | Missing Docling secrets are generated and preserved on rerun. |
-| `tests/smoke/test_docling_optional_integrations.sh` | Validate optional Step-CA/Keycloak/observability toggle behavior. | `services/docling/compose.yml`, `scripts/validate-env.sh`. | Disabled toggles do not block startup; enabled Keycloak requires complete contract. |
-| `tests/smoke/test_freeipa_service_config.sh` | Validate FreeIPA compose wiring and Traefik exposure contract. | `services/freeipa/compose.yml`, `grep`, `awk`. | FreeIPA service exists, no host ports are published, and Traefik labels/network/volume wiring are present. |
-| `tests/smoke/test_freeipa_guardrails.sh` | Validate preflight guardrails for FreeIPA core config. | `scripts/validate-env.sh`. | Missing/invalid FreeIPA config fails; valid config passes. |
-| `tests/smoke/test_freeipa_make_targets.sh` | Validate FreeIPA Make target wiring and compose wrapper usage. | `Makefile`, `awk`, `grep`. | `freeipa-*` targets exist and lifecycle targets use `scripts/compose.sh --profile freeipa`. |
-| `tests/smoke/test_freeipa_bootstrap_env.sh` | Validate `freeipa-bootstrap` secret generation and idempotency. | `.env.example`, `scripts/freeipa-bootstrap.sh`, `mktemp`. | Missing FreeIPA secrets are generated and preserved on rerun. |
-| `tests/smoke/test_freeipa_optional_integrations.sh` | Validate optional TLS/Keycloak/observability contracts for FreeIPA. | `services/freeipa/compose.yml`, `scripts/validate-env.sh`. | Disabled toggles do not block startup; enabled integrations require complete contracts. |
-| `tests/smoke/test_openwebui_service_config.sh` | Validate OpenWebUI compose wiring and Traefik exposure contract. | `services/openwebui/compose.yml`, `grep`, `awk`. | OpenWebUI service exists, no host ports are published, and Traefik labels/volume are present. |
-| `tests/smoke/test_openwebui_make_targets.sh` | Validate OpenWebUI Make target wiring and compose wrapper usage. | `Makefile`, `awk`, `grep`. | `webui-*` targets exist and lifecycle targets use `scripts/compose.sh --profile webui`. |
+| `tests/smoke/test_openwebui_service_config.sh` | Validate OpenWebUI compose contract (profile, Traefik router labels, persistent volume). | `services/openwebui/compose.yml`, `grep`. | Compose fragment contains profile `webui`, TLS router labels, and data volume mapping. |
+| `tests/smoke/test_openwebui_make_targets.sh` | Validate OpenWebUI Make target wiring through compose wrapper. | `Makefile`, `awk`, `grep`. | `webui-*` targets exist and use `scripts/compose.sh --profile webui`. |
+| `deployment/tests/smoke/test_deployment_make_targets.sh` | Validate deployment Make target wiring (`deployment`, `deployment-list`, selector/fallback SSH path). | `Makefile`, `awk`, `grep`. | Required deployment targets exist and wiring routes through expected scripts. |
+| `deployment/tests/smoke/test_deployment_access_cli.sh` | Validate deployment-access CLI guardrails for target parsing and proxmox credential errors. | `deployment/scripts/deployment-access.sh`, `grep`. | Invalid targets and missing proxmox credentials fail with clear errors. |
+| `deployment/tests/smoke/test_deployment_profile_metadata.sh` | Validate pinned image profile metadata and Gentoo manifest gate wiring in `infra-provision`. | `deployment/scripts/infra-provision.sh`, Gentoo manifests, `grep`. | Version-pinned profile metadata and qualification checks are present. |
+| `deployment/tests/smoke/test_deployment_list_commands.sh` | Validate output contract for `deployment-list-os` and `deployment-list-targets`. | `make`, `Makefile`. | OS list remains stable and target list currently contains only `qemu`. |
+| `deployment/tests/smoke/test_deployment_ansible_roles.sh` | Validate syntax/lint and selector-family wiring for deployment Ansible roles. | `ansible-playbook`, `ansible-lint`, Ansible role/playbook files under `deployment/ansible`. | Playbooks pass syntax, lint passes, and selector/family coverage is present. |
 
 ## Configuration
 
@@ -110,25 +55,14 @@ Smoke tests use environment variables loaded from `.env` via `scripts/healthchec
 - `BIND_BIND_ADDRESS` (default listener for BIND)
 - `BIND_ALLOW_NONLOCAL_BIND` (must be `true` to allow non-loopback bind)
 - `BIND_SECURITY_TEST_ADDRESS` (optional loopback override for runtime security smoke)
-- `AWX_*` / `K3D_*` (used by `test-awx` and AWX validation scripts when configured)
-- `CTFD_*` (used by CTFd guardrail/bootstrap tests when provided inline)
-- `GRAFANA_*` (used by observability guardrail/bootstrap tests when provided inline)
-- `K6_*` (used by observability synthetic-check and validation tests when provided inline)
-- `PLANE_*` (used by Plane guardrail/bootstrap/integration tests when provided inline)
-- `DOCLING_*` (used by Docling guardrail/bootstrap/integration tests when provided inline)
-- `FREEIPA_*` (used by FreeIPA guardrail/bootstrap/integration tests when provided inline)
-- `OPENWEBUI_*` (used by OpenWebUI config/wiring tests when provided inline)
 
 Ensure `.env` exists (prefer `make bootstrap`) before running tests. Optional profiles
 are enabled by default via `COMPOSE_PROFILES` in `.env`; edit it if you want a smaller stack.
 
 ## Expected output
 
-- `make test` prints per-test results (and skipped suites when services are not running) and exits with non-zero status on failure.
+- `make test` prints per-test results and exits with non-zero status on failure.
 - A successful run ends with `All smoke tests passed!`.
-- `make test-awx` runs AWX static smoke tests only (no k3d runtime required).
-- AWX runtime validation is manual (not part of `make test`): use the checklist in `services/awx/README*.md` and confirm Traefik route + AWX readiness.
-- AWX day-2 validation (backup/restore/upgrade) is manual: use the day-2 runbooks/checklists in `services/awx/README*.md`; do not add these flows to `make test`.
 
 ## Common failures and fixes
 
@@ -172,22 +106,7 @@ are enabled by default via `COMPOSE_PROFILES` in `.env`; edit it if you want a s
   - Diagnose: check `make bind-logs` and inspect recursion/AXFR/CHAOS behavior with `dig`.
   - Fix: verify `named.conf.template` hardening directives and BIND compose command validation steps.
 
-- **Semaphore UI guardrails fail**
-  - Symptom: `test_semaphoreui_guardrails.sh` fails.
-  - Diagnose: inspect `SEMAPHOREUI_*` values in `.env` (secrets, hostname, OIDC toggles).
-  - Fix: run `make semaphoreui-bootstrap`, then re-run tests. If OIDC is enabled, set provider URL/client credentials and rerun bootstrap.
-
-- **Semaphore UI runtime/OIDC issues**
-  - Symptom: UI loads but OIDC login button/redirect is broken.
-  - Diagnose: verify `SEMAPHOREUI_WEB_ROOT`, `SEMAPHOREUI_OIDC_PROVIDER_URL`, Keycloak client redirect URI, and Traefik hostname.
-  - Fix: align HTTPS hostname and client redirect URI (`https://semaphore.<DEV_DOMAIN>/api/auth/oidc/<provider>/redirect`), rerun `make semaphoreui-bootstrap`.
-
 - **BIND provisioning validation fails**
   - Symptom: `test_bind_provisioning_validation.sh` fails.
   - Diagnose: inspect `BASE_DOMAIN` format and endpoint labels in `ENDPOINTS`.
   - Fix: use lowercase DNS labels only (`a-z`, `0-9`, internal `-`) and valid dot-separated domain format.
-
-- **Keycloak guardrails fail**
-  - Symptom: `test_keycloak_guardrails.sh` or `keycloak-up` fails preflight validation.
-  - Diagnose: inspect `KEYCLOAK_HOSTNAME`, `KEYCLOAK_ADMIN_PASSWORD`, `KEYCLOAK_DB_PASSWORD`, `KEYCLOAK_PROXY_HEADERS`, and `KEYCLOAK_OBSERVABILITY_PUBLIC_METRICS`.
-  - Fix: run `make keycloak-bootstrap`, keep `KEYCLOAK_PROXY_HEADERS=xforwarded`, and leave `KEYCLOAK_OBSERVABILITY_PUBLIC_METRICS=false`.

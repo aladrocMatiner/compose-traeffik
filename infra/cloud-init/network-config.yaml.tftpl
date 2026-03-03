@@ -1,0 +1,23 @@
+version: 2
+ethernets:
+  ${guest_interface_name}:
+    match:
+      macaddress: "${vm_mac}"
+    set-name: ${guest_interface_name}
+%{ if os_family == "gentoo" && init_system == "systemd" ~}
+    # Gentoo systemd path uses a baked DHCP networkd profile for first boot and
+    # applies the static address in cloud-init runcmd (systemd-networkd config).
+    dhcp4: true
+%{ else ~}
+    dhcp4: false
+    addresses:
+      - ${vm_ip}/${vm_cidr_prefix}
+    routes:
+      - to: default
+        via: ${vm_gateway}
+    nameservers:
+      addresses:
+%{ for dns in dns_servers ~}
+        - ${dns}
+%{ endfor ~}
+%{ endif ~}

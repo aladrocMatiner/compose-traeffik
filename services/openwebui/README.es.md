@@ -5,7 +5,7 @@
 <a id="overview"></a>
 ## Resumen
 
-OpenWebUI es un modulo opcional de interfaz web/chat expuesto detras de Traefik.
+OpenWebUI ofrece una interfaz web para backends LLM locales y APIs compatibles con OpenAI, publicada detras de Traefik.
 
 <a id="location"></a>
 ## Donde vive
@@ -13,21 +13,33 @@ OpenWebUI es un modulo opcional de interfaz web/chat expuesto detras de Traefik.
 - `services/openwebui/compose.yml`
 
 <a id="run"></a>
-## Como corre
+## Como se ejecuta
 
+Iniciar:
 ```bash
 make webui-up
+```
+
+Estado:
+```bash
 make webui-status
 ```
 
-URL (via Traefik): `https://openwebui.${DEV_DOMAIN}`
+Logs:
+```bash
+make webui-logs
+```
+
+Parar:
+```bash
+make webui-down
+```
 
 <a id="configuration"></a>
 ## Configuracion
 
 Variables relevantes en `.env.example`:
 - `OPENWEBUI_HOSTNAME`
-- `OPENWEBUI_IMAGE`
 - `OPENWEBUI_ENABLE_SIGNUP`
 - `OPENWEBUI_ENABLE_PERSISTENT_CONFIG`
 - `OPENWEBUI_SECRET_KEY`
@@ -40,23 +52,22 @@ Variables relevantes en `.env.example`:
 <a id="ports"></a>
 ## Puertos, redes, volumenes
 
-- Puertos publicos: ninguno (Traefik expone la UI/API)
+- Puerto interno: `8080`
+- Ruta publica: `https://openwebui.${DEV_DOMAIN}`
 - Red: `proxy` (`traefik-proxy`)
 - Volumen: `openwebui-data`
 
 <a id="security"></a>
 ## Notas de seguridad
 
-- Mantener `OPENWEBUI_ENABLE_SIGNUP=false` salvo registro abierto intencional.
-- La UI/API se expone solo via Traefik con HTTPS.
+- Mantener `OPENWEBUI_ENABLE_SIGNUP=false` para acceso controlado.
+- Definir `OPENWEBUI_SECRET_KEY` en entornos no efimeros.
 
 <a id="troubleshooting"></a>
 ## Troubleshooting
 
-- Si la ruta no responde:
-  - `make webui-status`
-  - `make webui-logs`
-- Si fallan llamadas a backend, validar variables de OpenAI/Ollama.
+- Ruta no accesible: revisar `make ps` y logs de Traefik.
+- Fallos con backends: validar `OPENWEBUI_OLLAMA_BASE_URL` / `OPENWEBUI_OPENAI_API_BASE_URLS`.
 
 <a id="related"></a>
 ## Paginas relacionadas
