@@ -53,6 +53,7 @@ append_compose_file_if_exists "${REPO_ROOT}/services/wikijs/compose.yml"
 append_compose_file_if_exists "${REPO_ROOT}/services/semaphoreui/compose.yml"
 append_compose_file_if_exists "${REPO_ROOT}/services/rocketchat/compose.yml"
 append_compose_file_if_exists "${REPO_ROOT}/services/gitlab/compose.yml"
+append_compose_file_if_exists "${REPO_ROOT}/services/wg-easy/compose.yml"
 append_compose_file_if_exists "${REPO_ROOT}/services/litellm/compose.yml"
 append_compose_file_if_exists "${REPO_ROOT}/services/openwebui/compose.yml"
 

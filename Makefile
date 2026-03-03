@@ -22,6 +22,8 @@ SHELL := /bin/bash # Ensure bash is used for shell commands
         stepca-trust-install stepca-trust-uninstall stepca-trust-verify \
         hosts-generate hosts-apply hosts-remove hosts-status \
         bind-up bind-down bind-restart bind-logs bind-status bind-provision bind-provision-dry bind-port-check \
+        wg-up wg-down wg-restart wg-logs wg-status wg-bootstrap \
+        gitlab-bootstrap gitlab-up gitlab-down gitlab-restart gitlab-logs gitlab-status test-gitlab \
         webui-up webui-down webui-restart webui-logs webui-status \
         deployment deployment-ubuntu deployment-plan deployment-destroy deployment-output deployment-ssh deployment-list deployment-list-os deployment-list-targets \
         deployment-project deployment-project-list \
@@ -47,6 +49,7 @@ COMPOSE_FILES := \
   -f services/semaphoreui/compose.yml \
   -f services/rocketchat/compose.yml \
   -f services/gitlab/compose.yml \
+  -f services/wg-easy/compose.yml \
   -f services/openwebui/compose.yml
 
 # Pin compose project directory/name to avoid cross-CWD conflicts.
@@ -352,6 +355,62 @@ bind-provision-dry:
 bind-port-check:
 	@"$(SCRIPTS_DIR)/bind-port-check.sh"
 
+# --- WireGuard (wg-easy) ---
+
+wg-up:
+	@echo "Starting wg-easy service (profile: wg)..."
+	COMPOSE_PROFILES=wg "$(SCRIPTS_DIR)/compose.sh" --profile wg $(COMPOSE_OPTS) up -d wg-easy
+
+wg-down:
+	@echo "Stopping wg-easy service..."
+	COMPOSE_PROFILES=wg "$(SCRIPTS_DIR)/compose.sh" --profile wg $(COMPOSE_OPTS) stop wg-easy || true
+	COMPOSE_PROFILES=wg "$(SCRIPTS_DIR)/compose.sh" --profile wg $(COMPOSE_OPTS) rm -f wg-easy || true
+
+wg-restart: wg-down wg-up
+
+wg-logs:
+	@echo "Showing wg-easy service logs..."
+	COMPOSE_PROFILES=wg "$(SCRIPTS_DIR)/compose.sh" --profile wg $(COMPOSE_OPTS) logs -f wg-easy
+
+wg-status:
+	@echo "wg-easy service status:"
+	COMPOSE_PROFILES=wg "$(SCRIPTS_DIR)/compose.sh" --profile wg $(COMPOSE_OPTS) ps wg-easy
+
+wg-bootstrap:
+	@"$(REPO_ROOT)/scripts/wg-bootstrap.sh"
+
+# --- GitLab ---
+
+gitlab-bootstrap:
+	@"$(SCRIPTS_DIR)/gitlab-bootstrap.sh"
+
+gitlab-up:
+	@echo "Starting GitLab service (profile: gitlab)..."
+	COMPOSE_PROFILES=gitlab "$(SCRIPTS_DIR)/compose.sh" --profile gitlab $(COMPOSE_OPTS) up -d gitlab
+
+gitlab-down:
+	@echo "Stopping GitLab service..."
+	COMPOSE_PROFILES=gitlab "$(SCRIPTS_DIR)/compose.sh" --profile gitlab $(COMPOSE_OPTS) stop gitlab || true
+	COMPOSE_PROFILES=gitlab "$(SCRIPTS_DIR)/compose.sh" --profile gitlab $(COMPOSE_OPTS) rm -f gitlab || true
+
+gitlab-restart: gitlab-down gitlab-up
+
+gitlab-logs:
+	@echo "Showing GitLab service logs..."
+	COMPOSE_PROFILES=gitlab "$(SCRIPTS_DIR)/compose.sh" --profile gitlab $(COMPOSE_OPTS) logs -f gitlab
+
+gitlab-status:
+	@echo "GitLab service status:"
+	COMPOSE_PROFILES=gitlab "$(SCRIPTS_DIR)/compose.sh" --profile gitlab $(COMPOSE_OPTS) ps gitlab
+
+test-gitlab:
+	@echo "Running GitLab smoke tests..."
+	@"$(REPO_ROOT)/tests/smoke/test_gitlab_make_targets.sh"
+	@"$(REPO_ROOT)/tests/smoke/test_gitlab_service_config.sh"
+	@"$(REPO_ROOT)/tests/smoke/test_gitlab_guardrails.sh"
+	@"$(REPO_ROOT)/tests/smoke/test_gitlab_oidc_wiring.sh"
+	@"$(REPO_ROOT)/tests/smoke/test_gitlab_observability_wiring.sh"
+
 # --- OpenWebUI ---
 
 webui-up:
@@ -519,6 +578,23 @@ help:
 	@echo "  bind-provision        Generate the BIND zone file from ENDPOINTS."
 	@echo "  bind-provision-dry    Print the generated zone file without writing."
 	@echo "  bind-port-check       Validate host port 53 is free before starting BIND."
+	@echo ""
+	@echo "WireGuard (wg-easy):"
+	@echo "  wg-bootstrap         Populate/rotate wg-easy bootstrap env variables."
+	@echo "  wg-up                Start wg-easy service (profile: wg)."
+	@echo "  wg-down              Stop and remove wg-easy service."
+	@echo "  wg-restart           Restart wg-easy (wg-down + wg-up)."
+	@echo "  wg-logs              Follow wg-easy service logs."
+	@echo "  wg-status            Show wg-easy service status."
+	@echo ""
+	@echo "GitLab:"
+	@echo "  gitlab-bootstrap     Populate GitLab bootstrap vars and render config."
+	@echo "  gitlab-up            Start GitLab service (profile: gitlab)."
+	@echo "  gitlab-down          Stop and remove GitLab service."
+	@echo "  gitlab-restart       Restart GitLab (gitlab-down + gitlab-up)."
+	@echo "  gitlab-logs          Follow GitLab service logs."
+	@echo "  gitlab-status        Show GitLab service status."
+	@echo "  test-gitlab          Run GitLab smoke tests."
 	@echo ""
 	@echo "OpenWebUI:"
 	@echo "  webui-up              Start OpenWebUI behind Traefik (profile: webui)."
