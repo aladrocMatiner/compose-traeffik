@@ -94,6 +94,14 @@
         "sv": "Plane",
         "es": "Plane"
       }
+    },
+    {
+      "slug": "docling",
+      "title": {
+        "en": "Docling",
+        "sv": "Docling",
+        "es": "Docling"
+      }
     }
   ]
 }

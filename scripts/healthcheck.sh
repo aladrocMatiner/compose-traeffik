@@ -80,6 +80,7 @@ RUN_BIND_TESTS=false
 RUN_CTFD_TESTS=false
 RUN_OBSERVABILITY_TESTS=false
 RUN_PLANE_TESTS=false
+RUN_DOCLING_TESTS=false
 
 if service_running "traefik" && service_running "whoami"; then
     RUN_CORE_TESTS=true
@@ -95,6 +96,9 @@ if service_running "grafana" || service_running "prometheus" || service_running 
 fi
 if service_running "plane-web" || service_running "plane-api"; then
     RUN_PLANE_TESTS=true
+fi
+if service_running "docling"; then
+    RUN_DOCLING_TESTS=true
 fi
 
 # --- Test 1: Traefik Readiness ---
@@ -404,6 +408,55 @@ if [ "${RUN_PLANE_TESTS}" = "true" ]; then
     fi
 else
     log_warn "Skipping Plane smoke suite (service 'plane-web'/'plane-api' not running)."
+fi
+
+# --- Test 32: Docling Service Config (no sudo) ---
+if [ "${RUN_DOCLING_TESTS}" = "true" ]; then
+    log_info "Running test_docling_service_config.sh..."
+    if "$TEST_DIR/test_docling_service_config.sh"; then
+        log_success "Test: Docling Service Config"
+    else
+        log_warn "Test failed: Docling Service Config"
+        TEST_RESULTS=1
+    fi
+
+    # --- Test 33: Docling Guardrails (no sudo) ---
+    log_info "Running test_docling_guardrails.sh..."
+    if "$TEST_DIR/test_docling_guardrails.sh"; then
+        log_success "Test: Docling Guardrails"
+    else
+        log_warn "Test failed: Docling Guardrails"
+        TEST_RESULTS=1
+    fi
+
+    # --- Test 34: Docling Make Targets (no sudo) ---
+    log_info "Running test_docling_make_targets.sh..."
+    if "$TEST_DIR/test_docling_make_targets.sh"; then
+        log_success "Test: Docling Make Targets"
+    else
+        log_warn "Test failed: Docling Make Targets"
+        TEST_RESULTS=1
+    fi
+
+    # --- Test 35: Docling Bootstrap Env (no sudo) ---
+    log_info "Running test_docling_bootstrap_env.sh..."
+    if "$TEST_DIR/test_docling_bootstrap_env.sh"; then
+        log_success "Test: Docling Bootstrap Env"
+    else
+        log_warn "Test failed: Docling Bootstrap Env"
+        TEST_RESULTS=1
+    fi
+
+    # --- Test 36: Docling Optional Integrations (no sudo) ---
+    log_info "Running test_docling_optional_integrations.sh..."
+    if "$TEST_DIR/test_docling_optional_integrations.sh"; then
+        log_success "Test: Docling Optional Integrations"
+    else
+        log_warn "Test failed: Docling Optional Integrations"
+        TEST_RESULTS=1
+    fi
+else
+    log_warn "Skipping Docling smoke suite (service 'docling' not running)."
 fi
 
 if [ "$TEST_RESULTS" -eq 0 ]; then

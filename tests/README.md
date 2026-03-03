@@ -16,7 +16,7 @@ This directory contains smoke tests that verify Traefik readiness, routing, TLS,
    ```
    This runs `scripts/healthcheck.sh` in service-aware mode:
    - always runs common utility smoke tests
-   - runs service/module suites only when their containers are currently running (`traefik+whoami`, `bind`, `ctfd`, `observability`)
+   - runs service/module suites only when their containers are currently running (`traefik+whoami`, `bind`, `ctfd`, `observability`, `plane`, `docling`)
 
    Use service-scoped targets when you want to run a specific suite regardless of what is running:
    ```bash
@@ -25,6 +25,7 @@ This directory contains smoke tests that verify Traefik readiness, routing, TLS,
    make test-ctfd
    make test-observability
    make test-plane
+   make test-docling
    ```
 
 3. **Run a single test**
@@ -68,6 +69,11 @@ This directory contains smoke tests that verify Traefik readiness, routing, TLS,
 | `tests/smoke/test_plane_make_targets.sh` | Validate Plane Make target wiring and compose wrapper usage. | `Makefile`, `awk`, `grep`. | `plane-*` targets exist and lifecycle targets use `scripts/compose.sh --profile plane`. |
 | `tests/smoke/test_plane_bootstrap_env.sh` | Validate `plane-bootstrap` secret generation and idempotency. | `.env.example`, `scripts/plane-bootstrap.sh`, `mktemp`. | Missing Plane secrets are generated and preserved on rerun. |
 | `tests/smoke/test_plane_optional_integrations.sh` | Validate optional Keycloak/OIDC and observability toggle behavior. | `services/plane/compose.yml`, `scripts/validate-env.sh`. | Disabled toggles do not block startup; enabled OIDC requires complete contract. |
+| `tests/smoke/test_docling_service_config.sh` | Validate Docling compose wiring, Traefik exposure, persistence, and dependency startup coordination. | `services/docling/compose.yml`, `grep`, `awk`. | Docling services/dependencies exist, no host ports are published, and healthcheck wiring exists. |
+| `tests/smoke/test_docling_guardrails.sh` | Validate preflight guardrails for Docling core config. | `scripts/validate-env.sh`. | Missing/invalid Docling config fails; valid config passes. |
+| `tests/smoke/test_docling_make_targets.sh` | Validate Docling Make target wiring and compose wrapper usage. | `Makefile`, `awk`, `grep`. | `docling-*` targets exist and lifecycle targets use `scripts/compose.sh --profile docling`. |
+| `tests/smoke/test_docling_bootstrap_env.sh` | Validate `docling-bootstrap` secret generation and idempotency. | `.env.example`, `scripts/docling-bootstrap.sh`, `mktemp`. | Missing Docling secrets are generated and preserved on rerun. |
+| `tests/smoke/test_docling_optional_integrations.sh` | Validate optional Step-CA/Keycloak/observability toggle behavior. | `services/docling/compose.yml`, `scripts/validate-env.sh`. | Disabled toggles do not block startup; enabled Keycloak requires complete contract. |
 
 ## Configuration
 
@@ -82,6 +88,7 @@ Smoke tests use environment variables loaded from `.env` via `scripts/healthchec
 - `GRAFANA_*` (used by observability guardrail/bootstrap tests when provided inline)
 - `K6_*` (used by observability synthetic-check and validation tests when provided inline)
 - `PLANE_*` (used by Plane guardrail/bootstrap/integration tests when provided inline)
+- `DOCLING_*` (used by Docling guardrail/bootstrap/integration tests when provided inline)
 
 Ensure `.env` exists (prefer `make bootstrap`) before running tests. Optional profiles
 are enabled by default via `COMPOSE_PROFILES` in `.env`; edit it if you want a smaller stack.

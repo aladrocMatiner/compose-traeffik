@@ -77,6 +77,7 @@ Guias de TLS:
 - **CTFd**: `https://ctfd.${DEV_DOMAIN}` (perfil `ctfd`; opcional)
 - **Grafana**: `https://grafana.${DEV_DOMAIN}` (perfil `observability`; opcional)
 - **Plane**: `https://plane.${DEV_DOMAIN}` (perfil `plane`; opcional)
+- **Docling**: `https://docling.${DEV_DOMAIN}` (perfil `docling`; opcional)
 - **Prometheus/Loki/Tempo/Pyroscope**: internos por defecto (perfil `observability`; sin endpoint publico)
 
 <a id="services"></a>
@@ -90,6 +91,7 @@ Guias de TLS:
 - [CTFd](services/ctfd/README.es.md) - perfil opcional `ctfd` (plataforma CTF + DB + Redis).
 - [Observability](services/observability/README.es.md) - perfil opcional `observability` (Grafana/Prometheus/Loki/Tempo/Pyroscope/Alloy + synthetic checks con k6).
 - [Plane](services/plane/README.es.md) - perfil opcional `plane` (gestion de proyectos + PostgreSQL/Redis/RabbitMQ/MinIO).
+- [Docling](services/docling/README.es.md) - perfil opcional `docling` (API de conversion de documentos + Redis interno para modo async/RQ).
 
 <a id="docs-map"></a>
 ## Mapa de documentos
@@ -114,6 +116,7 @@ Comandos comunes:
 - `make ctfd-bootstrap`, `make ctfd-up`, `make ctfd-status`
 - `make observability-bootstrap`, `make observability-up`, `make observability-status`, `make observability-k6`
 - `make plane-bootstrap`, `make plane-up`, `make plane-status`
+- `make docling-bootstrap`, `make docling-up`, `make docling-status`
 - `make hosts-generate`, `make hosts-apply`, `make hosts-status`
 
 Archivos auth:
@@ -128,7 +131,7 @@ Defaults de seguridad DNS:
 - Para exponer DNS fuera de loopback de forma intencional, usa `BIND_ALLOW_NONLOCAL_BIND=true`.
 
 Nota de hosts:
-- Si gestionas `ENDPOINTS` manualmente, anyade `ctfd`, `grafana` y/o `plane` antes de `make hosts-apply`.
+- Si gestionas `ENDPOINTS` manualmente, anyade `ctfd`, `grafana`, `plane` y/o `docling` antes de `make hosts-apply`.
 - Anyade `keycloak` tambien si vas a usar Plane con routing local hacia Keycloak.
 - O deja `ENDPOINTS` vacio para auto-discovery por reglas `Host()`.
 

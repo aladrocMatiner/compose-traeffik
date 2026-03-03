@@ -15,7 +15,7 @@
 # --- Configuration Variables ---
 SHELL := /bin/bash # Ensure bash is used for shell commands
 .DEFAULT_GOAL := help # Default target if none is specified
-.PHONY: help up down restart logs ps test test-core test-dns test-ctfd test-observability docs-check bootstrap \
+.PHONY: help up down restart logs ps test test-core test-dns test-ctfd test-observability test-plane test-docling docs-check bootstrap \
         certs-local local-ca-trust-install local-ca-trust-uninstall local-ca-trust-verify \
         certs-le-issue certs-le-renew \
         stepca-up stepca-down stepca-bootstrap stepca-verify-cert \
@@ -24,7 +24,8 @@ SHELL := /bin/bash # Ensure bash is used for shell commands
         bind-up bind-down bind-restart bind-logs bind-status bind-provision bind-provision-dry \
         ctfd-bootstrap ctfd-up ctfd-down ctfd-restart ctfd-logs ctfd-status \
         observability-bootstrap observability-up observability-down observability-restart observability-logs observability-status observability-k6 \
-        plane-bootstrap plane-up plane-down plane-restart plane-logs plane-status test-plane
+        plane-bootstrap plane-up plane-down plane-restart plane-logs plane-status \
+        docling-bootstrap docling-up docling-down docling-restart docling-logs docling-status
 
 # Include .env for environment variables if it exists.
 # This makes variables in .env available to the Makefile.
@@ -43,7 +44,8 @@ COMPOSE_FILES := \
   -f services/step-ca/compose.yml \
   -f services/ctfd/compose.yml \
   -f services/observability/compose.yml \
-  -f services/plane/compose.yml
+  -f services/plane/compose.yml \
+  -f services/docling/compose.yml
 
 # Pin compose project directory/name to avoid cross-CWD conflicts.
 COMPOSE_PROJECT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
@@ -91,6 +93,11 @@ ifneq ($(ENV_FILE),)
 PLANE_ENV_ARGS += --env-file $(ENV_FILE)
 endif
 
+DOCLING_ENV_ARGS :=
+ifneq ($(ENV_FILE),)
+DOCLING_ENV_ARGS += --env-file $(ENV_FILE)
+endif
+
 SMOKE_TEST_DIR := $(REPO_ROOT)/tests/smoke
 
 CORE_SMOKE_TESTS := \
@@ -133,6 +140,13 @@ PLANE_SMOKE_TESTS := \
 	test_plane_make_targets.sh \
 	test_plane_bootstrap_env.sh \
 	test_plane_optional_integrations.sh
+
+DOCLING_SMOKE_TESTS := \
+	test_docling_service_config.sh \
+	test_docling_guardrails.sh \
+	test_docling_make_targets.sh \
+	test_docling_bootstrap_env.sh \
+	test_docling_optional_integrations.sh
 
 # Start the stack
 up:
@@ -295,6 +309,17 @@ test-plane:
 	done; \
 	exit $$rc
 
+test-docling:
+	@echo "Running Docling smoke tests..."
+	@set -euo pipefail; rc=0; \
+	for test_script in $(DOCLING_SMOKE_TESTS); do \
+		echo "==> $$test_script"; \
+		if ! "$(SMOKE_TEST_DIR)/$$test_script"; then \
+			rc=1; \
+		fi; \
+	done; \
+	exit $$rc
+
 # --- Documentation ---
 
 docs-check:
@@ -421,6 +446,30 @@ plane-status:
 	@echo "Plane module status:"
 	COMPOSE_PROFILES=plane "$(SCRIPTS_DIR)/compose.sh" --profile plane $(COMPOSE_OPTS) ps plane-web plane-space plane-admin plane-live plane-api plane-worker plane-beat-worker plane-migrator plane-db plane-redis plane-mq plane-minio
 
+# --- Docling Module ---
+
+docling-bootstrap:
+	"$(SCRIPTS_DIR)/docling-bootstrap.sh" $(DOCLING_ENV_ARGS)
+
+docling-up:
+	@echo "Starting Docling module (profile: docling)..."
+	COMPOSE_PROFILES=docling "$(SCRIPTS_DIR)/compose.sh" --profile docling $(COMPOSE_OPTS) up -d docling docling-redis
+
+docling-down:
+	@echo "Stopping Docling module..."
+	COMPOSE_PROFILES=docling "$(SCRIPTS_DIR)/compose.sh" --profile docling $(COMPOSE_OPTS) stop docling docling-redis || true
+	COMPOSE_PROFILES=docling "$(SCRIPTS_DIR)/compose.sh" --profile docling $(COMPOSE_OPTS) rm -f docling docling-redis || true
+
+docling-restart: docling-down docling-up
+
+docling-logs:
+	@echo "Showing Docling module logs..."
+	COMPOSE_PROFILES=docling "$(SCRIPTS_DIR)/compose.sh" --profile docling $(COMPOSE_OPTS) logs -f docling docling-redis
+
+docling-status:
+	@echo "Docling module status:"
+	COMPOSE_PROFILES=docling "$(SCRIPTS_DIR)/compose.sh" --profile docling $(COMPOSE_OPTS) ps docling docling-redis
+
 # --- Help ---
 
 help:
@@ -469,6 +518,7 @@ help:
 	@echo "  test-ctfd             Run CTFd smoke tests only."
 	@echo "  test-observability    Run observability smoke tests only."
 	@echo "  test-plane            Run Plane smoke tests only."
+	@echo "  test-docling          Run Docling smoke tests only."
 	@echo ""
 	@echo "Docs:"
 	@echo "  docs-check            Validate multilingual README structure and links."
@@ -513,8 +563,16 @@ help:
 	@echo "  plane-logs               Follow Plane module logs."
 	@echo "  plane-status             Show Plane module status."
 	@echo ""
+	@echo "Docling:"
+	@echo "  docling-bootstrap        Generate/persist Docling secrets in .env."
+	@echo "  docling-up               Start the Docling module (profile: docling)."
+	@echo "  docling-down             Stop and remove Docling module containers."
+	@echo "  docling-restart          Restart the Docling module."
+	@echo "  docling-logs             Follow Docling module logs."
+	@echo "  docling-status           Show Docling module status."
+	@echo ""
 	@echo "Profiles:"
 	@echo "  Use COMPOSE_PROFILES=<profile_name> before make commands to activate profiles."
-	@echo "  Available profiles: bind, ctfd, le, observability, plane, stepca"
+	@echo "  Available profiles: bind, ctfd, docling, le, observability, plane, stepca"
 	@echo "  Example: COMPOSE_PROFILES=le make up"
 	@echo ""

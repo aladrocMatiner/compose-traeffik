@@ -15,7 +15,7 @@ Prerequisites:
 Preflight validation:
 - `scripts/validate-env.sh` runs before `make up` and any `scripts/compose.sh` call.
 - It enforces safe defaults for admin UIs (Traefik dashboard) and validates profile syntax.
-- It also validates module-specific requirements for `ctfd`, `observability`, and `plane` when those profiles are enabled, including optional integration toggles.
+- It also validates module-specific requirements for `ctfd`, `observability`, `plane`, and `docling` when those profiles are enabled, including optional integration toggles.
 - Create htpasswd files under `services/traefik/auth/`, for example:
   - `htpasswd -nbB admin 'change-me' > services/traefik/auth/traefik-dashboard.htpasswd`
 - Set the container paths in `.env`:
@@ -45,6 +45,7 @@ Preflight validation:
 | `scripts/ctfd-bootstrap.sh` | Generate/persist CTFd secrets in `.env` | `make ctfd-bootstrap` | `CTFD_*` (writes missing values) | Updates `.env` |
 | `scripts/observability-bootstrap.sh` | Generate/persist Grafana secrets in `.env` | `make observability-bootstrap` | `GRAFANA_*` (writes missing values) | Updates `.env` |
 | `scripts/plane-bootstrap.sh` | Generate/persist Plane secrets in `.env` | `make plane-bootstrap` | `PLANE_*` (writes missing values) | Updates `.env` |
+| `scripts/docling-bootstrap.sh` | Generate/persist Docling secrets in `.env` | `make docling-bootstrap` | `DOCLING_*` (writes missing values) | Updates `.env` |
 | `scripts/common.sh` | Shared helpers | sourced by other scripts | none | none |
 
 ## Workflows
@@ -95,6 +96,15 @@ make plane-bootstrap
 make plane-up
 make plane-status
 make plane-logs
+```
+
+### Docling module
+
+```bash
+make docling-bootstrap
+make docling-up
+make docling-status
+make docling-logs
 ```
 
 ### Certificates
