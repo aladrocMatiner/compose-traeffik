@@ -131,4 +131,13 @@ assert_oidc_project_flow \
     "Update OIDC client contract in Keycloak (litellm)" \
     "deployment_project_litellm_keycloak_existing_client"
 
+assert_oidc_project_flow \
+    "plane" \
+    "Ensure Keycloak admin authentication works before Plane OIDC provisioning" \
+    "Query Keycloak client by client_id in target realm (plane)" \
+    "Create OIDC client in Keycloak when missing (plane)" \
+    "Refresh OIDC client lookup after create (plane)" \
+    "Update OIDC client contract in Keycloak (plane)" \
+    "deployment_project_plane_keycloak_existing_client"
+
 log_success "Keycloak bootstrap/OIDC idempotency contract test passed."

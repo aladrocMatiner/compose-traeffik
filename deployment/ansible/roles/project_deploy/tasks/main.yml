@@ -63,6 +63,25 @@
           deployment_project_manifest_data.oidc.client_id is string
           and deployment_project_manifest_data.oidc.client_id | length > 0
         )
+      - >-
+        (deployment_project_manifest_data.observability is not defined)
+        or (
+          deployment_project_manifest_data.observability is mapping
+          and deployment_project_manifest_data.observability.enabled is boolean
+          and (
+            deployment_project_manifest_data.observability.required_env is not defined
+            or (
+              deployment_project_manifest_data.observability.required_env is sequence
+              and
+              (deployment_project_manifest_data.observability.required_env
+                | select('string')
+                | list
+                | length)
+              ==
+              (deployment_project_manifest_data.observability.required_env | length)
+            )
+          )
+        )
     fail_msg: "Invalid optional manifest fields"
 
 - name: Resolve effective tls_mode (manifest default with optional override)
@@ -1594,6 +1613,101 @@
     - deployment_project_manifest_data.id == "traefik-litellm"
     - deployment_project_keycloak_dependency_host_ip | default('') | trim | length > 0
 
+- name: Validate Keycloak dependency context for plane/quay/harbor auth contracts
+  ansible.builtin.assert:
+    that:
+      - deployment_project_keycloak_dependency_host_ip | default('') | trim | length > 0
+      - deployment_project_keycloak_admin_username | default('') | trim | length > 0
+      - deployment_project_keycloak_admin_password | default('') | trim | length > 0
+    fail_msg: >-
+      Missing Keycloak dependency context for project auth contract.
+      Deploy/fix traefik-keycloak first, then retry this project deployment.
+  when: deployment_project_manifest_data.id in ["traefik-plane", "traefik-quay", "traefik-harbor"]
+
+- name: Resolve effective OIDC realm/client for plane/quay/harbor projects
+  ansible.builtin.set_fact:
+    deployment_project_generic_keycloak_realm_effective: "{{ deployment_project_manifest_data.oidc.realm | default(deployment_project_keycloak_realm | default('local.test', true), true) }}"
+    deployment_project_generic_keycloak_client_id_effective: "{{ deployment_project_manifest_data.oidc.client_id | default(deployment_project_manifest_data.id | regex_replace('^traefik-', ''), true) }}"
+    deployment_project_generic_keycloak_oidc_base_url_effective: "{{ deployment_project_keycloak_oidc_base_url | default('https://keycloak.' ~ (deployment_project_base_domain_cmd.stdout | trim), true) }}"
+  when: deployment_project_manifest_data.id in ["traefik-plane", "traefik-quay", "traefik-harbor"]
+
+- name: Ensure KEYCLOAK_OIDC_BASE_URL and KEYCLOAK_REALM for plane/quay/harbor projects
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^{{ item.key }}="
+    line: "{{ item.key }}={{ item.value }}"
+  loop:
+    - { key: "KEYCLOAK_OIDC_BASE_URL", value: "{{ deployment_project_generic_keycloak_oidc_base_url_effective }}" }
+    - { key: "KEYCLOAK_REALM", value: "{{ deployment_project_generic_keycloak_realm_effective }}" }
+  when: deployment_project_manifest_data.id in ["traefik-plane", "traefik-quay", "traefik-harbor"]
+
+- name: Ensure project-specific OIDC client id env key for plane/quay/harbor
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^{{ item.key }}="
+    line: "{{ item.key }}={{ deployment_project_generic_keycloak_client_id_effective }}"
+  loop:
+    - { project: "traefik-plane", key: "PLANE_OIDC_CLIENT_ID" }
+    - { project: "traefik-quay", key: "QUAY_OIDC_CLIENT_ID" }
+    - { project: "traefik-harbor", key: "HARBOR_OIDC_CLIENT_ID" }
+  when: deployment_project_manifest_data.id == item.project
+
+- name: Ensure plane observability contract defaults
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^{{ item.key }}="
+    line: "{{ item.key }}={{ item.value }}"
+  loop:
+    - { key: "PLANE_OBSERVABILITY_ENABLED", value: "true" }
+    - { key: "PLANE_OBSERVABILITY_OTLP_ENDPOINT", value: "http://alloy.{{ deployment_project_base_domain_cmd.stdout | trim }}" }
+  when: deployment_project_manifest_data.id == "traefik-plane"
+
+- name: Validate n8n optional OIDC contract prerequisites
+  ansible.builtin.assert:
+    that:
+      - deployment_project_manifest_data.oidc.enabled | default(false)
+      - deployment_project_manifest_data.depends_on_projects is defined
+      - "'traefik-keycloak' in deployment_project_manifest_data.depends_on_projects"
+      - deployment_project_keycloak_dependency_host_ip | default('') | trim | length > 0
+      - deployment_project_keycloak_admin_username | default('') | trim | length > 0
+      - deployment_project_keycloak_admin_password | default('') | trim | length > 0
+      - deployment_project_manifest_data.oidc.client_id | default('') | trim | length > 0
+    fail_msg: >-
+      n8n OIDC mode requires Keycloak dependency context and OIDC client contract fields.
+      Ensure traefik-keycloak dependency and oidc.client_id are configured before compose apply.
+  when:
+    - deployment_project_manifest_data.id == "traefik-n8n"
+    - deployment_project_manifest_data.oidc is defined
+    - deployment_project_manifest_data.oidc.enabled | default(false)
+
+- name: Ensure n8n optional OIDC env defaults when enabled
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^{{ item.key }}="
+    line: "{{ item.key }}={{ item.value }}"
+  loop:
+    - { key: "KEYCLOAK_OIDC_BASE_URL", value: "{{ deployment_project_keycloak_oidc_base_url | default('https://keycloak.' ~ (deployment_project_base_domain_cmd.stdout | trim), true) }}" }
+    - { key: "KEYCLOAK_REALM", value: "{{ deployment_project_manifest_data.oidc.realm | default(deployment_project_keycloak_realm | default('local.test', true), true) }}" }
+    - { key: "N8N_OIDC_CLIENT_ID", value: "{{ deployment_project_manifest_data.oidc.client_id }}" }
+  when:
+    - deployment_project_manifest_data.id == "traefik-n8n"
+    - deployment_project_manifest_data.oidc is defined
+    - deployment_project_manifest_data.oidc.enabled | default(false)
+
+- name: Validate harbor observability contract required env when enabled
+  ansible.builtin.command:
+    cmd: "bash -lc \"grep -Eq '^{{ item }}=.+' .env\""
+  args:
+    chdir: "{{ deployment_project_repo_dir }}"
+  loop: "{{ deployment_project_manifest_data.observability.required_env | default([]) }}"
+  loop_control:
+    label: "{{ item }}"
+  changed_when: false
+  when:
+    - deployment_project_manifest_data.id == "traefik-harbor"
+    - deployment_project_manifest_data.observability is defined
+    - deployment_project_manifest_data.observability.enabled | default(false)
+
 - name: Validate required environment variables declared by manifest
   ansible.builtin.command:
     cmd: "bash -lc \"grep -Eq '^{{ item }}=.+' .env\""
@@ -2047,6 +2161,19 @@
     path: "{{ deployment_project_repo_dir }}/services/observability/compose.yml"
   register: deployment_project_observability_compose_stat
   when: deployment_project_manifest_data.id == "traefik-observability"
+
+- name: Check if Plane compose exists in pinned repo for plane project
+  ansible.builtin.stat:
+    path: "{{ deployment_project_repo_dir }}/services/plane/compose.yml"
+  register: deployment_project_plane_compose_stat
+  when: deployment_project_manifest_data.id == "traefik-plane"
+
+- name: Assert Plane compose exists in pinned repo for plane project
+  ansible.builtin.assert:
+    that:
+      - deployment_project_plane_compose_stat.stat.exists
+    fail_msg: "services/plane/compose.yml not found in pinned repo_ref. Update manifest repo_ref for traefik-plane."
+  when: deployment_project_manifest_data.id == "traefik-plane"
 
 - name: Assert observability compose exists in pinned repo for observability project
   ansible.builtin.assert:
@@ -3562,6 +3689,180 @@
   delay: 5
   until: deployment_project_litellm_bootstrap_admin_cmd.rc == 0
   when: deployment_project_manifest_data.id == "traefik-litellm"
+
+- name: Ensure Keycloak admin authentication works before Plane OIDC provisioning
+  ansible.builtin.uri:
+    url: "{{ deployment_project_generic_keycloak_oidc_base_url_effective }}/realms/master/protocol/openid-connect/token"
+    method: POST
+    body_format: form-urlencoded
+    body:
+      client_id: admin-cli
+      grant_type: password
+      username: "{{ deployment_project_keycloak_admin_username }}"
+      password: "{{ deployment_project_keycloak_admin_password }}"
+    validate_certs: false
+    status_code: 200
+    return_content: true
+  register: deployment_project_plane_keycloak_admin_token_response
+  retries: 10
+  delay: 6
+  until: deployment_project_plane_keycloak_admin_token_response.status == 200
+  when: deployment_project_manifest_data.id == "traefik-plane"
+
+- name: Extract Keycloak admin access token for Plane OIDC provisioning
+  ansible.builtin.set_fact:
+    deployment_project_plane_keycloak_admin_access_token: "{{ (deployment_project_plane_keycloak_admin_token_response.content | from_json).access_token }}"
+  when: deployment_project_manifest_data.id == "traefik-plane"
+
+- name: Resolve OIDC client contract for plane project
+  ansible.builtin.set_fact:
+    deployment_project_plane_oidc_client_id_effective: "{{ deployment_project_generic_keycloak_client_id_effective }}"
+    deployment_project_plane_oidc_realm_effective: "{{ deployment_project_generic_keycloak_realm_effective }}"
+    deployment_project_plane_oidc_base_url_effective: "{{ deployment_project_generic_keycloak_oidc_base_url_effective }}"
+    deployment_project_plane_oidc_redirect_uris:
+      - "https://plane.{{ deployment_project_base_domain_cmd.stdout | trim }}/auth/callback"
+    deployment_project_plane_oidc_web_origins:
+      - "https://plane.{{ deployment_project_base_domain_cmd.stdout | trim }}"
+  when: deployment_project_manifest_data.id == "traefik-plane"
+
+- name: Ensure OIDC client contract shape for plane project
+  ansible.builtin.assert:
+    that:
+      - deployment_project_plane_oidc_client_id_effective | trim | length > 0
+      - deployment_project_plane_oidc_redirect_uris | length > 0
+      - deployment_project_plane_oidc_web_origins | length > 0
+    fail_msg: "Malformed OIDC contract for plane project."
+  when: deployment_project_manifest_data.id == "traefik-plane"
+
+- name: Query Keycloak client by client_id in target realm (plane)
+  ansible.builtin.uri:
+    url: "{{ deployment_project_plane_oidc_base_url_effective }}/admin/realms/{{ deployment_project_plane_oidc_realm_effective }}/clients?clientId={{ deployment_project_plane_oidc_client_id_effective | urlencode }}"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ deployment_project_plane_keycloak_admin_access_token }}"
+    validate_certs: false
+    status_code: 200
+    return_content: true
+  register: deployment_project_plane_keycloak_client_lookup
+  when: deployment_project_manifest_data.id == "traefik-plane"
+
+- name: Parse existing OIDC client lookup result (plane)
+  ansible.builtin.set_fact:
+    deployment_project_plane_keycloak_existing_client: "{{ ((deployment_project_plane_keycloak_client_lookup.content | from_json) | first) if ((deployment_project_plane_keycloak_client_lookup.content | from_json) | length > 0) else {} }}"
+  when: deployment_project_manifest_data.id == "traefik-plane"
+
+- name: Create OIDC client in Keycloak when missing (plane)
+  ansible.builtin.uri:
+    url: "{{ deployment_project_plane_oidc_base_url_effective }}/admin/realms/{{ deployment_project_plane_oidc_realm_effective }}/clients"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ deployment_project_plane_keycloak_admin_access_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      clientId: "{{ deployment_project_plane_oidc_client_id_effective }}"
+      enabled: true
+      protocol: "openid-connect"
+      publicClient: false
+      directAccessGrantsEnabled: false
+      standardFlowEnabled: true
+      serviceAccountsEnabled: false
+      redirectUris: "{{ deployment_project_plane_oidc_redirect_uris }}"
+      webOrigins: "{{ deployment_project_plane_oidc_web_origins }}"
+      attributes:
+        pkce.code.challenge.method: ""
+    validate_certs: false
+    status_code: 201
+  when:
+    - deployment_project_manifest_data.id == "traefik-plane"
+    - deployment_project_plane_keycloak_existing_client == {}
+
+- name: Refresh OIDC client lookup after create (plane)
+  ansible.builtin.uri:
+    url: "{{ deployment_project_plane_oidc_base_url_effective }}/admin/realms/{{ deployment_project_plane_oidc_realm_effective }}/clients?clientId={{ deployment_project_plane_oidc_client_id_effective | urlencode }}"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ deployment_project_plane_keycloak_admin_access_token }}"
+    validate_certs: false
+    status_code: 200
+    return_content: true
+  register: deployment_project_plane_keycloak_client_lookup_after_create
+  when:
+    - deployment_project_manifest_data.id == "traefik-plane"
+    - deployment_project_plane_keycloak_existing_client == {}
+
+- name: Resolve effective Keycloak client id for update/secret (plane)
+  ansible.builtin.set_fact:
+    deployment_project_plane_keycloak_client_uuid: >-
+      {{
+        (
+          (deployment_project_plane_keycloak_client_lookup_after_create.content | from_json | first).id
+        ) if (deployment_project_plane_keycloak_existing_client == {})
+        else deployment_project_plane_keycloak_existing_client.id
+      }}
+  when: deployment_project_manifest_data.id == "traefik-plane"
+
+- name: Update OIDC client contract in Keycloak (plane)
+  ansible.builtin.uri:
+    url: "{{ deployment_project_plane_oidc_base_url_effective }}/admin/realms/{{ deployment_project_plane_oidc_realm_effective }}/clients/{{ deployment_project_plane_keycloak_client_uuid }}"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ deployment_project_plane_keycloak_admin_access_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      id: "{{ deployment_project_plane_keycloak_client_uuid }}"
+      clientId: "{{ deployment_project_plane_oidc_client_id_effective }}"
+      enabled: true
+      protocol: "openid-connect"
+      publicClient: false
+      directAccessGrantsEnabled: false
+      standardFlowEnabled: true
+      serviceAccountsEnabled: false
+      redirectUris: "{{ deployment_project_plane_oidc_redirect_uris }}"
+      webOrigins: "{{ deployment_project_plane_oidc_web_origins }}"
+      attributes:
+        pkce.code.challenge.method: ""
+    validate_certs: false
+    status_code: 204
+  when: deployment_project_manifest_data.id == "traefik-plane"
+
+- name: Read effective OIDC client secret from Keycloak (plane)
+  ansible.builtin.uri:
+    url: "{{ deployment_project_plane_oidc_base_url_effective }}/admin/realms/{{ deployment_project_plane_oidc_realm_effective }}/clients/{{ deployment_project_plane_keycloak_client_uuid }}/client-secret"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ deployment_project_plane_keycloak_admin_access_token }}"
+    validate_certs: false
+    status_code: 200
+    return_content: true
+  register: deployment_project_plane_keycloak_client_secret_response
+  when: deployment_project_manifest_data.id == "traefik-plane"
+
+- name: Resolve effective OIDC client secret from Keycloak response (plane)
+  ansible.builtin.set_fact:
+    deployment_project_plane_oidc_client_secret_effective: "{{ (deployment_project_plane_keycloak_client_secret_response.content | from_json).value | trim }}"
+  when: deployment_project_manifest_data.id == "traefik-plane"
+
+- name: Ensure PLANE_OIDC_CLIENT_SECRET matches Keycloak effective secret
+  ansible.builtin.lineinfile:
+    path: "{{ deployment_project_repo_dir }}/.env"
+    regexp: "^PLANE_OIDC_CLIENT_SECRET="
+    line: "PLANE_OIDC_CLIENT_SECRET={{ deployment_project_plane_oidc_client_secret_effective }}"
+  register: deployment_project_plane_oidc_secret_sync_env
+  when: deployment_project_manifest_data.id == "traefik-plane"
+
+- name: Recreate Plane service after OIDC secret sync
+  ansible.builtin.command:
+    cmd: ./scripts/compose.sh --profile {{ deployment_project_manifest_data.compose_profile }} up -d --force-recreate plane
+  args:
+    chdir: "{{ deployment_project_repo_dir }}"
+  environment:
+    COMPOSE_PROJECT_NAME: "{{ deployment_project_manifest_data.id }}"
+  changed_when: true
+  when:
+    - deployment_project_manifest_data.id == "traefik-plane"
+    - deployment_project_plane_oidc_secret_sync_env is changed
 
 - name: Check Wiki.js setup completion status in database
   ansible.builtin.shell: |

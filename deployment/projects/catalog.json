@@ -47,6 +47,26 @@
     {
       "id": "traefik-awx",
       "manifest": "deployment/projects/traefik-awx/manifest.json"
+    },
+    {
+      "id": "traefik-plane",
+      "manifest": "deployment/projects/traefik-plane/manifest.json"
+    },
+    {
+      "id": "traefik-freeipa",
+      "manifest": "deployment/projects/traefik-freeipa/manifest.json"
+    },
+    {
+      "id": "traefik-quay",
+      "manifest": "deployment/projects/traefik-quay/manifest.json"
+    },
+    {
+      "id": "traefik-n8n",
+      "manifest": "deployment/projects/traefik-n8n/manifest.json"
+    },
+    {
+      "id": "traefik-harbor",
+      "manifest": "deployment/projects/traefik-harbor/manifest.json"
     }
   ]
 }

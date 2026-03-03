@@ -80,6 +80,40 @@ if ! printf '%s' "$awx_out" | grep -q "k3d+AWX operator project workflow"; then
     log_error "traefik-awx guardrail must provide explicit transition guidance"
 fi
 
+set +e
+freeipa_out="$($RUNNER run --project traefik-freeipa 2>&1)"
+freeipa_rc=$?
+set -e
+if [ "$freeipa_rc" -eq 0 ]; then
+    log_error "traefik-freeipa must fail while runtime service implementation is pending"
+fi
+if ! printf '%s' "$freeipa_out" | grep -q "deployment-contract only"; then
+    log_error "traefik-freeipa guardrail must declare deployment-only contract status"
+fi
+if ! printf '%s' "$freeipa_out" | grep -q "No compose apply was attempted"; then
+    log_error "traefik-freeipa guardrail must confirm compose apply was skipped"
+fi
+if ! printf '%s' "$freeipa_out" | grep -q "Transition path"; then
+    log_error "traefik-freeipa guardrail must provide explicit transition guidance"
+fi
+
+set +e
+plane_out="$($RUNNER run --project traefik-plane 2>&1)"
+plane_rc=$?
+set -e
+if [ "$plane_rc" -eq 0 ]; then
+    log_error "traefik-plane must fail fast when pinned repo_ref lacks services/plane assets"
+fi
+if ! printf '%s' "$plane_out" | grep -q "preflight failed"; then
+    log_error "traefik-plane preflight must report missing module assets explicitly"
+fi
+if ! printf '%s' "$plane_out" | grep -q "services/plane/compose.yml"; then
+    log_error "traefik-plane preflight must include missing services/plane path"
+fi
+if ! printf '%s' "$plane_out" | grep -q "No compose apply was attempted"; then
+    log_error "traefik-plane preflight must confirm compose apply was skipped"
+fi
+
 if ! awk '
   /run_stage provision/ { p=NR }
   /run_stage wait/ { w=NR }

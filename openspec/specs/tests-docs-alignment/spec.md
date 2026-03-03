@@ -22,9 +22,13 @@ The system SHALL test both enabled and disabled redirect behavior based on `HTTP
 - **THEN** HTTP requests do not redirect to HTTPS
 
 ### Requirement: Docs aligned with TLS modes
-The system SHALL ensure README and TLS guides describe Mode B/C behavior consistent with mounted certbot outputs and env-driven ACME settings.
+The system SHALL ensure README and TLS guides describe Mode B/C behavior consistent with mounted certbot outputs and env-driven ACME settings, and SHALL keep BIND smoke-test references aligned with executed checks.
 
 #### Scenario: Certbot guidance
 - **WHEN** a user follows Mode B documentation
 - **THEN** the steps describe how Traefik serves certbot-issued certs via the configured mounts
+
+#### Scenario: BIND test reference alignment
+- **WHEN** a contributor compares docs and smoke execution
+- **THEN** BIND-related smoke tests documented in `tests/README.md` match what `scripts/healthcheck.sh` executes
 

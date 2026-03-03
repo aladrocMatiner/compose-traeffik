@@ -1,0 +1,27 @@
+{
+  "id": "traefik-quay",
+  "description": "Deploy Quay behind Traefik with StepCA ACME defaults and Keycloak-backed auth contract.",
+  "repo_url": "https://github.com/aladrocMatiner/compose-traeffik.git",
+  "repo_ref": "207dac176e0c2070494ae3f72b2310aca31dfa17",
+  "compose_profile": "quay",
+  "services": [
+    "traefik",
+    "quay"
+  ],
+  "deploy_playbook": "deployment/ansible/playbooks/project_deploy.yml",
+  "required_env": [
+    "BASE_DOMAIN",
+    "DEV_DOMAIN"
+  ],
+  "tls_mode": "stepca-acme",
+  "depends_on_projects": [
+    "traefik-stepca",
+    "traefik-keycloak"
+  ],
+  "oidc": {
+    "enabled": true,
+    "realm": "local.test",
+    "client_id": "quay"
+  },
+  "public_host": "quay.local.test"
+}

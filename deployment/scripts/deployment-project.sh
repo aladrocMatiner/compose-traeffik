@@ -103,7 +103,9 @@ check_project_runtime_implementation() {
   local manifest_path="$2"
 
   local compose_profile
+  local repo_ref
   compose_profile="$(jq -r '.compose_profile' "${manifest_path}")"
+  repo_ref="$(jq -r '.repo_ref' "${manifest_path}")"
   case "${project_id}" in
     traefik-docling)
       local docling_compose_path="${REPO_ROOT}/services/docling/compose.yml"
@@ -116,6 +118,18 @@ check_project_runtime_implementation() {
       local awx_k3d_script="${REPO_ROOT}/scripts/awx-k3d-up.sh"
       if [[ ! -d "${awx_service_path}" || ! -x "${awx_k3d_script}" ]]; then
         die "Project '${project_id}' is deployment-contract only: AWX runtime hybrid implementation is pending for deployment-project (missing ${awx_service_path} and/or ${awx_k3d_script}, profile=${compose_profile}). No compose apply was attempted. Transition path: integrate k3d+AWX operator project workflow in deployment-project and retry make deployment-project project=${project_id}."
+      fi
+      ;;
+    traefik-freeipa)
+      check_cmd git
+      if ! git cat-file -e "${repo_ref}:services/freeipa/compose.yml" >/dev/null 2>&1; then
+        die "Project '${project_id}' is deployment-contract only: FreeIPA service runtime implementation is pending in pinned repo_ref=${repo_ref} (missing services/freeipa/compose.yml, profile=${compose_profile}). No compose apply was attempted. Transition path: implement services/freeipa and profile '${compose_profile}', update manifest repo_ref if needed, then retry make deployment-project project=${project_id}."
+      fi
+      ;;
+    traefik-plane)
+      check_cmd git
+      if ! git cat-file -e "${repo_ref}:services/plane/compose.yml" >/dev/null 2>&1; then
+        die "Project '${project_id}' preflight failed: services/plane/compose.yml not found in pinned repo_ref=${repo_ref} (profile=${compose_profile}). No compose apply was attempted. Action: update manifest repo_ref to a commit containing Plane module assets or add services/plane/compose.yml before retrying."
       fi
       ;;
     *)

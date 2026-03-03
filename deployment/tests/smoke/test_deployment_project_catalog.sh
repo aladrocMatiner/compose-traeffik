@@ -28,6 +28,11 @@ LITELLM_MANIFEST="$REPO_ROOT/deployment/projects/traefik-litellm/manifest.json"
 DOCLING_MANIFEST="$REPO_ROOT/deployment/projects/traefik-docling/manifest.json"
 WEBUI_MANIFEST="$REPO_ROOT/deployment/projects/traefik-webui/manifest.json"
 AWX_MANIFEST="$REPO_ROOT/deployment/projects/traefik-awx/manifest.json"
+PLANE_MANIFEST="$REPO_ROOT/deployment/projects/traefik-plane/manifest.json"
+FREEIPA_MANIFEST="$REPO_ROOT/deployment/projects/traefik-freeipa/manifest.json"
+QUAY_MANIFEST="$REPO_ROOT/deployment/projects/traefik-quay/manifest.json"
+N8N_MANIFEST="$REPO_ROOT/deployment/projects/traefik-n8n/manifest.json"
+HARBOR_MANIFEST="$REPO_ROOT/deployment/projects/traefik-harbor/manifest.json"
 
 check_command "jq"
 check_command "make"
@@ -73,8 +78,23 @@ fi
 if [ ! -f "$AWX_MANIFEST" ]; then
     log_error "Missing traefik-awx manifest: $AWX_MANIFEST"
 fi
+if [ ! -f "$PLANE_MANIFEST" ]; then
+    log_error "Missing traefik-plane manifest: $PLANE_MANIFEST"
+fi
+if [ ! -f "$FREEIPA_MANIFEST" ]; then
+    log_error "Missing traefik-freeipa manifest: $FREEIPA_MANIFEST"
+fi
+if [ ! -f "$QUAY_MANIFEST" ]; then
+    log_error "Missing traefik-quay manifest: $QUAY_MANIFEST"
+fi
+if [ ! -f "$N8N_MANIFEST" ]; then
+    log_error "Missing traefik-n8n manifest: $N8N_MANIFEST"
+fi
+if [ ! -f "$HARBOR_MANIFEST" ]; then
+    log_error "Missing traefik-harbor manifest: $HARBOR_MANIFEST"
+fi
 list_output="$(make -s -C "$REPO_ROOT" deployment-project-list)"
-expected_list=$'traefik-stepca\ntraefik-keycloak\ntraefik-observability\ntraefik-wikijs\ntraefik-semaphoreui\ntraefik-rocketchat\ntraefik-gitlab\ntraefik-dns-bind\ntraefik-litellm\ntraefik-docling\ntraefik-webui\ntraefik-awx'
+expected_list=$'traefik-stepca\ntraefik-keycloak\ntraefik-observability\ntraefik-wikijs\ntraefik-semaphoreui\ntraefik-rocketchat\ntraefik-gitlab\ntraefik-dns-bind\ntraefik-litellm\ntraefik-docling\ntraefik-webui\ntraefik-awx\ntraefik-plane\ntraefik-freeipa\ntraefik-quay\ntraefik-n8n\ntraefik-harbor'
 if [ "$list_output" != "$expected_list" ]; then
     log_error "deployment-project-list output drifted. Expected:\n${expected_list}\nGot:\n${list_output}"
 fi
@@ -118,6 +138,21 @@ if ! jq -e '.projects[] | select(.id=="traefik-webui") | .manifest == "deploymen
 fi
 if ! jq -e '.projects[] | select(.id=="traefik-awx") | .manifest == "deployment/projects/traefik-awx/manifest.json"' "$CATALOG" >/dev/null; then
     log_error "Catalog entry for traefik-awx is missing or points to an unexpected manifest path"
+fi
+if ! jq -e '.projects[] | select(.id=="traefik-plane") | .manifest == "deployment/projects/traefik-plane/manifest.json"' "$CATALOG" >/dev/null; then
+    log_error "Catalog entry for traefik-plane is missing or points to an unexpected manifest path"
+fi
+if ! jq -e '.projects[] | select(.id=="traefik-freeipa") | .manifest == "deployment/projects/traefik-freeipa/manifest.json"' "$CATALOG" >/dev/null; then
+    log_error "Catalog entry for traefik-freeipa is missing or points to an unexpected manifest path"
+fi
+if ! jq -e '.projects[] | select(.id=="traefik-quay") | .manifest == "deployment/projects/traefik-quay/manifest.json"' "$CATALOG" >/dev/null; then
+    log_error "Catalog entry for traefik-quay is missing or points to an unexpected manifest path"
+fi
+if ! jq -e '.projects[] | select(.id=="traefik-n8n") | .manifest == "deployment/projects/traefik-n8n/manifest.json"' "$CATALOG" >/dev/null; then
+    log_error "Catalog entry for traefik-n8n is missing or points to an unexpected manifest path"
+fi
+if ! jq -e '.projects[] | select(.id=="traefik-harbor") | .manifest == "deployment/projects/traefik-harbor/manifest.json"' "$CATALOG" >/dev/null; then
+    log_error "Catalog entry for traefik-harbor is missing or points to an unexpected manifest path"
 fi
 
 if ! jq -e '
@@ -347,6 +382,106 @@ if ! jq -e '
     .public_host == "awx.local.test"
 ' "$AWX_MANIFEST" >/dev/null; then
   log_error "traefik-awx manifest contract is invalid"
+fi
+
+if ! jq -e '
+    .id == "traefik-plane" and
+    (.description | type == "string" and length > 0) and
+    (.repo_url | type == "string" and length > 0) and
+    (.repo_ref | test("^[0-9a-f]{40}$")) and
+    .compose_profile == "plane" and
+    (.services == ["traefik", "plane"]) and
+    .deploy_playbook == "deployment/ansible/playbooks/project_deploy.yml" and
+    (.required_env | index("BASE_DOMAIN")) and
+    (.required_env | index("DEV_DOMAIN")) and
+    .tls_mode == "stepca-acme" and
+    (.depends_on_projects == ["traefik-stepca", "traefik-keycloak", "traefik-observability"]) and
+    (.oidc.enabled == true) and
+    (.oidc.realm == "local.test") and
+    (.oidc.client_id == "plane") and
+    .public_host == "plane.local.test"
+' "$PLANE_MANIFEST" >/dev/null; then
+  log_error "traefik-plane manifest contract is invalid"
+fi
+
+if ! jq -e '
+    .id == "traefik-freeipa" and
+    (.description | type == "string" and length > 0) and
+    (.description | test("Deployment-only")) and
+    (.repo_url | type == "string" and length > 0) and
+    (.repo_ref | test("^[0-9a-f]{40}$")) and
+    .compose_profile == "freeipa" and
+    (.services == ["traefik", "freeipa"]) and
+    .deploy_playbook == "deployment/ansible/playbooks/project_deploy.yml" and
+    (.required_env | index("BASE_DOMAIN")) and
+    (.required_env | index("DEV_DOMAIN")) and
+    .tls_mode == "stepca-acme" and
+    (.depends_on_projects == ["traefik-stepca"]) and
+    .public_host == "freeipa.local.test"
+' "$FREEIPA_MANIFEST" >/dev/null; then
+  log_error "traefik-freeipa manifest contract is invalid"
+fi
+
+if ! jq -e '
+    .id == "traefik-quay" and
+    (.description | type == "string" and length > 0) and
+    (.repo_url | type == "string" and length > 0) and
+    (.repo_ref | test("^[0-9a-f]{40}$")) and
+    .compose_profile == "quay" and
+    (.services == ["traefik", "quay"]) and
+    .deploy_playbook == "deployment/ansible/playbooks/project_deploy.yml" and
+    (.required_env | index("BASE_DOMAIN")) and
+    (.required_env | index("DEV_DOMAIN")) and
+    .tls_mode == "stepca-acme" and
+    (.depends_on_projects == ["traefik-stepca", "traefik-keycloak"]) and
+    (.oidc.enabled == true) and
+    (.oidc.realm == "local.test") and
+    (.oidc.client_id == "quay") and
+    .public_host == "quay.local.test"
+' "$QUAY_MANIFEST" >/dev/null; then
+  log_error "traefik-quay manifest contract is invalid"
+fi
+
+if ! jq -e '
+    .id == "traefik-n8n" and
+    (.description | type == "string" and length > 0) and
+    (.repo_url | type == "string" and length > 0) and
+    (.repo_ref | test("^[0-9a-f]{40}$")) and
+    .compose_profile == "n8n" and
+    (.services == ["traefik", "n8n"]) and
+    .deploy_playbook == "deployment/ansible/playbooks/project_deploy.yml" and
+    (.required_env | index("BASE_DOMAIN")) and
+    (.required_env | index("DEV_DOMAIN")) and
+    .tls_mode == "stepca-acme" and
+    (.depends_on_projects == ["traefik-stepca"]) and
+    (.oidc.enabled == false) and
+    (.oidc.realm == "local.test") and
+    (.oidc.client_id == "n8n") and
+    .public_host == "n8n.local.test"
+' "$N8N_MANIFEST" >/dev/null; then
+  log_error "traefik-n8n manifest contract is invalid"
+fi
+
+if ! jq -e '
+    .id == "traefik-harbor" and
+    (.description | type == "string" and length > 0) and
+    (.repo_url | type == "string" and length > 0) and
+    (.repo_ref | test("^[0-9a-f]{40}$")) and
+    .compose_profile == "harbor" and
+    (.services == ["traefik", "harbor"]) and
+    .deploy_playbook == "deployment/ansible/playbooks/project_deploy.yml" and
+    (.required_env | index("BASE_DOMAIN")) and
+    (.required_env | index("DEV_DOMAIN")) and
+    .tls_mode == "stepca-acme" and
+    (.depends_on_projects == ["traefik-stepca", "traefik-keycloak"]) and
+    (.oidc.enabled == true) and
+    (.oidc.realm == "local.test") and
+    (.oidc.client_id == "harbor") and
+    (.observability.enabled == false) and
+    (.observability.required_env | index("HARBOR_OBSERVABILITY_ENDPOINT")) and
+    .public_host == "harbor.local.test"
+' "$HARBOR_MANIFEST" >/dev/null; then
+  log_error "traefik-harbor manifest contract is invalid"
 fi
 
 

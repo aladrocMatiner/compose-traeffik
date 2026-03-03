@@ -1,0 +1,33 @@
+{
+  "id": "traefik-harbor",
+  "description": "Deploy Harbor behind Traefik with StepCA ACME defaults, Keycloak-backed auth contract, and optional observability contract.",
+  "repo_url": "https://github.com/aladrocMatiner/compose-traeffik.git",
+  "repo_ref": "207dac176e0c2070494ae3f72b2310aca31dfa17",
+  "compose_profile": "harbor",
+  "services": [
+    "traefik",
+    "harbor"
+  ],
+  "deploy_playbook": "deployment/ansible/playbooks/project_deploy.yml",
+  "required_env": [
+    "BASE_DOMAIN",
+    "DEV_DOMAIN"
+  ],
+  "tls_mode": "stepca-acme",
+  "depends_on_projects": [
+    "traefik-stepca",
+    "traefik-keycloak"
+  ],
+  "oidc": {
+    "enabled": true,
+    "realm": "local.test",
+    "client_id": "harbor"
+  },
+  "observability": {
+    "enabled": false,
+    "required_env": [
+      "HARBOR_OBSERVABILITY_ENDPOINT"
+    ]
+  },
+  "public_host": "harbor.local.test"
+}

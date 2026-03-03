@@ -36,6 +36,11 @@ make deployment-project project=traefik-litellm target=qemu os=ubuntu
 make deployment-project project=traefik-webui target=qemu os=ubuntu
 make deployment-project project=traefik-docling target=qemu os=ubuntu
 make deployment-project project=traefik-awx target=qemu os=ubuntu
+make deployment-project project=traefik-plane target=qemu os=ubuntu
+make deployment-project project=traefik-quay target=qemu os=ubuntu
+make deployment-project project=traefik-n8n target=qemu os=ubuntu
+make deployment-project project=traefik-harbor target=qemu os=ubuntu
+make deployment-project project=traefik-freeipa target=qemu os=ubuntu
 ```
 
 Notas para `traefik-dns-bind`:
@@ -69,3 +74,31 @@ Notas para `traefik-awx`:
 - Estado actual: contrato de despliegue disponible en catálogo, pero runtime híbrido AWX (`k3d` + operator) aún no integrado en `deployment-project`.
 - `make deployment-project project=traefik-awx ...` falla de forma intencional antes de `docker compose up -d`.
 - Camino de transición esperado: integrar en `deployment-project` el flujo AWX basado en `scripts/awx-k3d-up.sh` + `scripts/awx-up.sh` y su contrato OIDC/TLS.
+
+Notas para `traefik-plane`:
+
+- Depende explícitamente de `traefik-stepca`, `traefik-keycloak` y `traefik-observability`.
+- TLS por defecto: `tls_mode=stepca-acme` (admite override soportado).
+- Incluye reconciliación OIDC idempotente en Keycloak y sincroniza `PLANE_OIDC_CLIENT_SECRET` al `.env` efectivo.
+- Si el `repo_ref` pinneado no contiene `services/plane/compose.yml`, el runner falla en preflight antes de provision/compose.
+
+Notas para `traefik-quay`:
+
+- Contrato de proyecto registrado con dependencias `traefik-stepca` y `traefik-keycloak`.
+- TLS por defecto `stepca-acme`, expuesto detrás de Traefik, con defaults de integración OIDC en `.env`.
+
+Notas para `traefik-n8n`:
+
+- Contrato de proyecto registrado con dependencia base `traefik-stepca`.
+- OIDC de Keycloak es opcional (`oidc.enabled=true`): cuando se habilita, se validan prerequisitos antes de compose.
+
+Notas para `traefik-harbor`:
+
+- Contrato de proyecto registrado con dependencias `traefik-stepca` y `traefik-keycloak`.
+- Incluye contrato de observabilidad opcional (`observability.enabled=true`) con validación de variables requeridas.
+
+Notas para `traefik-freeipa`:
+
+- Estado actual: contrato de despliegue disponible en catálogo, runtime FreeIPA pendiente.
+- `make deployment-project project=traefik-freeipa ...` falla de forma intencional antes de `docker compose up -d`.
+- Camino de transición esperado: implementar `services/freeipa/compose.yml` y profile `freeipa`, actualizar `repo_ref` del manifiesto y reintentar.
