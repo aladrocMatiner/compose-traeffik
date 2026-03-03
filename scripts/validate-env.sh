@@ -48,6 +48,24 @@ DOCLING_SERVE_OTEL_ENABLE_TRACES_ENV="${DOCLING_SERVE_OTEL_ENABLE_TRACES:-}"
 DOCLING_OTEL_EXPORTER_OTLP_ENDPOINT_ENV="${DOCLING_OTEL_EXPORTER_OTLP_ENDPOINT:-}"
 DOCLING_PROMETHEUS_METRICS_PATH_ENV="${DOCLING_PROMETHEUS_METRICS_PATH:-}"
 DOCLING_TRAEFIK_MIDDLEWARES_ENV="${DOCLING_TRAEFIK_MIDDLEWARES:-}"
+FREEIPA_HOSTNAME_ENV="${FREEIPA_HOSTNAME:-}"
+FREEIPA_SERVER_HOSTNAME_ENV="${FREEIPA_SERVER_HOSTNAME:-}"
+FREEIPA_REALM_ENV="${FREEIPA_REALM:-}"
+FREEIPA_DOMAIN_ENV="${FREEIPA_DOMAIN:-}"
+FREEIPA_ADMIN_PASSWORD_ENV="${FREEIPA_ADMIN_PASSWORD:-}"
+FREEIPA_DM_PASSWORD_ENV="${FREEIPA_DM_PASSWORD:-}"
+FREEIPA_TLS_MODE_ENV="${FREEIPA_TLS_MODE:-}"
+FREEIPA_TRAEFIK_MIDDLEWARES_ENV="${FREEIPA_TRAEFIK_MIDDLEWARES:-}"
+FREEIPA_KEYCLOAK_ENABLED_ENV="${FREEIPA_KEYCLOAK_ENABLED:-}"
+FREEIPA_KEYCLOAK_MODE_ENV="${FREEIPA_KEYCLOAK_MODE:-}"
+FREEIPA_KEYCLOAK_INTERNAL_URL_ENV="${FREEIPA_KEYCLOAK_INTERNAL_URL:-}"
+FREEIPA_KEYCLOAK_EXTERNAL_URL_ENV="${FREEIPA_KEYCLOAK_EXTERNAL_URL:-}"
+FREEIPA_KEYCLOAK_CLIENT_ID_ENV="${FREEIPA_KEYCLOAK_CLIENT_ID:-}"
+FREEIPA_KEYCLOAK_CLIENT_SECRET_ENV="${FREEIPA_KEYCLOAK_CLIENT_SECRET:-}"
+FREEIPA_KEYCLOAK_ISSUER_ENV="${FREEIPA_KEYCLOAK_ISSUER:-}"
+FREEIPA_OBSERVABILITY_ENABLED_ENV="${FREEIPA_OBSERVABILITY_ENABLED:-}"
+FREEIPA_OTEL_EXPORTER_OTLP_ENDPOINT_ENV="${FREEIPA_OTEL_EXPORTER_OTLP_ENDPOINT:-}"
+FREEIPA_PROMETHEUS_METRICS_PATH_ENV="${FREEIPA_PROMETHEUS_METRICS_PATH:-}"
 
 load_env
 
@@ -161,6 +179,60 @@ if [ -n "${DOCLING_PROMETHEUS_METRICS_PATH_ENV}" ]; then
 fi
 if [ -n "${DOCLING_TRAEFIK_MIDDLEWARES_ENV}" ]; then
     DOCLING_TRAEFIK_MIDDLEWARES="${DOCLING_TRAEFIK_MIDDLEWARES_ENV}"
+fi
+if [ -n "${FREEIPA_HOSTNAME_ENV}" ]; then
+    FREEIPA_HOSTNAME="${FREEIPA_HOSTNAME_ENV}"
+fi
+if [ -n "${FREEIPA_SERVER_HOSTNAME_ENV}" ]; then
+    FREEIPA_SERVER_HOSTNAME="${FREEIPA_SERVER_HOSTNAME_ENV}"
+fi
+if [ -n "${FREEIPA_REALM_ENV}" ]; then
+    FREEIPA_REALM="${FREEIPA_REALM_ENV}"
+fi
+if [ -n "${FREEIPA_DOMAIN_ENV}" ]; then
+    FREEIPA_DOMAIN="${FREEIPA_DOMAIN_ENV}"
+fi
+if [ -n "${FREEIPA_ADMIN_PASSWORD_ENV}" ]; then
+    FREEIPA_ADMIN_PASSWORD="${FREEIPA_ADMIN_PASSWORD_ENV}"
+fi
+if [ -n "${FREEIPA_DM_PASSWORD_ENV}" ]; then
+    FREEIPA_DM_PASSWORD="${FREEIPA_DM_PASSWORD_ENV}"
+fi
+if [ -n "${FREEIPA_TLS_MODE_ENV}" ]; then
+    FREEIPA_TLS_MODE="${FREEIPA_TLS_MODE_ENV}"
+fi
+if [ -n "${FREEIPA_TRAEFIK_MIDDLEWARES_ENV}" ]; then
+    FREEIPA_TRAEFIK_MIDDLEWARES="${FREEIPA_TRAEFIK_MIDDLEWARES_ENV}"
+fi
+if [ -n "${FREEIPA_KEYCLOAK_ENABLED_ENV}" ]; then
+    FREEIPA_KEYCLOAK_ENABLED="${FREEIPA_KEYCLOAK_ENABLED_ENV}"
+fi
+if [ -n "${FREEIPA_KEYCLOAK_MODE_ENV}" ]; then
+    FREEIPA_KEYCLOAK_MODE="${FREEIPA_KEYCLOAK_MODE_ENV}"
+fi
+if [ -n "${FREEIPA_KEYCLOAK_INTERNAL_URL_ENV}" ]; then
+    FREEIPA_KEYCLOAK_INTERNAL_URL="${FREEIPA_KEYCLOAK_INTERNAL_URL_ENV}"
+fi
+if [ -n "${FREEIPA_KEYCLOAK_EXTERNAL_URL_ENV}" ]; then
+    FREEIPA_KEYCLOAK_EXTERNAL_URL="${FREEIPA_KEYCLOAK_EXTERNAL_URL_ENV}"
+fi
+if [ -n "${FREEIPA_KEYCLOAK_CLIENT_ID_ENV}" ]; then
+    FREEIPA_KEYCLOAK_CLIENT_ID="${FREEIPA_KEYCLOAK_CLIENT_ID_ENV}"
+fi
+if [ -n "${FREEIPA_KEYCLOAK_CLIENT_SECRET_ENV}" ]; then
+    FREEIPA_KEYCLOAK_CLIENT_SECRET="${FREEIPA_KEYCLOAK_CLIENT_SECRET_ENV}"
+fi
+if [ -n "${FREEIPA_KEYCLOAK_ISSUER_ENV}" ]; then
+    FREEIPA_KEYCLOAK_ISSUER="${FREEIPA_KEYCLOAK_ISSUER_ENV}"
+fi
+if [ -n "${FREEIPA_OBSERVABILITY_ENABLED_ENV}" ]; then
+    FREEIPA_OBSERVABILITY_ENABLED="${FREEIPA_OBSERVABILITY_ENABLED_ENV}"
+fi
+if [ -n "${FREEIPA_OTEL_EXPORTER_OTLP_ENDPOINT_ENV}" ]; then
+    FREEIPA_OTEL_EXPORTER_OTLP_ENDPOINT="${FREEIPA_OTEL_EXPORTER_OTLP_ENDPOINT_ENV}"
+fi
+if [ -n "${FREEIPA_PROMETHEUS_METRICS_PATH_ENV}" ]; then
+    FREEIPA_PROMETHEUS_METRICS_PATH="${FREEIPA_PROMETHEUS_METRICS_PATH_ENV}"
 fi
 
 resolve_auth_path() {
@@ -348,6 +420,16 @@ is_true() {
     [ "$value" = "true" ] || [ "$value" = "1" ] || [ "$value" = "yes" ]
 }
 
+csv_contains_token() {
+    local csv="${1:-}"
+    local token="$2"
+    local normalized="${csv// /}"
+    case ",${normalized}," in
+        *",${token},"*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
 if [ "${TRAEFIK_DASHBOARD:-false}" = "true" ]; then
     require_auth_file "Traefik dashboard" "${TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH:-}"
 fi
@@ -484,6 +566,63 @@ if is_profile_enabled "docling"; then
         fi
         if [ -n "${DOCLING_PROMETHEUS_METRICS_PATH:-}" ] && [[ "${DOCLING_PROMETHEUS_METRICS_PATH}" != /* ]]; then
             log_error "DOCLING_PROMETHEUS_METRICS_PATH must start with '/'. Got: ${DOCLING_PROMETHEUS_METRICS_PATH}"
+        fi
+    fi
+fi
+
+if is_profile_enabled "freeipa"; then
+    validate_subdomain_label "${FREEIPA_HOSTNAME:-freeipa}" "FREEIPA_HOSTNAME"
+    require_non_placeholder "FREEIPA_ADMIN_PASSWORD" "${FREEIPA_ADMIN_PASSWORD:-}" "make freeipa-bootstrap"
+    require_non_placeholder "FREEIPA_DM_PASSWORD" "${FREEIPA_DM_PASSWORD:-}" "make freeipa-bootstrap"
+
+    case "${FREEIPA_TLS_MODE:-stepca-acme}" in
+        local-ca)
+            ;;
+        letsencrypt)
+            if ! is_profile_enabled "le" && [ "${TLS_CERT_RESOLVER:-}" != "le-resolver" ]; then
+                log_error "FREEIPA_TLS_MODE=letsencrypt requires profile 'le' or TLS_CERT_RESOLVER=le-resolver."
+            fi
+            ;;
+        stepca-acme)
+            if ! is_profile_enabled "stepca" && [ "${TLS_CERT_RESOLVER:-}" != "stepca-resolver" ]; then
+                log_error "FREEIPA_TLS_MODE=stepca-acme requires profile 'stepca' or TLS_CERT_RESOLVER=stepca-resolver."
+            fi
+            ;;
+        *)
+            log_error "FREEIPA_TLS_MODE must be one of: local-ca, letsencrypt, stepca-acme."
+            ;;
+    esac
+
+    if is_true "${FREEIPA_KEYCLOAK_ENABLED:-false}"; then
+        require_non_placeholder "FREEIPA_TRAEFIK_MIDDLEWARES" "${FREEIPA_TRAEFIK_MIDDLEWARES:-}"
+        if ! csv_contains_token "${FREEIPA_TRAEFIK_MIDDLEWARES:-}" "keycloak-forward-auth@file"; then
+            log_error "FREEIPA_TRAEFIK_MIDDLEWARES must include keycloak-forward-auth@file when FREEIPA_KEYCLOAK_ENABLED=true."
+        fi
+
+        require_non_placeholder "FREEIPA_KEYCLOAK_CLIENT_ID" "${FREEIPA_KEYCLOAK_CLIENT_ID:-}"
+        require_non_placeholder "FREEIPA_KEYCLOAK_CLIENT_SECRET" "${FREEIPA_KEYCLOAK_CLIENT_SECRET:-}"
+        require_non_placeholder "FREEIPA_KEYCLOAK_ISSUER" "${FREEIPA_KEYCLOAK_ISSUER:-}"
+        validate_http_url "${FREEIPA_KEYCLOAK_ISSUER:-}" "FREEIPA_KEYCLOAK_ISSUER"
+
+        case "${FREEIPA_KEYCLOAK_MODE:-external}" in
+            local)
+                validate_http_url "${FREEIPA_KEYCLOAK_INTERNAL_URL:-http://keycloak:8080}" "FREEIPA_KEYCLOAK_INTERNAL_URL"
+                ;;
+            external)
+                require_non_placeholder "FREEIPA_KEYCLOAK_EXTERNAL_URL" "${FREEIPA_KEYCLOAK_EXTERNAL_URL:-}"
+                validate_http_url "${FREEIPA_KEYCLOAK_EXTERNAL_URL:-}" "FREEIPA_KEYCLOAK_EXTERNAL_URL"
+                ;;
+            *)
+                log_error "FREEIPA_KEYCLOAK_MODE must be one of: local, external."
+                ;;
+        esac
+    fi
+
+    if is_true "${FREEIPA_OBSERVABILITY_ENABLED:-false}"; then
+        require_non_placeholder "FREEIPA_OTEL_EXPORTER_OTLP_ENDPOINT" "${FREEIPA_OTEL_EXPORTER_OTLP_ENDPOINT:-}"
+        validate_http_url "${FREEIPA_OTEL_EXPORTER_OTLP_ENDPOINT:-}" "FREEIPA_OTEL_EXPORTER_OTLP_ENDPOINT"
+        if [ -n "${FREEIPA_PROMETHEUS_METRICS_PATH:-}" ] && [[ "${FREEIPA_PROMETHEUS_METRICS_PATH}" != /* ]]; then
+            log_error "FREEIPA_PROMETHEUS_METRICS_PATH must start with '/'. Got: ${FREEIPA_PROMETHEUS_METRICS_PATH}"
         fi
     fi
 fi

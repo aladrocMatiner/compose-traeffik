@@ -104,6 +104,14 @@
       }
     },
     {
+      "slug": "freeipa",
+      "title": {
+        "en": "FreeIPA",
+        "sv": "FreeIPA",
+        "es": "FreeIPA"
+      }
+    },
+    {
       "slug": "openwebui",
       "title": {
         "en": "OpenWebUI",

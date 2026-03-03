@@ -14,20 +14,21 @@ This directory contains smoke tests that verify Traefik readiness, routing, TLS,
    ```bash
    make test
    ```
-   This runs `scripts/healthcheck.sh` in service-aware mode:
-   - always runs common utility smoke tests
-   - runs service/module suites only when their containers are currently running (`traefik+whoami`, `bind`, `ctfd`, `observability`, `plane`, `docling`, `openwebui`)
+This runs `scripts/healthcheck.sh` in service-aware mode:
+- always runs common utility smoke tests
+- runs service/module suites only when their containers are currently running (`traefik+whoami`, `bind`, `ctfd`, `observability`, `plane`, `docling`, `freeipa`, `openwebui`)
 
    Use service-scoped targets when you want to run a specific suite regardless of what is running:
    ```bash
    make test-core
    make test-dns
    make test-ctfd
-   make test-observability
-   make test-plane
-   make test-docling
-   make test-webui
-   ```
+make test-observability
+make test-plane
+make test-docling
+make test-freeipa
+make test-webui
+```
 
 3. **Run a single test**
    ```bash
@@ -81,6 +82,11 @@ This directory contains smoke tests that verify Traefik readiness, routing, TLS,
 | `tests/smoke/test_docling_make_targets.sh` | Validate Docling Make target wiring and compose wrapper usage. | `Makefile`, `awk`, `grep`. | `docling-*` targets exist and lifecycle targets use `scripts/compose.sh --profile docling`. |
 | `tests/smoke/test_docling_bootstrap_env.sh` | Validate `docling-bootstrap` secret generation and idempotency. | `.env.example`, `scripts/docling-bootstrap.sh`, `mktemp`. | Missing Docling secrets are generated and preserved on rerun. |
 | `tests/smoke/test_docling_optional_integrations.sh` | Validate optional Step-CA/Keycloak/observability toggle behavior. | `services/docling/compose.yml`, `scripts/validate-env.sh`. | Disabled toggles do not block startup; enabled Keycloak requires complete contract. |
+| `tests/smoke/test_freeipa_service_config.sh` | Validate FreeIPA compose wiring and Traefik exposure contract. | `services/freeipa/compose.yml`, `grep`, `awk`. | FreeIPA service exists, no host ports are published, and Traefik labels/network/volume wiring are present. |
+| `tests/smoke/test_freeipa_guardrails.sh` | Validate preflight guardrails for FreeIPA core config. | `scripts/validate-env.sh`. | Missing/invalid FreeIPA config fails; valid config passes. |
+| `tests/smoke/test_freeipa_make_targets.sh` | Validate FreeIPA Make target wiring and compose wrapper usage. | `Makefile`, `awk`, `grep`. | `freeipa-*` targets exist and lifecycle targets use `scripts/compose.sh --profile freeipa`. |
+| `tests/smoke/test_freeipa_bootstrap_env.sh` | Validate `freeipa-bootstrap` secret generation and idempotency. | `.env.example`, `scripts/freeipa-bootstrap.sh`, `mktemp`. | Missing FreeIPA secrets are generated and preserved on rerun. |
+| `tests/smoke/test_freeipa_optional_integrations.sh` | Validate optional TLS/Keycloak/observability contracts for FreeIPA. | `services/freeipa/compose.yml`, `scripts/validate-env.sh`. | Disabled toggles do not block startup; enabled integrations require complete contracts. |
 | `tests/smoke/test_openwebui_service_config.sh` | Validate OpenWebUI compose wiring and Traefik exposure contract. | `services/openwebui/compose.yml`, `grep`, `awk`. | OpenWebUI service exists, no host ports are published, and Traefik labels/volume are present. |
 | `tests/smoke/test_openwebui_make_targets.sh` | Validate OpenWebUI Make target wiring and compose wrapper usage. | `Makefile`, `awk`, `grep`. | `webui-*` targets exist and lifecycle targets use `scripts/compose.sh --profile webui`. |
 
@@ -99,6 +105,7 @@ Smoke tests use environment variables loaded from `.env` via `scripts/healthchec
 - `K6_*` (used by observability synthetic-check and validation tests when provided inline)
 - `PLANE_*` (used by Plane guardrail/bootstrap/integration tests when provided inline)
 - `DOCLING_*` (used by Docling guardrail/bootstrap/integration tests when provided inline)
+- `FREEIPA_*` (used by FreeIPA guardrail/bootstrap/integration tests when provided inline)
 - `OPENWEBUI_*` (used by OpenWebUI config/wiring tests when provided inline)
 
 Ensure `.env` exists (prefer `make bootstrap`) before running tests. Optional profiles

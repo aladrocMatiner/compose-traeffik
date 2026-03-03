@@ -78,6 +78,7 @@ Guias de TLS:
 - **Grafana**: `https://grafana.${DEV_DOMAIN}` (perfil `observability`; opcional)
 - **Plane**: `https://plane.${DEV_DOMAIN}` (perfil `plane`; opcional)
 - **Docling**: `https://docling.${DEV_DOMAIN}` (perfil `docling`; opcional)
+- **FreeIPA**: `https://freeipa.${DEV_DOMAIN}` (perfil `freeipa`; opcional)
 - **OpenWebUI**: `https://openwebui.${DEV_DOMAIN}` (perfil `webui`; opcional)
 - **AWX**: `https://awx.${DEV_DOMAIN}` (modulo hibrido `k3d` + AWX Operator; requiere `make awx-*`)
 - **Prometheus/Loki/Tempo/Pyroscope**: internos por defecto (perfil `observability`; sin endpoint publico)
@@ -94,6 +95,7 @@ Guias de TLS:
 - [Observability](services/observability/README.es.md) - perfil opcional `observability` (Grafana/Prometheus/Loki/Tempo/Pyroscope/Alloy + synthetic checks con k6).
 - [Plane](services/plane/README.es.md) - perfil opcional `plane` (gestion de proyectos + PostgreSQL/Redis/RabbitMQ/MinIO).
 - [Docling](services/docling/README.es.md) - perfil opcional `docling` (API de conversion de documentos + Redis interno para modo async/RQ).
+- [FreeIPA](services/freeipa/README.es.md) - perfil opcional `freeipa` (servicio de gestion de identidad detras de Traefik).
 - [OpenWebUI](services/openwebui/README.es.md) - perfil opcional `webui` (interfaz web/chat detras de Traefik).
 - [AWX](services/awx/README.es.md) - modulo hibrido (`k3d` + AWX Operator) detras de Traefik.
 
@@ -121,6 +123,7 @@ Comandos comunes:
 - `make observability-bootstrap`, `make observability-up`, `make observability-status`, `make observability-k6`
 - `make plane-bootstrap`, `make plane-up`, `make plane-status`
 - `make docling-bootstrap`, `make docling-up`, `make docling-status`
+- `make freeipa-bootstrap`, `make freeipa-up`, `make freeipa-status`
 - `make webui-up`, `make webui-status`
 - `make awx-bootstrap`, `make awx-k3d-up`, `make awx-up`, `make awx-status`, `make awx-admin-password`
 - `make awx-debug`, `make awx-backup`
@@ -144,7 +147,7 @@ Defaults de seguridad DNS:
 - Para exponer DNS fuera de loopback de forma intencional, usa `BIND_ALLOW_NONLOCAL_BIND=true`.
 
 Nota de hosts:
-- Si gestionas `ENDPOINTS` manualmente, anyade `ctfd`, `grafana`, `plane`, `docling` y/o `openwebui` antes de `make hosts-apply`.
+- Si gestionas `ENDPOINTS` manualmente, anyade `ctfd`, `grafana`, `plane`, `docling`, `freeipa` y/o `openwebui` antes de `make hosts-apply`.
 - Anyade `awx` tambien si quieres routing local de AWX via Traefik.
 - Anyade `keycloak` tambien si vas a usar Plane con routing local hacia Keycloak.
 - O deja `ENDPOINTS` vacio para auto-discovery por reglas `Host()`.

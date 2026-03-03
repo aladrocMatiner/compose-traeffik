@@ -81,6 +81,7 @@ RUN_CTFD_TESTS=false
 RUN_OBSERVABILITY_TESTS=false
 RUN_PLANE_TESTS=false
 RUN_DOCLING_TESTS=false
+RUN_FREEIPA_TESTS=false
 RUN_WEBUI_TESTS=false
 
 if service_running "traefik" && service_running "whoami"; then
@@ -100,6 +101,9 @@ if service_running "plane-web" || service_running "plane-api"; then
 fi
 if service_running "docling"; then
     RUN_DOCLING_TESTS=true
+fi
+if service_running "freeipa"; then
+    RUN_FREEIPA_TESTS=true
 fi
 if service_running "openwebui"; then
     RUN_WEBUI_TESTS=true
@@ -463,7 +467,56 @@ else
     log_warn "Skipping Docling smoke suite (service 'docling' not running)."
 fi
 
-# --- Test 37: OpenWebUI Service Config (no sudo) ---
+# --- Test 37: FreeIPA Service Config (no sudo) ---
+if [ "${RUN_FREEIPA_TESTS}" = "true" ]; then
+    log_info "Running test_freeipa_service_config.sh..."
+    if "$TEST_DIR/test_freeipa_service_config.sh"; then
+        log_success "Test: FreeIPA Service Config"
+    else
+        log_warn "Test failed: FreeIPA Service Config"
+        TEST_RESULTS=1
+    fi
+
+    # --- Test 38: FreeIPA Guardrails (no sudo) ---
+    log_info "Running test_freeipa_guardrails.sh..."
+    if "$TEST_DIR/test_freeipa_guardrails.sh"; then
+        log_success "Test: FreeIPA Guardrails"
+    else
+        log_warn "Test failed: FreeIPA Guardrails"
+        TEST_RESULTS=1
+    fi
+
+    # --- Test 39: FreeIPA Make Targets (no sudo) ---
+    log_info "Running test_freeipa_make_targets.sh..."
+    if "$TEST_DIR/test_freeipa_make_targets.sh"; then
+        log_success "Test: FreeIPA Make Targets"
+    else
+        log_warn "Test failed: FreeIPA Make Targets"
+        TEST_RESULTS=1
+    fi
+
+    # --- Test 40: FreeIPA Bootstrap Env (no sudo) ---
+    log_info "Running test_freeipa_bootstrap_env.sh..."
+    if "$TEST_DIR/test_freeipa_bootstrap_env.sh"; then
+        log_success "Test: FreeIPA Bootstrap Env"
+    else
+        log_warn "Test failed: FreeIPA Bootstrap Env"
+        TEST_RESULTS=1
+    fi
+
+    # --- Test 41: FreeIPA Optional Integrations (no sudo) ---
+    log_info "Running test_freeipa_optional_integrations.sh..."
+    if "$TEST_DIR/test_freeipa_optional_integrations.sh"; then
+        log_success "Test: FreeIPA Optional Integrations"
+    else
+        log_warn "Test failed: FreeIPA Optional Integrations"
+        TEST_RESULTS=1
+    fi
+else
+    log_warn "Skipping FreeIPA smoke suite (service 'freeipa' not running)."
+fi
+
+# --- Test 42: OpenWebUI Service Config (no sudo) ---
 if [ "${RUN_WEBUI_TESTS}" = "true" ]; then
     log_info "Running test_openwebui_service_config.sh..."
     if "$TEST_DIR/test_openwebui_service_config.sh"; then
@@ -473,7 +526,7 @@ if [ "${RUN_WEBUI_TESTS}" = "true" ]; then
         TEST_RESULTS=1
     fi
 
-    # --- Test 38: OpenWebUI Make Targets (no sudo) ---
+    # --- Test 43: OpenWebUI Make Targets (no sudo) ---
     log_info "Running test_openwebui_make_targets.sh..."
     if "$TEST_DIR/test_openwebui_make_targets.sh"; then
         log_success "Test: OpenWebUI Make Targets"

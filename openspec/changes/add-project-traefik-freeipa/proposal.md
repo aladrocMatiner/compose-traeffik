@@ -1,20 +1,21 @@
 ## Why
 
-Necesitamos incorporar `traefik-freeipa` al flujo `deployment-project` con el baseline operativo que estamos usando en proyectos complejos: TLS por defecto con StepCA ACME, contrato de autenticación con Keycloak y dependencia de observabilidad para telemetría/operación.
+Necesitamos integrar FreeIPA en este repositorio siguiendo el patron real de `services/*` (no existe `deployment-project` en `master`).
 
-Esto evita que FreeIPA se integre de forma ad-hoc y fija desde el principio el contrato de dependencias, TLS y despliegue reproducible.
+El objetivo es disponer de un modulo `freeipa` detras de Traefik con contratos explicitos para TLS mode, autenticacion Keycloak y observabilidad, mas wiring operativo (`make` + smoke tests + docs).
 
 ## What Changes
 
-- Añadir proyecto `traefik-freeipa` en `deployment/projects/traefik-freeipa/`.
-- Definir manifiesto explícito del proyecto con:
-  - `depends_on_projects`: `traefik-stepca`, `traefik-keycloak`, `traefik-observability`
-  - `tls_mode` por defecto `stepca-acme` con override explícito soportado
-  - contrato OIDC/Keycloak en bloque `oidc`
-  - `repo_url`, `repo_ref`, `compose_profile`, `services`, `required_env`, `public_host`
-- Registrar `traefik-freeipa` en `deployment/projects/catalog.json` y en `deployment-project-list`.
-- Extender el flujo de deployment para aplicar el contrato de FreeIPA detrás de Traefik con terminación TLS en Traefik según `tls_mode`.
-- Añadir guardrails y tests para dependencias, TLS, contrato auth/OIDC y selección cerrada de servicios del manifiesto.
+- Añadir modulo `services/freeipa/compose.yml` con perfil `freeipa`.
+- Añadir bootstrap de secretos con `scripts/freeipa-bootstrap.sh` y target `make freeipa-bootstrap`.
+- Añadir targets operativos `freeipa-up/down/restart/logs/status` y `test-freeipa`.
+- Extender preflight `scripts/validate-env.sh` para guardrails de FreeIPA:
+  - secretos core obligatorios
+  - `FREEIPA_TLS_MODE` soportado (`local-ca`, `letsencrypt`, `stepca-acme`)
+  - contrato Keycloak cuando `FREEIPA_KEYCLOAK_ENABLED=true`
+  - contrato de observabilidad cuando `FREEIPA_OBSERVABILITY_ENABLED=true`
+- Añadir smoke tests de servicio/wiring/bootstrap/guardrails/integraciones opcionales.
+- Actualizar documentacion (`README*`, `services/freeipa/README*`, `scripts/README.md`, `tests/README.md`, `docs.manifest.json`, `.env.example`).
 
 ## Capabilities
 
@@ -24,16 +25,20 @@ Esto evita que FreeIPA se integre de forma ad-hoc y fija desde el principio el c
 
 ### Modified Capabilities
 
-- `deployment-project-catalog`: añade proyecto `traefik-freeipa` con dependencias StepCA/Keycloak/Observability y contrato TLS/auth explícito.
+- `services-layout`: agrega el modulo `freeipa` dentro de `services/`.
+- `guardrails`: agrega validacion profile-gated para contrato FreeIPA.
+- `tests-suite`: agrega inventario y ejecucion de smoke tests del modulo FreeIPA.
 
 ## Impact
 
-- Affected code (planned):
-  - `deployment/projects/traefik-freeipa/*`
-  - `deployment/projects/catalog.json`
-  - `deployment/scripts/deployment-project.sh`
-  - `deployment/ansible/roles/project_deploy/*`
-  - `deployment/tests/smoke/*`
-  - documentación de deployment
-- Operación: despliegue reproducible de FreeIPA detrás de Traefik con contratos explícitos de seguridad y observabilidad.
-- Riesgo: prerequisitos no satisfechos (`traefik-stepca`, `traefik-keycloak`, `traefik-observability`); mitigado con preflight de dependencias y fail-fast antes de compose apply.
+- Affected code:
+  - `services/freeipa/*`
+  - `scripts/freeipa-bootstrap.sh`
+  - `scripts/validate-env.sh`
+  - `scripts/healthcheck.sh`
+  - `Makefile`
+  - `tests/smoke/test_freeipa_*.sh`
+  - `.env.example`
+  - `README*.md`, `scripts/README.md`, `tests/README.md`, `docs.manifest.json`
+- Operacion: nuevo modulo identity-management desplegable tras Traefik via perfil `freeipa`.
+- Riesgo: contratos incompletos de TLS/Keycloak/observabilidad; mitigado con guardrails fail-fast y smoke tests especificos.

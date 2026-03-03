@@ -78,6 +78,7 @@ Detaljerade TLS-floden:
 - **Grafana**: `https://grafana.${DEV_DOMAIN}` (profil `observability`; valfri)
 - **Plane**: `https://plane.${DEV_DOMAIN}` (profil `plane`; valfri)
 - **Docling**: `https://docling.${DEV_DOMAIN}` (profil `docling`; valfri)
+- **FreeIPA**: `https://freeipa.${DEV_DOMAIN}` (profil `freeipa`; valfri)
 - **OpenWebUI**: `https://openwebui.${DEV_DOMAIN}` (profil `webui`; valfri)
 - **AWX**: `https://awx.${DEV_DOMAIN}` (hybridmodul `k3d` + AWX Operator; kraver `make awx-*`)
 - **Prometheus/Loki/Tempo/Pyroscope**: interna som standard (profil `observability`; ingen publik endpoint)
@@ -94,6 +95,7 @@ Detaljerade TLS-floden:
 - [Observability](services/observability/README.sv.md) - valfri profil `observability` (Grafana/Prometheus/Loki/Tempo/Pyroscope/Alloy + k6 synthetic checks).
 - [Plane](services/plane/README.sv.md) - valfri profil `plane` (projektledning + PostgreSQL/Redis/RabbitMQ/MinIO).
 - [Docling](services/docling/README.sv.md) - valfri profil `docling` (dokumentkonverterings-API + intern Redis for async/RQ-lage).
+- [FreeIPA](services/freeipa/README.sv.md) - valfri profil `freeipa` (identitetshanteringstjanst bakom Traefik).
 - [OpenWebUI](services/openwebui/README.sv.md) - valfri profil `webui` (webb/chat UI bakom Traefik).
 - [AWX](services/awx/README.sv.md) - hybridmodul (`k3d` + AWX Operator) bakom Traefik.
 
@@ -121,6 +123,7 @@ Vanliga kommandon:
 - `make observability-bootstrap`, `make observability-up`, `make observability-status`, `make observability-k6`
 - `make plane-bootstrap`, `make plane-up`, `make plane-status`
 - `make docling-bootstrap`, `make docling-up`, `make docling-status`
+- `make freeipa-bootstrap`, `make freeipa-up`, `make freeipa-status`
 - `make webui-up`, `make webui-status`
 - `make awx-bootstrap`, `make awx-k3d-up`, `make awx-up`, `make awx-status`, `make awx-admin-password`
 - `make awx-debug`, `make awx-backup`
@@ -144,7 +147,7 @@ DNS-sakerhetsdefaults:
 - For avsiktlig exponering utanfor loopback, satt `BIND_ALLOW_NONLOCAL_BIND=true`.
 
 Hosts-not:
-- Om du hanterar `ENDPOINTS` manuellt, lagg till `ctfd`, `grafana`, `plane`, `docling` och/eller `openwebui` innan `make hosts-apply`.
+- Om du hanterar `ENDPOINTS` manuellt, lagg till `ctfd`, `grafana`, `plane`, `docling`, `freeipa` och/eller `openwebui` innan `make hosts-apply`.
 - Lagg till `awx` ocksa om du vill ha lokal routing for AWX via Traefik.
 - Lagg till `keycloak` ocksa om du planerar Plane med lokal Keycloak-routing.
 - Eller lamna `ENDPOINTS` tomt for auto-discovery via `Host()`-regler.

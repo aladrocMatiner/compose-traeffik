@@ -15,7 +15,7 @@ Prerequisites:
 Preflight validation:
 - `scripts/validate-env.sh` runs before `make up` and any `scripts/compose.sh` call.
 - It enforces safe defaults for admin UIs (Traefik dashboard) and validates profile syntax.
-- It also validates module-specific requirements for `ctfd`, `observability`, `plane`, and `docling` when those profiles are enabled, including optional integration toggles.
+- It also validates module-specific requirements for `ctfd`, `observability`, `plane`, `docling`, and `freeipa` when those profiles are enabled, including optional integration toggles.
 - When `AWX_ENABLED=true`, it validates AWX/k3d guardrails via `scripts/validate-awx-env.sh`.
 - Create htpasswd files under `services/traefik/auth/`, for example:
   - `htpasswd -nbB admin 'change-me' > services/traefik/auth/traefik-dashboard.htpasswd`
@@ -60,6 +60,7 @@ Preflight validation:
 | `scripts/observability-bootstrap.sh` | Generate/persist Grafana secrets in `.env` | `make observability-bootstrap` | `GRAFANA_*` (writes missing values) | Updates `.env` |
 | `scripts/plane-bootstrap.sh` | Generate/persist Plane secrets in `.env` | `make plane-bootstrap` | `PLANE_*` (writes missing values) | Updates `.env` |
 | `scripts/docling-bootstrap.sh` | Generate/persist Docling secrets in `.env` | `make docling-bootstrap` | `DOCLING_*` (writes missing values) | Updates `.env` |
+| `scripts/freeipa-bootstrap.sh` | Generate/persist FreeIPA secrets in `.env` | `make freeipa-bootstrap` | `FREEIPA_*` (writes missing values) | Updates `.env` |
 | `scripts/common.sh` | Shared helpers | sourced by other scripts | none | none |
 
 ## Workflows
@@ -134,6 +135,15 @@ make docling-bootstrap
 make docling-up
 make docling-status
 make docling-logs
+```
+
+### FreeIPA module
+
+```bash
+make freeipa-bootstrap
+make freeipa-up
+make freeipa-status
+make freeipa-logs
 ```
 
 ### Certificates

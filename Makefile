@@ -15,7 +15,7 @@
 # --- Configuration Variables ---
 SHELL := /bin/bash # Ensure bash is used for shell commands
 .DEFAULT_GOAL := help # Default target if none is specified
-.PHONY: help up down restart logs ps test test-core test-dns test-awx test-ctfd test-observability test-plane test-docling test-webui docs-check bootstrap \
+.PHONY: help up down restart logs ps test test-core test-dns test-awx test-ctfd test-observability test-plane test-docling test-freeipa test-webui docs-check bootstrap \
         certs-local local-ca-trust-install local-ca-trust-uninstall local-ca-trust-verify \
         certs-le-issue certs-le-renew \
         stepca-up stepca-down stepca-bootstrap stepca-verify-cert \
@@ -27,6 +27,7 @@ SHELL := /bin/bash # Ensure bash is used for shell commands
         observability-bootstrap observability-up observability-down observability-restart observability-logs observability-status observability-k6 \
         plane-bootstrap plane-up plane-down plane-restart plane-logs plane-status \
         docling-bootstrap docling-up docling-down docling-restart docling-logs docling-status \
+        freeipa-bootstrap freeipa-up freeipa-down freeipa-restart freeipa-logs freeipa-status \
         webui-up webui-down webui-restart webui-logs webui-status
 
 # Include .env for environment variables if it exists.
@@ -48,6 +49,7 @@ COMPOSE_FILES := \
   -f services/observability/compose.yml \
   -f services/plane/compose.yml \
   -f services/docling/compose.yml \
+  -f services/freeipa/compose.yml \
   -f services/openwebui/compose.yml
 
 # Pin compose project directory/name to avoid cross-CWD conflicts.
@@ -104,6 +106,11 @@ endif
 DOCLING_ENV_ARGS :=
 ifneq ($(ENV_FILE),)
 DOCLING_ENV_ARGS += --env-file $(ENV_FILE)
+endif
+
+FREEIPA_ENV_ARGS :=
+ifneq ($(ENV_FILE),)
+FREEIPA_ENV_ARGS += --env-file $(ENV_FILE)
 endif
 
 SMOKE_TEST_DIR := $(REPO_ROOT)/tests/smoke
@@ -163,6 +170,13 @@ DOCLING_SMOKE_TESTS := \
 	test_docling_make_targets.sh \
 	test_docling_bootstrap_env.sh \
 	test_docling_optional_integrations.sh
+
+FREEIPA_SMOKE_TESTS := \
+	test_freeipa_service_config.sh \
+	test_freeipa_guardrails.sh \
+	test_freeipa_make_targets.sh \
+	test_freeipa_bootstrap_env.sh \
+	test_freeipa_optional_integrations.sh
 
 WEBUI_SMOKE_TESTS := \
 	test_openwebui_service_config.sh \
@@ -344,6 +358,17 @@ test-docling:
 	@echo "Running Docling smoke tests..."
 	@set -euo pipefail; rc=0; \
 	for test_script in $(DOCLING_SMOKE_TESTS); do \
+		echo "==> $$test_script"; \
+		if ! "$(SMOKE_TEST_DIR)/$$test_script"; then \
+			rc=1; \
+		fi; \
+	done; \
+	exit $$rc
+
+test-freeipa:
+	@echo "Running FreeIPA smoke tests..."
+	@set -euo pipefail; rc=0; \
+	for test_script in $(FREEIPA_SMOKE_TESTS); do \
 		echo "==> $$test_script"; \
 		if ! "$(SMOKE_TEST_DIR)/$$test_script"; then \
 			rc=1; \
@@ -562,6 +587,30 @@ docling-status:
 	@echo "Docling module status:"
 	COMPOSE_PROFILES=docling "$(SCRIPTS_DIR)/compose.sh" --profile docling $(COMPOSE_OPTS) ps docling docling-redis
 
+# --- FreeIPA Module ---
+
+freeipa-bootstrap:
+	"$(SCRIPTS_DIR)/freeipa-bootstrap.sh" $(FREEIPA_ENV_ARGS)
+
+freeipa-up:
+	@echo "Starting FreeIPA module (profile: freeipa)..."
+	COMPOSE_PROFILES=freeipa "$(SCRIPTS_DIR)/compose.sh" --profile freeipa $(COMPOSE_OPTS) up -d freeipa
+
+freeipa-down:
+	@echo "Stopping FreeIPA module..."
+	COMPOSE_PROFILES=freeipa "$(SCRIPTS_DIR)/compose.sh" --profile freeipa $(COMPOSE_OPTS) stop freeipa || true
+	COMPOSE_PROFILES=freeipa "$(SCRIPTS_DIR)/compose.sh" --profile freeipa $(COMPOSE_OPTS) rm -f freeipa || true
+
+freeipa-restart: freeipa-down freeipa-up
+
+freeipa-logs:
+	@echo "Showing FreeIPA module logs..."
+	COMPOSE_PROFILES=freeipa "$(SCRIPTS_DIR)/compose.sh" --profile freeipa $(COMPOSE_OPTS) logs -f freeipa
+
+freeipa-status:
+	@echo "FreeIPA module status:"
+	COMPOSE_PROFILES=freeipa "$(SCRIPTS_DIR)/compose.sh" --profile freeipa $(COMPOSE_OPTS) ps freeipa
+
 # --- OpenWebUI Module ---
 
 webui-up:
@@ -633,6 +682,7 @@ help:
 	@echo "  test-observability    Run observability smoke tests only."
 	@echo "  test-plane            Run Plane smoke tests only."
 	@echo "  test-docling          Run Docling smoke tests only."
+	@echo "  test-freeipa          Run FreeIPA smoke tests only."
 	@echo "  test-webui            Run OpenWebUI smoke tests only."
 	@echo ""
 	@echo "Docs:"
@@ -700,6 +750,14 @@ help:
 	@echo "  docling-logs             Follow Docling module logs."
 	@echo "  docling-status           Show Docling module status."
 	@echo ""
+	@echo "FreeIPA:"
+	@echo "  freeipa-bootstrap        Generate/persist FreeIPA secrets in .env."
+	@echo "  freeipa-up               Start the FreeIPA module (profile: freeipa)."
+	@echo "  freeipa-down             Stop and remove FreeIPA module containers."
+	@echo "  freeipa-restart          Restart the FreeIPA module."
+	@echo "  freeipa-logs             Follow FreeIPA module logs."
+	@echo "  freeipa-status           Show FreeIPA module status."
+	@echo ""
 	@echo "OpenWebUI:"
 	@echo "  webui-up                 Start the OpenWebUI module (profile: webui)."
 	@echo "  webui-down               Stop and remove OpenWebUI module containers."
@@ -709,6 +767,6 @@ help:
 	@echo ""
 	@echo "Profiles:"
 	@echo "  Use COMPOSE_PROFILES=<profile_name> before make commands to activate profiles."
-	@echo "  Available profiles: bind, ctfd, docling, le, observability, plane, stepca, webui"
+	@echo "  Available profiles: bind, ctfd, docling, freeipa, le, observability, plane, stepca, webui"
 	@echo "  Example: COMPOSE_PROFILES=le make up"
 	@echo ""

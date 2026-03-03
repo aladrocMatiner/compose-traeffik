@@ -1,0 +1,59 @@
+services:
+  freeipa:
+    image: ${FREEIPA_IMAGE:-quay.io/freeipa/freeipa-server:fedora-41}
+    container_name: freeipa
+    profiles:
+      - freeipa
+    restart: unless-stopped
+    hostname: ${FREEIPA_SERVER_HOSTNAME:-freeipa.${DEV_DOMAIN}}
+    environment:
+      - IPA_SERVER_HOSTNAME=${FREEIPA_SERVER_HOSTNAME:-freeipa.${DEV_DOMAIN}}
+      - IPA_SERVER_IP=${FREEIPA_SERVER_IP:-}
+      - IPA_REALM=${FREEIPA_REALM:-LOCAL.TEST}
+      - IPA_DOMAIN=${FREEIPA_DOMAIN:-local.test}
+      - IPA_ADMIN_PASSWORD=${FREEIPA_ADMIN_PASSWORD:-}
+      - IPA_DM_PASSWORD=${FREEIPA_DM_PASSWORD:-}
+      - IPA_NO_HOST_DNS=${FREEIPA_NO_HOST_DNS:-true}
+      - IPA_AUTO_REVERSE=${FREEIPA_AUTO_REVERSE:-true}
+      - IPA_SERVER_INSTALL_OPTS=${FREEIPA_INSTALL_OPTS:---unattended}
+      - FREEIPA_TLS_MODE=${FREEIPA_TLS_MODE:-stepca-acme}
+      - FREEIPA_KEYCLOAK_ENABLED=${FREEIPA_KEYCLOAK_ENABLED:-false}
+      - FREEIPA_KEYCLOAK_MODE=${FREEIPA_KEYCLOAK_MODE:-external}
+      - FREEIPA_KEYCLOAK_INTERNAL_URL=${FREEIPA_KEYCLOAK_INTERNAL_URL:-http://keycloak:8080}
+      - FREEIPA_KEYCLOAK_EXTERNAL_URL=${FREEIPA_KEYCLOAK_EXTERNAL_URL:-}
+      - FREEIPA_KEYCLOAK_ISSUER=${FREEIPA_KEYCLOAK_ISSUER:-}
+      - FREEIPA_KEYCLOAK_CLIENT_ID=${FREEIPA_KEYCLOAK_CLIENT_ID:-}
+      - FREEIPA_KEYCLOAK_CLIENT_SECRET=${FREEIPA_KEYCLOAK_CLIENT_SECRET:-}
+      - FREEIPA_OBSERVABILITY_ENABLED=${FREEIPA_OBSERVABILITY_ENABLED:-false}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${FREEIPA_OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      - OTEL_SERVICE_NAME=${FREEIPA_OTEL_SERVICE_NAME:-freeipa}
+    volumes:
+      - freeipa-data:/data
+    networks:
+      - proxy
+      - freeipa-internal
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.freeipa-web.rule=Host(`${FREEIPA_HOSTNAME:-freeipa}.${DEV_DOMAIN}`)"
+      - "traefik.http.routers.freeipa-web.entrypoints=web"
+      - "traefik.http.routers.freeipa-web.middlewares=${HTTP_TO_HTTPS_MIDDLEWARE:-redirect-to-https@file}"
+      - "traefik.http.routers.freeipa-websecure.rule=Host(`${FREEIPA_HOSTNAME:-freeipa}.${DEV_DOMAIN}`)"
+      - "traefik.http.routers.freeipa-websecure.entrypoints=websecure"
+      - "traefik.http.routers.freeipa-websecure.service=freeipa-service"
+      - "traefik.http.routers.freeipa-websecure.tls=true"
+      - "traefik.http.routers.freeipa-websecure.tls.certresolver=${TLS_CERT_RESOLVER:-}"
+      - "traefik.http.routers.freeipa-websecure.middlewares=${FREEIPA_TRAEFIK_MIDDLEWARES:-security-headers@file}"
+      - "traefik.http.services.freeipa-service.loadbalancer.server.port=80"
+      - "freeipa.observability.enabled=${FREEIPA_OBSERVABILITY_ENABLED:-false}"
+      - "prometheus.io/scrape=${FREEIPA_OBSERVABILITY_ENABLED:-false}"
+      - "prometheus.io/port=80"
+      - "prometheus.io/path=${FREEIPA_PROMETHEUS_METRICS_PATH:-/metrics}"
+
+networks:
+  freeipa-internal:
+    name: freeipa-internal
+    internal: true
+
+volumes:
+  freeipa-data:
+    name: freeipa-data
