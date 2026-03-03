@@ -13,6 +13,13 @@ COMPOSE_FILES=(
   -f "${REPO_ROOT}/services/traefik/compose.yml"
   -f "${REPO_ROOT}/services/whoami/compose.yml"
   -f "${REPO_ROOT}/services/keycloak/compose.yml"
+  -f "${REPO_ROOT}/services/gitlab/compose.yml"
+  -f "${REPO_ROOT}/services/n8n/compose.yml"
+  -f "${REPO_ROOT}/services/rocketchat/compose.yml"
+  -f "${REPO_ROOT}/services/semaphoreui/compose.yml"
+  -f "${REPO_ROOT}/services/wg-easy/compose.yml"
+  -f "${REPO_ROOT}/services/wikijs/compose.yml"
+  -f "${REPO_ROOT}/services/litellm/compose.yml"
   -f "${REPO_ROOT}/services/dns-bind/compose.yml"
   -f "${REPO_ROOT}/services/certbot/compose.yml"
   -f "${REPO_ROOT}/services/step-ca/compose.yml"
@@ -20,6 +27,7 @@ COMPOSE_FILES=(
   -f "${REPO_ROOT}/services/observability/compose.yml"
   -f "${REPO_ROOT}/services/plane/compose.yml"
   -f "${REPO_ROOT}/services/docling/compose.yml"
+  -f "${REPO_ROOT}/services/freeipa/compose.yml"
   -f "${REPO_ROOT}/services/openwebui/compose.yml"
 )
 

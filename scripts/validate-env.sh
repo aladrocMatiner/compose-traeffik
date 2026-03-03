@@ -72,6 +72,12 @@ FREEIPA_KEYCLOAK_ISSUER_ENV="${FREEIPA_KEYCLOAK_ISSUER:-}"
 FREEIPA_OBSERVABILITY_ENABLED_ENV="${FREEIPA_OBSERVABILITY_ENABLED:-}"
 FREEIPA_OTEL_EXPORTER_OTLP_ENDPOINT_ENV="${FREEIPA_OTEL_EXPORTER_OTLP_ENDPOINT:-}"
 FREEIPA_PROMETHEUS_METRICS_PATH_ENV="${FREEIPA_PROMETHEUS_METRICS_PATH:-}"
+LITELLM_HOSTNAME_ENV="${LITELLM_HOSTNAME:-}"
+LITELLM_UI_HOSTNAME_ENV="${LITELLM_UI_HOSTNAME:-}"
+LITELLM_LOCAL_API_BASE_ENV="${LITELLM_LOCAL_API_BASE:-}"
+LITELLM_MASTER_KEY_ENV="${LITELLM_MASTER_KEY:-}"
+LITELLM_SALT_KEY_ENV="${LITELLM_SALT_KEY:-}"
+LITELLM_UI_BASIC_AUTH_HTPASSWD_PATH_ENV="${LITELLM_UI_BASIC_AUTH_HTPASSWD_PATH:-}"
 
 load_env
 
@@ -241,6 +247,24 @@ fi
 if [ -n "${FREEIPA_PROMETHEUS_METRICS_PATH_ENV}" ]; then
     FREEIPA_PROMETHEUS_METRICS_PATH="${FREEIPA_PROMETHEUS_METRICS_PATH_ENV}"
 fi
+if [ -n "${LITELLM_HOSTNAME_ENV}" ]; then
+    LITELLM_HOSTNAME="${LITELLM_HOSTNAME_ENV}"
+fi
+if [ -n "${LITELLM_UI_HOSTNAME_ENV}" ]; then
+    LITELLM_UI_HOSTNAME="${LITELLM_UI_HOSTNAME_ENV}"
+fi
+if [ -n "${LITELLM_LOCAL_API_BASE_ENV}" ]; then
+    LITELLM_LOCAL_API_BASE="${LITELLM_LOCAL_API_BASE_ENV}"
+fi
+if [ -n "${LITELLM_MASTER_KEY_ENV}" ]; then
+    LITELLM_MASTER_KEY="${LITELLM_MASTER_KEY_ENV}"
+fi
+if [ -n "${LITELLM_SALT_KEY_ENV}" ]; then
+    LITELLM_SALT_KEY="${LITELLM_SALT_KEY_ENV}"
+fi
+if [ -n "${LITELLM_UI_BASIC_AUTH_HTPASSWD_PATH_ENV}" ]; then
+    LITELLM_UI_BASIC_AUTH_HTPASSWD_PATH="${LITELLM_UI_BASIC_AUTH_HTPASSWD_PATH_ENV}"
+fi
 
 resolve_auth_path() {
     local path="$1"
@@ -338,11 +362,11 @@ is_n8n_profile_enabled() {
 }
 
 is_bind_profile_enabled() {
-    profile_enabled bind
+    is_profile_enabled bind
 }
 
 is_rocketchat_profile_enabled() {
-    profile_enabled rocketchat
+    is_profile_enabled rocketchat
 }
 
 is_ipv4_loopback() {
@@ -356,16 +380,10 @@ is_ipv4_loopback() {
             return 1
         fi
     done
-    return 0
-}
-
-is_ipv4_loopback() {
-    local value="$1"
-    if ! is_ipv4_address "$value"; then
+    if [ "$a" -ne 127 ]; then
         return 1
     fi
-    IFS='.' read -r a _ _ _ <<< "$value"
-    [ "$a" -eq 127 ]
+    return 0
 }
 
 validate_domain_name() {
@@ -616,6 +634,168 @@ if is_profile_enabled "docling"; then
     fi
 fi
 
+if is_profile_enabled "keycloak"; then
+    validate_subdomain_label "${KEYCLOAK_HOSTNAME:-keycloak}" "KEYCLOAK_HOSTNAME"
+    require_non_placeholder "KEYCLOAK_ADMIN_PASSWORD" "${KEYCLOAK_ADMIN_PASSWORD:-}" "make keycloak-bootstrap"
+    require_non_placeholder "KEYCLOAK_DB_PASSWORD" "${KEYCLOAK_DB_PASSWORD:-}" "make keycloak-bootstrap"
+
+    case "${KEYCLOAK_PROXY_HEADERS:-xforwarded}" in
+        xforwarded|forwarded)
+            ;;
+        *)
+            log_error "KEYCLOAK_PROXY_HEADERS must be one of: xforwarded, forwarded."
+            ;;
+    esac
+
+    if is_true "${KEYCLOAK_OBSERVABILITY_PUBLIC_METRICS:-false}"; then
+        log_error "KEYCLOAK_OBSERVABILITY_PUBLIC_METRICS must remain false."
+    fi
+fi
+
+if is_profile_enabled "gitlab"; then
+    validate_subdomain_label "${GITLAB_HOSTNAME:-gitlab}" "GITLAB_HOSTNAME"
+    require_non_placeholder "GITLAB_ROOT_PASSWORD" "${GITLAB_ROOT_PASSWORD:-}" "make gitlab-bootstrap"
+
+    ssh_port="${GITLAB_SSH_HOST_PORT:-22}"
+    if [[ ! "${ssh_port}" =~ ^[0-9]+$ ]] || [ "${ssh_port}" -lt 1 ] || [ "${ssh_port}" -gt 65535 ]; then
+        log_error "GITLAB_SSH_HOST_PORT must be an integer between 1 and 65535. Got: ${ssh_port}"
+    fi
+
+    gitlab_rendered_cfg="${GITLAB_RENDERED_CONFIG_PATH:-}"
+    if [ -z "${gitlab_rendered_cfg}" ] || [ ! -f "${gitlab_rendered_cfg}" ]; then
+        log_error "GITLAB_RENDERED_CONFIG_PATH must point to an existing rendered gitlab.rb."
+    fi
+
+    if is_true "${GITLAB_OIDC_ENABLED:-false}"; then
+        require_non_placeholder "GITLAB_OIDC_ISSUER" "${GITLAB_OIDC_ISSUER:-}"
+        require_non_placeholder "GITLAB_OIDC_CLIENT_ID" "${GITLAB_OIDC_CLIENT_ID:-}"
+        require_non_placeholder "GITLAB_OIDC_CLIENT_SECRET" "${GITLAB_OIDC_CLIENT_SECRET:-}"
+        if [[ "${GITLAB_OIDC_ISSUER:-}" != https://* ]]; then
+            log_error "GITLAB_OIDC_ISSUER must use https://."
+        fi
+    fi
+fi
+
+if is_profile_enabled "n8n"; then
+    n8n_rendered_env="${N8N_RENDERED_ENV_PATH:-}"
+    if [ -z "${n8n_rendered_env}" ] || [ ! -f "${n8n_rendered_env}" ]; then
+        log_error "N8N_RENDERED_ENV_PATH must point to an existing rendered env file."
+    fi
+    if ! grep -q '^N8N_RENDER_STATUS=ready$' "${n8n_rendered_env}"; then
+        log_error "N8N_RENDERED_ENV_PATH must contain N8N_RENDER_STATUS=ready."
+    fi
+
+    if is_true "${N8N_KEYCLOAK_ENABLE:-false}"; then
+        require_non_placeholder "N8N_KEYCLOAK_DISCOVERY_URL" "${N8N_KEYCLOAK_DISCOVERY_URL:-}"
+        require_non_placeholder "N8N_KEYCLOAK_CLIENT_ID" "${N8N_KEYCLOAK_CLIENT_ID:-}"
+        require_non_placeholder "N8N_KEYCLOAK_CLIENT_SECRET" "${N8N_KEYCLOAK_CLIENT_SECRET:-}"
+        if [[ "${N8N_KEYCLOAK_DISCOVERY_URL:-}" != https://* ]]; then
+            log_error "N8N_KEYCLOAK_DISCOVERY_URL must use https://."
+        fi
+    fi
+
+    if is_true "${N8N_STEPCA_TRUST_ENABLE:-false}"; then
+        require_non_placeholder "N8N_STEPCA_TRUST_SOURCE_PATH" "${N8N_STEPCA_TRUST_SOURCE_PATH:-}"
+        if [ ! -f "${N8N_STEPCA_TRUST_SOURCE_PATH:-}" ]; then
+            log_error "N8N_STEPCA_TRUST_SOURCE_PATH must point to an existing file."
+        fi
+    fi
+fi
+
+if is_profile_enabled "rocketchat"; then
+    rocketchat_rendered_env="${ROCKETCHAT_RENDERED_ENV_PATH:-./services/rocketchat/config/rocketchat.env}"
+    if [ ! -f "${rocketchat_rendered_env}" ]; then
+        log_error "ROCKETCHAT_RENDERED_ENV_PATH must point to an existing rendered env file."
+    fi
+
+    if is_true "${ROCKETCHAT_KEYCLOAK_ENABLED:-false}"; then
+        require_non_placeholder "ROCKETCHAT_KEYCLOAK_ISSUER" "${ROCKETCHAT_KEYCLOAK_ISSUER:-}"
+        require_non_placeholder "ROCKETCHAT_KEYCLOAK_CLIENT_ID" "${ROCKETCHAT_KEYCLOAK_CLIENT_ID:-}"
+        require_non_placeholder "ROCKETCHAT_KEYCLOAK_CLIENT_SECRET" "${ROCKETCHAT_KEYCLOAK_CLIENT_SECRET:-}"
+        if [[ "${ROCKETCHAT_KEYCLOAK_ISSUER:-}" != https://* ]]; then
+            log_error "ROCKETCHAT_KEYCLOAK_ISSUER must use https://."
+        fi
+    fi
+
+    if is_true "${ROCKETCHAT_OBSERVABILITY_ENABLED:-false}"; then
+        rc_metrics_port="${ROCKETCHAT_METRICS_PORT:-9458}"
+        if [[ ! "${rc_metrics_port}" =~ ^[0-9]+$ ]] || [ "${rc_metrics_port}" -lt 1 ] || [ "${rc_metrics_port}" -gt 65535 ]; then
+            log_error "ROCKETCHAT_METRICS_PORT must be an integer between 1 and 65535. Got: ${rc_metrics_port}"
+        fi
+    fi
+fi
+
+if is_profile_enabled "semaphoreui"; then
+    validate_subdomain_label "${SEMAPHOREUI_HOSTNAME:-semaphore}" "SEMAPHOREUI_HOSTNAME"
+    require_non_placeholder "SEMAPHOREUI_ADMIN_PASSWORD" "${SEMAPHOREUI_ADMIN_PASSWORD:-}" "make semaphoreui-bootstrap"
+    require_non_placeholder "SEMAPHOREUI_DB_PASSWORD" "${SEMAPHOREUI_DB_PASSWORD:-}" "make semaphoreui-bootstrap"
+    require_non_placeholder "SEMAPHOREUI_COOKIE_HASH" "${SEMAPHOREUI_COOKIE_HASH:-}" "make semaphoreui-bootstrap"
+    require_non_placeholder "SEMAPHOREUI_COOKIE_ENCRYPTION" "${SEMAPHOREUI_COOKIE_ENCRYPTION:-}" "make semaphoreui-bootstrap"
+    require_non_placeholder "SEMAPHOREUI_ACCESS_KEY_ENCRYPTION" "${SEMAPHOREUI_ACCESS_KEY_ENCRYPTION:-}" "make semaphoreui-bootstrap"
+
+    if is_true "${SEMAPHOREUI_OIDC_ENABLED:-false}"; then
+        require_non_placeholder "SEMAPHOREUI_OIDC_PROVIDER_URL" "${SEMAPHOREUI_OIDC_PROVIDER_URL:-}"
+        require_non_placeholder "SEMAPHOREUI_OIDC_CLIENT_ID" "${SEMAPHOREUI_OIDC_CLIENT_ID:-}"
+        require_non_placeholder "SEMAPHOREUI_OIDC_CLIENT_SECRET" "${SEMAPHOREUI_OIDC_CLIENT_SECRET:-}"
+        if [[ "${SEMAPHOREUI_OIDC_PROVIDER_URL:-}" != https://* ]]; then
+            log_error "SEMAPHOREUI_OIDC_PROVIDER_URL must use https://."
+        fi
+    fi
+
+    if is_true "${SEMAPHOREUI_OBSERVABILITY_PUBLIC_METRICS:-false}"; then
+        log_error "SEMAPHOREUI_OBSERVABILITY_PUBLIC_METRICS must remain false."
+    fi
+fi
+
+if is_profile_enabled "wg"; then
+    validate_subdomain_label "${WG_UI_HOSTNAME:-vpn}" "WG_UI_HOSTNAME"
+
+    wg_port="${WG_SERVER_PORT:-51820}"
+    if [[ ! "${wg_port}" =~ ^[0-9]+$ ]] || [ "${wg_port}" -lt 1 ] || [ "${wg_port}" -gt 65535 ]; then
+        log_error "WG_SERVER_PORT must be an integer between 1 and 65535. Got: ${wg_port}"
+    fi
+
+    wg_bind_address="${WG_BIND_ADDRESS:-127.0.0.1}"
+    if ! is_ipv4_loopback "${wg_bind_address}" && ! is_true "${WG_ALLOW_NONLOCAL_BIND:-false}"; then
+        log_error "WG_BIND_ADDRESS must be loopback unless WG_ALLOW_NONLOCAL_BIND=true."
+    fi
+
+    wg_endpoint="${WG_SERVER_ENDPOINT:-}"
+    if [ -n "${wg_endpoint}" ] && [[ "${wg_endpoint}" == *:* ]]; then
+        log_error "WG_SERVER_ENDPOINT must be a hostname only (without port)."
+    fi
+
+    if is_true "${WG_INSECURE:-false}"; then
+        log_error "WG_INSECURE=true is not allowed."
+    fi
+fi
+
+if is_profile_enabled "wikijs"; then
+    wikijs_rendered_env="${WIKIJS_RENDERED_ENV_PATH:-}"
+    if [ -z "${wikijs_rendered_env}" ] || [ ! -f "${wikijs_rendered_env}" ]; then
+        log_error "WIKIJS_RENDERED_ENV_PATH must point to an existing rendered env file."
+    fi
+    if ! grep -q '^WIKIJS_RENDER_STATUS=ready$' "${wikijs_rendered_env}"; then
+        log_error "WIKIJS_RENDERED_ENV_PATH must contain WIKIJS_RENDER_STATUS=ready."
+    fi
+
+    if is_true "${WIKIJS_KEYCLOAK_ENABLE:-false}"; then
+        require_non_placeholder "WIKIJS_KEYCLOAK_ISSUER_URL" "${WIKIJS_KEYCLOAK_ISSUER_URL:-}"
+        require_non_placeholder "WIKIJS_KEYCLOAK_CLIENT_ID" "${WIKIJS_KEYCLOAK_CLIENT_ID:-}"
+        require_non_placeholder "WIKIJS_KEYCLOAK_CLIENT_SECRET" "${WIKIJS_KEYCLOAK_CLIENT_SECRET:-}"
+        if [[ "${WIKIJS_KEYCLOAK_ISSUER_URL:-}" != https://* ]]; then
+            log_error "WIKIJS_KEYCLOAK_ISSUER_URL must use https://."
+        fi
+    fi
+
+    if is_true "${WIKIJS_STEPCA_TRUST_ENABLE:-false}"; then
+        require_non_placeholder "WIKIJS_STEPCA_TRUST_SOURCE_PATH" "${WIKIJS_STEPCA_TRUST_SOURCE_PATH:-}"
+        if [ ! -f "${WIKIJS_STEPCA_TRUST_SOURCE_PATH:-}" ]; then
+            log_error "WIKIJS_STEPCA_TRUST_SOURCE_PATH must point to an existing file."
+        fi
+    fi
+fi
+
 if is_profile_enabled "freeipa"; then
     validate_subdomain_label "${FREEIPA_HOSTNAME:-freeipa}" "FREEIPA_HOSTNAME"
     require_non_placeholder "FREEIPA_ADMIN_PASSWORD" "${FREEIPA_ADMIN_PASSWORD:-}" "make freeipa-bootstrap"
@@ -671,4 +851,19 @@ if is_profile_enabled "freeipa"; then
             log_error "FREEIPA_PROMETHEUS_METRICS_PATH must start with '/'. Got: ${FREEIPA_PROMETHEUS_METRICS_PATH}"
         fi
     fi
+fi
+
+if is_profile_enabled "litellm"; then
+    validate_subdomain_label "${LITELLM_HOSTNAME:-llm}" "LITELLM_HOSTNAME"
+    validate_subdomain_label "${LITELLM_UI_HOSTNAME:-llm-admin}" "LITELLM_UI_HOSTNAME"
+    validate_http_url "${LITELLM_LOCAL_API_BASE:-http://host.docker.internal:11434}" "LITELLM_LOCAL_API_BASE"
+
+    require_non_placeholder "LITELLM_MASTER_KEY" "${LITELLM_MASTER_KEY:-}" "make litellm-bootstrap"
+    require_non_placeholder "LITELLM_SALT_KEY" "${LITELLM_SALT_KEY:-}" "make litellm-bootstrap"
+
+    if [[ "${LITELLM_MASTER_KEY:-}" != sk-* ]]; then
+        log_error "LITELLM_MASTER_KEY must start with 'sk-'. Run 'make litellm-bootstrap' to generate a valid key."
+    fi
+
+    require_auth_file "LiteLLM UI" "${LITELLM_UI_BASIC_AUTH_HTPASSWD_PATH:-}"
 fi

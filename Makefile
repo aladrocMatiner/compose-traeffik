@@ -15,7 +15,8 @@
 # --- Configuration Variables ---
 SHELL := /bin/bash # Ensure bash is used for shell commands
 .DEFAULT_GOAL := help # Default target if none is specified
-.PHONY: help up down restart logs ps test test-core test-dns test-awx test-ctfd test-observability test-plane test-docling test-freeipa test-webui docs-check bootstrap \
+.PHONY: help up down restart logs ps test test-core test-dns test-awx test-ctfd test-observability test-plane test-docling test-freeipa test-webui \
+        test-keycloak test-gitlab test-rocketchat test-semaphoreui test-wg test-wikijs test-litellm docs-check bootstrap \
         certs-local local-ca-trust-install local-ca-trust-uninstall local-ca-trust-verify \
         certs-le-issue certs-le-renew \
         stepca-up stepca-down stepca-bootstrap stepca-verify-cert \
@@ -23,6 +24,14 @@ SHELL := /bin/bash # Ensure bash is used for shell commands
         hosts-generate hosts-apply hosts-remove hosts-status \
         bind-up bind-down bind-restart bind-logs bind-status bind-provision bind-provision-dry \
         awx-bootstrap awx-k3d-up awx-k3d-down awx-up awx-down awx-status awx-logs awx-admin-password awx-debug awx-backup awx-restore awx-upgrade \
+        keycloak-bootstrap keycloak-up keycloak-down keycloak-restart keycloak-logs keycloak-status \
+        gitlab-bootstrap gitlab-up gitlab-down gitlab-restart gitlab-logs gitlab-status \
+        rocketchat-bootstrap rocketchat-up rocketchat-down rocketchat-restart rocketchat-logs rocketchat-status \
+        semaphoreui-bootstrap semaphoreui-up semaphoreui-down semaphoreui-restart semaphoreui-logs semaphoreui-status \
+        wg-up wg-down wg-restart wg-logs wg-status wg-bootstrap \
+        wikijs-bootstrap wikijs-up wikijs-down wikijs-restart wikijs-logs wikijs-status \
+        litellm-bootstrap litellm-up litellm-down litellm-restart litellm-logs litellm-status \
+        litellm-standalone-up litellm-standalone-down litellm-standalone-logs litellm-standalone-status \
         ctfd-bootstrap ctfd-up ctfd-down ctfd-restart ctfd-logs ctfd-status \
         observability-bootstrap observability-up observability-down observability-restart observability-logs observability-status observability-k6 \
         plane-bootstrap plane-up plane-down plane-restart plane-logs plane-status \
@@ -43,6 +52,13 @@ COMPOSE_FILES := \
   -f services/traefik/compose.yml \
   -f services/whoami/compose.yml \
   -f services/keycloak/compose.yml \
+  -f services/gitlab/compose.yml \
+  -f services/n8n/compose.yml \
+  -f services/rocketchat/compose.yml \
+  -f services/semaphoreui/compose.yml \
+  -f services/wg-easy/compose.yml \
+  -f services/wikijs/compose.yml \
+  -f services/litellm/compose.yml \
   -f services/dns-bind/compose.yml \
   -f services/certbot/compose.yml \
   -f services/step-ca/compose.yml \
@@ -84,6 +100,11 @@ ifneq ($(ENV_FILE),)
 BIND_ENV_ARGS += --env-file $(ENV_FILE)
 endif
 
+KEYCLOAK_ENV_ARGS :=
+ifneq ($(ENV_FILE),)
+KEYCLOAK_ENV_ARGS += --env-file $(ENV_FILE)
+endif
+
 AWX_ENV_ARGS :=
 ifneq ($(ENV_FILE),)
 AWX_ENV_ARGS += --env-file $(ENV_FILE)
@@ -109,9 +130,19 @@ ifneq ($(ENV_FILE),)
 DOCLING_ENV_ARGS += --env-file $(ENV_FILE)
 endif
 
+SEMAPHOREUI_ENV_ARGS :=
+ifneq ($(ENV_FILE),)
+SEMAPHOREUI_ENV_ARGS += --env-file $(ENV_FILE)
+endif
+
 FREEIPA_ENV_ARGS :=
 ifneq ($(ENV_FILE),)
 FREEIPA_ENV_ARGS += --env-file $(ENV_FILE)
+endif
+
+LITELLM_BOOTSTRAP_ENV_ARGS :=
+ifneq ($(ENV_FILE),)
+LITELLM_BOOTSTRAP_ENV_ARGS += --env-file $(ENV_FILE)
 endif
 
 SMOKE_TEST_DIR := $(REPO_ROOT)/tests/smoke
@@ -211,12 +242,12 @@ ps:
 bootstrap:
 	@echo "Bootstrapping local environment (.env and directories)..."
 	./scripts/env-generate.sh --mode=prod
-	mkdir -p shared/certs shared/certs/local-ca shared/certs/local services/n8n/rendered
+	mkdir -p shared/certs shared/certs/local-ca shared/certs/local services/n8n/rendered services/wikijs/rendered
 
 bootstrap-full:
 	@echo "Bootstrapping local environment (.env and directories) with full defaults..."
 	./scripts/env-generate.sh --mode=full
-	mkdir -p shared/certs shared/certs/local-ca shared/certs/local services/n8n/rendered
+	mkdir -p shared/certs shared/certs/local-ca shared/certs/local services/n8n/rendered services/wikijs/rendered
 
 certs-local:
 	@echo "Generating local self-signed certificates..."
@@ -425,6 +456,268 @@ test-n8n:
 	./tests/smoke/test_n8n_compose_wiring.sh
 	./tests/smoke/test_n8n_guardrails.sh
 	./tests/smoke/test_n8n_render_config.sh
+
+test-keycloak:
+	@echo "Running Keycloak static smoke tests..."
+	@set -euo pipefail; rc=0; \
+	for test_script in test_keycloak_make_targets.sh test_keycloak_service_config.sh test_keycloak_guardrails.sh test_keycloak_observability_wiring.sh; do \
+		echo "==> $$test_script"; \
+		if ! "./tests/smoke/$$test_script"; then rc=1; fi; \
+	done; \
+	exit $$rc
+
+test-gitlab:
+	@echo "Running GitLab smoke tests..."
+	@set -e; \
+	for t in \
+		tests/smoke/test_gitlab_make_targets.sh \
+		tests/smoke/test_gitlab_service_config.sh \
+		tests/smoke/test_gitlab_guardrails.sh \
+		tests/smoke/test_gitlab_oidc_wiring.sh \
+		tests/smoke/test_gitlab_observability_wiring.sh; do \
+		echo ">> $$t"; \
+		"$$t"; \
+	done
+
+test-rocketchat:
+	@echo "Running Rocket.Chat static smoke tests..."
+	@set -e; \
+	for t in \
+		tests/smoke/test_rocketchat_make_targets.sh \
+		tests/smoke/test_rocketchat_compose_wiring.sh \
+		tests/smoke/test_rocketchat_guardrails.sh \
+		tests/smoke/test_rocketchat_render_config.sh; do \
+		echo ">> $$t"; \
+		"$$t"; \
+	done
+
+test-semaphoreui:
+	@echo "Running Semaphore UI static smoke tests..."
+	@for test_script in \
+		tests/smoke/test_semaphoreui_make_targets.sh \
+		tests/smoke/test_semaphoreui_service_config.sh \
+		tests/smoke/test_semaphoreui_guardrails.sh \
+		tests/smoke/test_semaphoreui_oidc_wiring.sh \
+		tests/smoke/test_semaphoreui_observability_wiring.sh; do \
+		echo "==> $$(basename $$test_script)"; \
+		$$test_script || exit $$?; \
+	done
+
+test-wg:
+	@echo "Running WireGuard (wg-easy) static smoke tests..."
+	./tests/smoke/test_wg_easy_service_config.sh
+	./tests/smoke/test_wg_guardrails.sh
+	./tests/smoke/test_wg_make_targets.sh
+	./tests/smoke/test_wg_bootstrap_env.sh
+
+test-wikijs:
+	@echo "Running Wiki.js static smoke tests..."
+	./tests/smoke/test_wikijs_make_targets.sh
+	./tests/smoke/test_wikijs_compose_wiring.sh
+	./tests/smoke/test_wikijs_guardrails.sh
+	./tests/smoke/test_wikijs_render_config.sh
+
+test-litellm:
+	@echo "Running LiteLLM static smoke tests..."
+	./tests/smoke/test_litellm_make_targets.sh
+	./tests/smoke/test_litellm_service_config.sh
+	./tests/smoke/test_litellm_guardrails.sh
+	./tests/smoke/test_litellm_bootstrap_env.sh
+	./tests/smoke/test_litellm_config_template.sh
+	./tests/smoke/test_litellm_standalone_mode_wiring.sh
+
+# --- Keycloak (Traefik + Postgres) ---
+
+keycloak-bootstrap:
+	"$(SCRIPTS_DIR)/keycloak-bootstrap.sh" $(KEYCLOAK_ENV_ARGS)
+
+keycloak-up:
+	@echo "Starting Keycloak service (profile: keycloak)..."
+	COMPOSE_PROFILES=keycloak "$(SCRIPTS_DIR)/compose.sh" --profile keycloak $(COMPOSE_OPTS) up -d keycloak-db keycloak
+
+keycloak-down:
+	@echo "Stopping Keycloak service..."
+	COMPOSE_PROFILES=keycloak "$(SCRIPTS_DIR)/compose.sh" --profile keycloak $(COMPOSE_OPTS) stop keycloak keycloak-db || true
+	COMPOSE_PROFILES=keycloak "$(SCRIPTS_DIR)/compose.sh" --profile keycloak $(COMPOSE_OPTS) rm -f keycloak keycloak-db || true
+
+keycloak-restart: keycloak-down keycloak-up
+
+keycloak-logs:
+	@echo "Showing Keycloak service logs..."
+	COMPOSE_PROFILES=keycloak "$(SCRIPTS_DIR)/compose.sh" --profile keycloak $(COMPOSE_OPTS) logs -f keycloak keycloak-db
+
+keycloak-status:
+	@echo "Keycloak service status:"
+	COMPOSE_PROFILES=keycloak "$(SCRIPTS_DIR)/compose.sh" --profile keycloak $(COMPOSE_OPTS) ps keycloak keycloak-db
+
+# --- GitLab (Omnibus) ---
+
+gitlab-bootstrap:
+	"$(SCRIPTS_DIR)/gitlab-bootstrap.sh" $(if $(ENV_FILE),--env-file $(ENV_FILE),)
+
+gitlab-up: gitlab-bootstrap
+	@echo "Starting GitLab service (profile: gitlab)..."
+	COMPOSE_PROFILES=gitlab "$(SCRIPTS_DIR)/compose.sh" --profile gitlab $(COMPOSE_OPTS) up -d gitlab
+
+gitlab-down:
+	@echo "Stopping GitLab service..."
+	COMPOSE_PROFILES=gitlab "$(SCRIPTS_DIR)/compose.sh" --profile gitlab $(COMPOSE_OPTS) stop gitlab || true
+	COMPOSE_PROFILES=gitlab "$(SCRIPTS_DIR)/compose.sh" --profile gitlab $(COMPOSE_OPTS) rm -f gitlab || true
+
+gitlab-restart: gitlab-down gitlab-up
+
+gitlab-logs:
+	@echo "Showing GitLab service logs..."
+	COMPOSE_PROFILES=gitlab "$(SCRIPTS_DIR)/compose.sh" --profile gitlab $(COMPOSE_OPTS) logs -f gitlab
+
+gitlab-status:
+	@echo "GitLab service status:"
+	COMPOSE_PROFILES=gitlab "$(SCRIPTS_DIR)/compose.sh" --profile gitlab $(COMPOSE_OPTS) ps gitlab
+
+# --- Rocket.Chat ---
+
+rocketchat-bootstrap:
+	"$(SCRIPTS_DIR)/rocketchat-bootstrap.sh" $(if $(ENV_FILE),--env-file $(ENV_FILE),)
+
+rocketchat-up: rocketchat-bootstrap
+	@echo "Starting Rocket.Chat profile (rocketchat)..."
+	COMPOSE_PROFILES=rocketchat "$(SCRIPTS_DIR)/compose.sh" --profile rocketchat $(COMPOSE_OPTS) up -d
+
+rocketchat-down:
+	@echo "Stopping Rocket.Chat profile containers..."
+	COMPOSE_PROFILES=rocketchat "$(SCRIPTS_DIR)/compose.sh" --profile rocketchat $(COMPOSE_OPTS) stop \
+		rocketchat rocketchat-nats rocketchat-mongodb rocketchat-mongodb-init rocketchat-mongodb-fix-permissions || true
+	COMPOSE_PROFILES=rocketchat "$(SCRIPTS_DIR)/compose.sh" --profile rocketchat $(COMPOSE_OPTS) rm -f \
+		rocketchat rocketchat-nats rocketchat-mongodb rocketchat-mongodb-init rocketchat-mongodb-fix-permissions || true
+
+rocketchat-restart: rocketchat-down rocketchat-up
+
+rocketchat-logs:
+	@echo "Showing Rocket.Chat profile logs..."
+	COMPOSE_PROFILES=rocketchat "$(SCRIPTS_DIR)/compose.sh" --profile rocketchat $(COMPOSE_OPTS) logs -f \
+		rocketchat rocketchat-nats rocketchat-mongodb rocketchat-mongodb-init
+
+rocketchat-status:
+	@echo "Rocket.Chat profile status:"
+	COMPOSE_PROFILES=rocketchat "$(SCRIPTS_DIR)/compose.sh" --profile rocketchat $(COMPOSE_OPTS) ps \
+		rocketchat rocketchat-nats rocketchat-mongodb rocketchat-mongodb-init rocketchat-mongodb-fix-permissions
+
+# --- Semaphore UI ---
+
+semaphoreui-bootstrap:
+	"$(SCRIPTS_DIR)/semaphoreui-bootstrap.sh" $(SEMAPHOREUI_ENV_ARGS)
+
+semaphoreui-up:
+	@echo "Starting Semaphore UI service (profile: semaphoreui)..."
+	COMPOSE_PROFILES=semaphoreui "$(SCRIPTS_DIR)/compose.sh" --profile semaphoreui $(COMPOSE_OPTS) up -d semaphoreui semaphoreui-db
+
+semaphoreui-down:
+	@echo "Stopping Semaphore UI service..."
+	COMPOSE_PROFILES=semaphoreui "$(SCRIPTS_DIR)/compose.sh" --profile semaphoreui $(COMPOSE_OPTS) stop semaphoreui semaphoreui-db || true
+	COMPOSE_PROFILES=semaphoreui "$(SCRIPTS_DIR)/compose.sh" --profile semaphoreui $(COMPOSE_OPTS) rm -f semaphoreui semaphoreui-db || true
+
+semaphoreui-restart: semaphoreui-down semaphoreui-up
+
+semaphoreui-logs:
+	@echo "Showing Semaphore UI service logs..."
+	COMPOSE_PROFILES=semaphoreui "$(SCRIPTS_DIR)/compose.sh" --profile semaphoreui $(COMPOSE_OPTS) logs -f semaphoreui semaphoreui-db
+
+semaphoreui-status:
+	@echo "Semaphore UI service status:"
+	COMPOSE_PROFILES=semaphoreui "$(SCRIPTS_DIR)/compose.sh" --profile semaphoreui $(COMPOSE_OPTS) ps semaphoreui semaphoreui-db
+
+# --- WireGuard (wg-easy) ---
+
+wg-up:
+	@echo "Starting wg-easy service (profile: wg)..."
+	COMPOSE_PROFILES=wg "$(SCRIPTS_DIR)/compose.sh" --profile wg $(COMPOSE_OPTS) up -d wg-easy
+
+wg-down:
+	@echo "Stopping wg-easy service..."
+	COMPOSE_PROFILES=wg "$(SCRIPTS_DIR)/compose.sh" --profile wg $(COMPOSE_OPTS) stop wg-easy || true
+	COMPOSE_PROFILES=wg "$(SCRIPTS_DIR)/compose.sh" --profile wg $(COMPOSE_OPTS) rm -f wg-easy || true
+
+wg-restart: wg-down wg-up
+
+wg-logs:
+	@echo "Showing wg-easy service logs..."
+	COMPOSE_PROFILES=wg "$(SCRIPTS_DIR)/compose.sh" --profile wg $(COMPOSE_OPTS) logs -f wg-easy
+
+wg-status:
+	@echo "wg-easy service status:"
+	COMPOSE_PROFILES=wg "$(SCRIPTS_DIR)/compose.sh" --profile wg $(COMPOSE_OPTS) ps wg-easy
+
+wg-bootstrap:
+	@echo "Bootstrapping wg-easy admin variables in .env..."
+	./scripts/wg-bootstrap.sh $(WG_BOOTSTRAP_ARGS)
+
+# --- Wiki.js (optional profile: wikijs) ---
+
+wikijs-bootstrap:
+	@echo "Rendering Wiki.js runtime config and optional integration runbooks..."
+	./scripts/wikijs-bootstrap.sh
+
+wikijs-up: wikijs-bootstrap
+	@echo "Starting Wiki.js service (profile: wikijs)..."
+	COMPOSE_PROFILES=wikijs "$(SCRIPTS_DIR)/compose.sh" --profile wikijs $(COMPOSE_OPTS) up -d wikijs wikijs-db
+
+wikijs-down:
+	@echo "Stopping Wiki.js service..."
+	COMPOSE_PROFILES=wikijs "$(SCRIPTS_DIR)/compose.sh" --profile wikijs $(COMPOSE_OPTS) stop wikijs wikijs-db || true
+	COMPOSE_PROFILES=wikijs "$(SCRIPTS_DIR)/compose.sh" --profile wikijs $(COMPOSE_OPTS) rm -f wikijs wikijs-db || true
+
+wikijs-restart: wikijs-down wikijs-up
+
+wikijs-logs:
+	@echo "Showing Wiki.js logs..."
+	COMPOSE_PROFILES=wikijs "$(SCRIPTS_DIR)/compose.sh" --profile wikijs $(COMPOSE_OPTS) logs -f wikijs wikijs-db
+
+wikijs-status:
+	@echo "Wiki.js service status:"
+	COMPOSE_PROFILES=wikijs "$(SCRIPTS_DIR)/compose.sh" --profile wikijs $(COMPOSE_OPTS) ps wikijs wikijs-db
+
+# --- LiteLLM Router ---
+
+litellm-bootstrap:
+	./scripts/litellm-bootstrap.sh $(LITELLM_BOOTSTRAP_ENV_ARGS) $(LITELLM_BOOTSTRAP_ARGS)
+
+litellm-up:
+	@echo "Starting LiteLLM service (profile: litellm)..."
+	COMPOSE_PROFILES=litellm ./scripts/compose.sh --profile litellm $(COMPOSE_OPTS) up -d litellm
+
+litellm-down:
+	@echo "Stopping LiteLLM service..."
+	COMPOSE_PROFILES=litellm ./scripts/compose.sh --profile litellm $(COMPOSE_OPTS) stop litellm || true
+	COMPOSE_PROFILES=litellm ./scripts/compose.sh --profile litellm $(COMPOSE_OPTS) rm -f litellm || true
+
+litellm-restart: litellm-down litellm-up
+
+litellm-logs:
+	@echo "Showing LiteLLM service logs..."
+	COMPOSE_PROFILES=litellm ./scripts/compose.sh --profile litellm $(COMPOSE_OPTS) logs -f litellm
+
+litellm-status:
+	@echo "LiteLLM service status:"
+	COMPOSE_PROFILES=litellm ./scripts/compose.sh --profile litellm $(COMPOSE_OPTS) ps litellm
+
+litellm-standalone-up:
+	@echo "Starting standalone LiteLLM edge mode (traefik + litellm)..."
+	./scripts/validate-env.sh
+	./scripts/traefik-render-dynamic.sh
+	COMPOSE_PROFILES=litellm ./scripts/compose.sh --profile litellm $(COMPOSE_OPTS) up -d traefik litellm
+
+litellm-standalone-down:
+	@echo "Stopping standalone LiteLLM edge mode (traefik + litellm)..."
+	COMPOSE_PROFILES=litellm ./scripts/compose.sh --profile litellm $(COMPOSE_OPTS) stop traefik litellm || true
+	COMPOSE_PROFILES=litellm ./scripts/compose.sh --profile litellm $(COMPOSE_OPTS) rm -f traefik litellm || true
+
+litellm-standalone-logs:
+	@echo "Showing standalone LiteLLM edge logs (traefik + litellm)..."
+	COMPOSE_PROFILES=litellm ./scripts/compose.sh --profile litellm $(COMPOSE_OPTS) logs -f traefik litellm
+
+litellm-standalone-status:
+	@echo "Standalone LiteLLM edge status (traefik + litellm):"
+	COMPOSE_PROFILES=litellm ./scripts/compose.sh --profile litellm $(COMPOSE_OPTS) ps traefik litellm
 
 # --- Hosts Subdomain Mapper ---
 
@@ -717,6 +1010,13 @@ help:
 	@echo "  test-docling          Run Docling smoke tests only."
 	@echo "  test-freeipa          Run FreeIPA smoke tests only."
 	@echo "  test-webui            Run OpenWebUI smoke tests only."
+	@echo "  test-keycloak         Run Keycloak smoke tests only."
+	@echo "  test-gitlab           Run GitLab smoke tests only."
+	@echo "  test-rocketchat       Run Rocket.Chat smoke tests only."
+	@echo "  test-semaphoreui      Run Semaphore UI smoke tests only."
+	@echo "  test-wg               Run WireGuard (wg-easy) smoke tests only."
+	@echo "  test-wikijs           Run Wiki.js smoke tests only."
+	@echo "  test-litellm          Run LiteLLM smoke tests only."
 	@echo ""
 	@echo "Docs:"
 	@echo "  docs-check            Validate multilingual README structure and links."
@@ -728,6 +1028,66 @@ help:
 	@echo "  n8n-restart           Restart n8n (n8n-down + n8n-up)."
 	@echo "  n8n-logs              Follow n8n and PostgreSQL logs."
 	@echo "  n8n-status            Show n8n service status."
+	@echo ""
+	@echo "Keycloak:"
+	@echo "  keycloak-bootstrap    Generate/persist Keycloak bootstrap secrets in .env."
+	@echo "  keycloak-up           Start Keycloak + PostgreSQL (profile: keycloak)."
+	@echo "  keycloak-down         Stop and remove Keycloak containers."
+	@echo "  keycloak-restart      Restart Keycloak."
+	@echo "  keycloak-logs         Follow Keycloak logs."
+	@echo "  keycloak-status       Show Keycloak service status."
+	@echo ""
+	@echo "GitLab:"
+	@echo "  gitlab-bootstrap      Render/persist GitLab bootstrap config in .env."
+	@echo "  gitlab-up             Start GitLab (profile: gitlab)."
+	@echo "  gitlab-down           Stop and remove GitLab containers."
+	@echo "  gitlab-restart        Restart GitLab."
+	@echo "  gitlab-logs           Follow GitLab logs."
+	@echo "  gitlab-status         Show GitLab service status."
+	@echo ""
+	@echo "Rocket.Chat:"
+	@echo "  rocketchat-bootstrap  Render/persist Rocket.Chat runtime config in .env."
+	@echo "  rocketchat-up         Start Rocket.Chat profile."
+	@echo "  rocketchat-down       Stop and remove Rocket.Chat profile containers."
+	@echo "  rocketchat-restart    Restart Rocket.Chat profile."
+	@echo "  rocketchat-logs       Follow Rocket.Chat profile logs."
+	@echo "  rocketchat-status     Show Rocket.Chat profile status."
+	@echo ""
+	@echo "Semaphore UI:"
+	@echo "  semaphoreui-bootstrap Generate/persist Semaphore UI secrets in .env."
+	@echo "  semaphoreui-up        Start Semaphore UI + PostgreSQL (profile: semaphoreui)."
+	@echo "  semaphoreui-down      Stop and remove Semaphore UI containers."
+	@echo "  semaphoreui-restart   Restart Semaphore UI."
+	@echo "  semaphoreui-logs      Follow Semaphore UI logs."
+	@echo "  semaphoreui-status    Show Semaphore UI service status."
+	@echo ""
+	@echo "WireGuard (wg-easy):"
+	@echo "  wg-bootstrap          Generate/persist wg-easy admin defaults in .env."
+	@echo "  wg-up                 Start wg-easy (profile: wg)."
+	@echo "  wg-down               Stop and remove wg-easy containers."
+	@echo "  wg-restart            Restart wg-easy."
+	@echo "  wg-logs               Follow wg-easy logs."
+	@echo "  wg-status             Show wg-easy service status."
+	@echo ""
+	@echo "Wiki.js:"
+	@echo "  wikijs-bootstrap      Render Wiki.js runtime config and optional integration runbooks."
+	@echo "  wikijs-up             Start Wiki.js + PostgreSQL (profile: wikijs)."
+	@echo "  wikijs-down           Stop and remove Wiki.js containers."
+	@echo "  wikijs-restart        Restart Wiki.js."
+	@echo "  wikijs-logs           Follow Wiki.js logs."
+	@echo "  wikijs-status         Show Wiki.js service status."
+	@echo ""
+	@echo "LiteLLM Router:"
+	@echo "  litellm-bootstrap     Generate LiteLLM secrets in .env (use ENV_FILE=... and LITELLM_BOOTSTRAP_ARGS=--force as needed)."
+	@echo "  litellm-up            Start the LiteLLM service (profile: litellm)."
+	@echo "  litellm-down          Stop and remove the LiteLLM container."
+	@echo "  litellm-restart       Restart the LiteLLM service."
+	@echo "  litellm-logs          Follow LiteLLM service logs."
+	@echo "  litellm-status        Show LiteLLM service status."
+	@echo "  litellm-standalone-up Start standalone LiteLLM edge mode (traefik + litellm only)."
+	@echo "  litellm-standalone-down Stop/remove standalone LiteLLM edge containers."
+	@echo "  litellm-standalone-logs Follow logs for standalone LiteLLM edge mode."
+	@echo "  litellm-standalone-status Show status for standalone LiteLLM edge mode."
 	@echo ""
 	@echo "Hosts Subdomain Mapper:"
 	@echo "  hosts-generate        Print the managed hosts block."
@@ -808,6 +1168,6 @@ help:
 	@echo ""
 	@echo "Profiles:"
 	@echo "  Use COMPOSE_PROFILES=<profile_name> before make commands to activate profiles."
-	@echo "  Available profiles: bind, ctfd, docling, freeipa, le, observability, plane, stepca, webui"
+	@echo "  Available profiles: bind, ctfd, docling, freeipa, gitlab, keycloak, le, litellm, n8n, observability, plane, rocketchat, semaphoreui, stepca, webui, wg, wikijs"
 	@echo "  Example: COMPOSE_PROFILES=le make up"
 	@echo ""

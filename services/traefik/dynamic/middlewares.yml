@@ -49,3 +49,8 @@ http:
     traefik-dashboard-auth:
       basicAuth:
         usersFile: __TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH__
+
+    # --- Basic Auth for LiteLLM Admin UI ---
+    litellm-ui-auth:
+      basicAuth:
+        usersFile: __LITELLM_UI_BASIC_AUTH_HTPASSWD_PATH__
