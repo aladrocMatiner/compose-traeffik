@@ -79,6 +79,7 @@ Guias de TLS:
 - **Plane**: `https://plane.${DEV_DOMAIN}` (perfil `plane`; opcional)
 - **Docling**: `https://docling.${DEV_DOMAIN}` (perfil `docling`; opcional)
 - **OpenWebUI**: `https://openwebui.${DEV_DOMAIN}` (perfil `webui`; opcional)
+- **AWX**: `https://awx.${DEV_DOMAIN}` (modulo hibrido `k3d` + AWX Operator; requiere `make awx-*`)
 - **Prometheus/Loki/Tempo/Pyroscope**: internos por defecto (perfil `observability`; sin endpoint publico)
 
 <a id="services"></a>
@@ -94,6 +95,7 @@ Guias de TLS:
 - [Plane](services/plane/README.es.md) - perfil opcional `plane` (gestion de proyectos + PostgreSQL/Redis/RabbitMQ/MinIO).
 - [Docling](services/docling/README.es.md) - perfil opcional `docling` (API de conversion de documentos + Redis interno para modo async/RQ).
 - [OpenWebUI](services/openwebui/README.es.md) - perfil opcional `webui` (interfaz web/chat detras de Traefik).
+- [AWX](services/awx/README.es.md) - modulo hibrido (`k3d` + AWX Operator) detras de Traefik.
 
 <a id="docs-map"></a>
 ## Mapa de documentos
@@ -120,7 +122,15 @@ Comandos comunes:
 - `make plane-bootstrap`, `make plane-up`, `make plane-status`
 - `make docling-bootstrap`, `make docling-up`, `make docling-status`
 - `make webui-up`, `make webui-status`
+- `make awx-bootstrap`, `make awx-k3d-up`, `make awx-up`, `make awx-status`, `make awx-admin-password`
+- `make awx-debug`, `make awx-backup`
+- `make awx-restore AWX_RESTORE_ARGS="--backup-name <name> --confirm"` (puede ser destructivo; requiere confirmacion explicita)
+- `make awx-upgrade AWX_UPGRADE_ARGS="--confirm ..."` (mantenimiento stateful; requiere confirmacion explicita)
 - `make hosts-generate`, `make hosts-apply`, `make hosts-status`
+
+Prerequisitos AWX (modulo hibrido):
+- `docker`, `k3d`, `kubectl`, `helm`
+- Traefik en ejecucion (`make up` o al menos `traefik`) para acceso a `https://awx.${DEV_DOMAIN}`
 
 Archivos auth:
 - `services/traefik/auth/traefik-dashboard.htpasswd.example`
@@ -135,6 +145,7 @@ Defaults de seguridad DNS:
 
 Nota de hosts:
 - Si gestionas `ENDPOINTS` manualmente, anyade `ctfd`, `grafana`, `plane`, `docling` y/o `openwebui` antes de `make hosts-apply`.
+- Anyade `awx` tambien si quieres routing local de AWX via Traefik.
 - Anyade `keycloak` tambien si vas a usar Plane con routing local hacia Keycloak.
 - O deja `ENDPOINTS` vacio para auto-discovery por reglas `Host()`.
 

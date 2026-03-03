@@ -110,6 +110,14 @@
         "sv": "OpenWebUI",
         "es": "OpenWebUI"
       }
+    },
+    {
+      "slug": "awx",
+      "title": {
+        "en": "AWX",
+        "sv": "AWX",
+        "es": "AWX"
+      }
     }
   ]
 }

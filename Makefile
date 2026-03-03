@@ -15,13 +15,14 @@
 # --- Configuration Variables ---
 SHELL := /bin/bash # Ensure bash is used for shell commands
 .DEFAULT_GOAL := help # Default target if none is specified
-.PHONY: help up down restart logs ps test test-core test-dns test-ctfd test-observability test-plane test-docling test-webui docs-check bootstrap \
+.PHONY: help up down restart logs ps test test-core test-dns test-awx test-ctfd test-observability test-plane test-docling test-webui docs-check bootstrap \
         certs-local local-ca-trust-install local-ca-trust-uninstall local-ca-trust-verify \
         certs-le-issue certs-le-renew \
         stepca-up stepca-down stepca-bootstrap stepca-verify-cert \
         stepca-trust-install stepca-trust-uninstall stepca-trust-verify \
         hosts-generate hosts-apply hosts-remove hosts-status \
         bind-up bind-down bind-restart bind-logs bind-status bind-provision bind-provision-dry \
+        awx-bootstrap awx-k3d-up awx-k3d-down awx-up awx-down awx-status awx-logs awx-admin-password awx-debug awx-backup awx-restore awx-upgrade \
         ctfd-bootstrap ctfd-up ctfd-down ctfd-restart ctfd-logs ctfd-status \
         observability-bootstrap observability-up observability-down observability-restart observability-logs observability-status observability-k6 \
         plane-bootstrap plane-up plane-down plane-restart plane-logs plane-status \
@@ -80,6 +81,11 @@ ifneq ($(ENV_FILE),)
 BIND_ENV_ARGS += --env-file $(ENV_FILE)
 endif
 
+AWX_ENV_ARGS :=
+ifneq ($(ENV_FILE),)
+AWX_ENV_ARGS += --env-file $(ENV_FILE)
+endif
+
 CTFD_ENV_ARGS :=
 ifneq ($(ENV_FILE),)
 CTFD_ENV_ARGS += --env-file $(ENV_FILE)
@@ -117,6 +123,14 @@ DNS_SMOKE_TESTS := \
 	test_bind_file_permissions.sh \
 	test_bind_provisioning_validation.sh \
 	test_bind_security_runtime.sh
+
+AWX_SMOKE_TESTS := \
+	test_awx_make_targets.sh \
+	test_awx_guardrails.sh \
+	test_awx_k8s_templates.sh \
+	test_awx_traefik_routing_config.sh \
+	test_awx_day2_make_targets.sh \
+	test_awx_day2_confirmation.sh
 
 CTFD_SMOKE_TESTS := \
 	test_ctfd_service_config.sh \
@@ -282,6 +296,17 @@ test-dns:
 	done; \
 	exit $$rc
 
+test-awx:
+	@echo "Running AWX static smoke tests..."
+	@set -euo pipefail; rc=0; \
+	for test_script in $(AWX_SMOKE_TESTS); do \
+		echo "==> $$test_script"; \
+		if ! "$(SMOKE_TEST_DIR)/$$test_script"; then \
+			rc=1; \
+		fi; \
+	done; \
+	exit $$rc
+
 test-ctfd:
 	@echo "Running CTFd smoke tests..."
 	@set -euo pipefail; rc=0; \
@@ -385,6 +410,56 @@ bind-provision:
 
 bind-provision-dry:
 	"$(SCRIPTS_DIR)/bind-provision.sh" $(BIND_ENV_ARGS) --dry-run
+
+# --- AWX (k3d + AWX Operator) Hybrid Module ---
+
+awx-bootstrap:
+	"$(SCRIPTS_DIR)/awx-bootstrap.sh" $(AWX_ENV_ARGS)
+
+awx-k3d-up:
+	@echo "Creating/ensuring local k3d cluster for AWX..."
+	"$(SCRIPTS_DIR)/awx-k3d-up.sh" $(AWX_ENV_ARGS)
+
+awx-k3d-down:
+	@echo "Deleting local k3d cluster for AWX..."
+	"$(SCRIPTS_DIR)/awx-k3d-down.sh" $(AWX_ENV_ARGS)
+
+awx-up:
+	@echo "Deploying/updating AWX (operator + instance) on k3d..."
+	@echo "Note: Traefik should be running (make up) to access https://$${AWX_HOSTNAME:-awx}.$${DEV_DOMAIN}"
+	"$(SCRIPTS_DIR)/awx-up.sh" $(AWX_ENV_ARGS)
+
+awx-down:
+	@echo "Deleting AWX instance (cluster is kept)..."
+	"$(SCRIPTS_DIR)/awx-down.sh" $(AWX_ENV_ARGS)
+
+awx-status:
+	@echo "AWX/k3d status:"
+	"$(SCRIPTS_DIR)/awx-status.sh" $(AWX_ENV_ARGS)
+
+awx-logs:
+	@echo "AWX logs (default: list pods; pass ROLE=<operator|web|task> for convenience)..."
+	"$(SCRIPTS_DIR)/awx-logs.sh" $(AWX_ENV_ARGS) $(if $(ROLE),$(ROLE),)
+
+awx-admin-password:
+	@echo "AWX admin password from Kubernetes secret:"
+	"$(SCRIPTS_DIR)/awx-admin-password.sh" $(AWX_ENV_ARGS)
+
+awx-debug:
+	@echo "Collecting AWX debug bundle..."
+	"$(SCRIPTS_DIR)/awx-debug.sh" $(AWX_ENV_ARGS)
+
+awx-backup:
+	@echo "Creating AWX backup (operator-managed AWXBackup CR + local metadata bundle)..."
+	"$(SCRIPTS_DIR)/awx-backup.sh" $(AWX_ENV_ARGS)
+
+awx-restore:
+	@echo "Restoring AWX from an operator-managed backup (requires explicit confirmation)..."
+	"$(SCRIPTS_DIR)/awx-restore.sh" $(AWX_ENV_ARGS) $(AWX_RESTORE_ARGS)
+
+awx-upgrade:
+	@echo "Upgrading AWX/operator (requires explicit confirmation)..."
+	"$(SCRIPTS_DIR)/awx-upgrade.sh" $(AWX_ENV_ARGS) $(AWX_UPGRADE_ARGS)
 
 # --- CTFd Module ---
 
@@ -553,6 +628,7 @@ help:
 	@echo "  test                  Run smoke tests for running services (plus common utility tests)."
 	@echo "  test-core             Run core Traefik/whoami smoke tests."
 	@echo "  test-dns              Run DNS/BIND smoke tests only."
+	@echo "  test-awx              Run AWX static smoke tests only."
 	@echo "  test-ctfd             Run CTFd smoke tests only."
 	@echo "  test-observability    Run observability smoke tests only."
 	@echo "  test-plane            Run Plane smoke tests only."
@@ -576,6 +652,20 @@ help:
 	@echo "  bind-status           Show BIND service status."
 	@echo "  bind-provision        Generate the BIND zone file from ENDPOINTS."
 	@echo "  bind-provision-dry    Print the generated zone file without writing."
+	@echo ""
+	@echo "AWX (k3d hybrid module):"
+	@echo "  awx-bootstrap         Generate/persist AWX bootstrap secrets and defaults in .env."
+	@echo "  awx-k3d-up            Create/ensure local k3d cluster for AWX."
+	@echo "  awx-k3d-down          Delete the local AWX k3d cluster."
+	@echo "  awx-up                Install/upgrade AWX Operator and apply AWX instance on k3d."
+	@echo "  awx-down              Delete the AWX instance (keeps the cluster)."
+	@echo "  awx-status            Show AWX/operator resources and pod status."
+	@echo "  awx-logs              Show AWX/operator logs (optional ROLE=operator|web|task)."
+	@echo "  awx-admin-password    Print the AWX admin password from the Kubernetes secret."
+	@echo "  awx-debug             Collect a local AWX debug bundle under .local/awx/debug/."
+	@echo "  awx-backup            Create AWXBackup CR and save local backup metadata bundle."
+	@echo "  awx-restore           Restore from backup (pass AWX_RESTORE_ARGS='--backup-name ... --confirm')."
+	@echo "  awx-upgrade           Upgrade/reapply AWX (pass AWX_UPGRADE_ARGS='--confirm ...')."
 	@echo ""
 	@echo "CTFd:"
 	@echo "  ctfd-bootstrap        Generate/persist CTFd secrets in .env."

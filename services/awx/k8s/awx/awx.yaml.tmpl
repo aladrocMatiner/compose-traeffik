@@ -1,0 +1,20 @@
+apiVersion: awx.ansible.com/v1beta1
+kind: AWX
+metadata:
+  name: __AWX_INSTANCE_NAME__
+  namespace: __AWX_NAMESPACE__
+spec:
+  service_type: NodePort
+  nodeport_port: __AWX_NODEPORT_HTTP__
+  admin_user: __AWX_ADMIN_USER__
+  admin_password_secret: __AWX_ADMIN_PASSWORD_SECRET_NAME__
+  secret_key_secret: __AWX_SECRET_KEY_SECRET_NAME__
+  hostname: awx.__DEV_DOMAIN__
+  ingress_type: none
+  projects_persistence: __AWX_PROJECTS_PERSISTENCE__
+  csrf_cookie_secure: "True"
+  session_cookie_secure: "True"
+  extra_settings:
+    - setting: AWX_TASK_ENV
+      value:
+        HTTPS: 'on'

@@ -79,6 +79,7 @@ Detaljerade TLS-floden:
 - **Plane**: `https://plane.${DEV_DOMAIN}` (profil `plane`; valfri)
 - **Docling**: `https://docling.${DEV_DOMAIN}` (profil `docling`; valfri)
 - **OpenWebUI**: `https://openwebui.${DEV_DOMAIN}` (profil `webui`; valfri)
+- **AWX**: `https://awx.${DEV_DOMAIN}` (hybridmodul `k3d` + AWX Operator; kraver `make awx-*`)
 - **Prometheus/Loki/Tempo/Pyroscope**: interna som standard (profil `observability`; ingen publik endpoint)
 
 <a id="services"></a>
@@ -94,6 +95,7 @@ Detaljerade TLS-floden:
 - [Plane](services/plane/README.sv.md) - valfri profil `plane` (projektledning + PostgreSQL/Redis/RabbitMQ/MinIO).
 - [Docling](services/docling/README.sv.md) - valfri profil `docling` (dokumentkonverterings-API + intern Redis for async/RQ-lage).
 - [OpenWebUI](services/openwebui/README.sv.md) - valfri profil `webui` (webb/chat UI bakom Traefik).
+- [AWX](services/awx/README.sv.md) - hybridmodul (`k3d` + AWX Operator) bakom Traefik.
 
 <a id="docs-map"></a>
 ## Dokumentkarta
@@ -120,7 +122,15 @@ Vanliga kommandon:
 - `make plane-bootstrap`, `make plane-up`, `make plane-status`
 - `make docling-bootstrap`, `make docling-up`, `make docling-status`
 - `make webui-up`, `make webui-status`
+- `make awx-bootstrap`, `make awx-k3d-up`, `make awx-up`, `make awx-status`, `make awx-admin-password`
+- `make awx-debug`, `make awx-backup`
+- `make awx-restore AWX_RESTORE_ARGS="--backup-name <name> --confirm"` (kan vara destruktivt; krav pa explicit bekräftelse)
+- `make awx-upgrade AWX_UPGRADE_ARGS="--confirm ..."` (stateful underhall; krav pa explicit bekräftelse)
 - `make hosts-generate`, `make hosts-apply`, `make hosts-status`
+
+AWX-forutsattningar (hybridmodul):
+- `docker`, `k3d`, `kubectl`, `helm`
+- Traefik maste vara igang (`make up` eller minst `traefik`) for `https://awx.${DEV_DOMAIN}`
 
 Auth-filer:
 - `services/traefik/auth/traefik-dashboard.htpasswd.example`
@@ -135,6 +145,7 @@ DNS-sakerhetsdefaults:
 
 Hosts-not:
 - Om du hanterar `ENDPOINTS` manuellt, lagg till `ctfd`, `grafana`, `plane`, `docling` och/eller `openwebui` innan `make hosts-apply`.
+- Lagg till `awx` ocksa om du vill ha lokal routing for AWX via Traefik.
 - Lagg till `keycloak` ocksa om du planerar Plane med lokal Keycloak-routing.
 - Eller lamna `ENDPOINTS` tomt for auto-discovery via `Host()`-regler.
 
