@@ -19,6 +19,7 @@ COMPOSE_FILES=(
   -f "${REPO_ROOT}/services/observability/compose.yml"
   -f "${REPO_ROOT}/services/plane/compose.yml"
   -f "${REPO_ROOT}/services/docling/compose.yml"
+  -f "${REPO_ROOT}/services/openwebui/compose.yml"
 )
 
 run_preflight() {

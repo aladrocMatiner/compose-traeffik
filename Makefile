@@ -15,7 +15,7 @@
 # --- Configuration Variables ---
 SHELL := /bin/bash # Ensure bash is used for shell commands
 .DEFAULT_GOAL := help # Default target if none is specified
-.PHONY: help up down restart logs ps test test-core test-dns test-ctfd test-observability test-plane test-docling docs-check bootstrap \
+.PHONY: help up down restart logs ps test test-core test-dns test-ctfd test-observability test-plane test-docling test-webui docs-check bootstrap \
         certs-local local-ca-trust-install local-ca-trust-uninstall local-ca-trust-verify \
         certs-le-issue certs-le-renew \
         stepca-up stepca-down stepca-bootstrap stepca-verify-cert \
@@ -25,7 +25,8 @@ SHELL := /bin/bash # Ensure bash is used for shell commands
         ctfd-bootstrap ctfd-up ctfd-down ctfd-restart ctfd-logs ctfd-status \
         observability-bootstrap observability-up observability-down observability-restart observability-logs observability-status observability-k6 \
         plane-bootstrap plane-up plane-down plane-restart plane-logs plane-status \
-        docling-bootstrap docling-up docling-down docling-restart docling-logs docling-status
+        docling-bootstrap docling-up docling-down docling-restart docling-logs docling-status \
+        webui-up webui-down webui-restart webui-logs webui-status
 
 # Include .env for environment variables if it exists.
 # This makes variables in .env available to the Makefile.
@@ -45,7 +46,8 @@ COMPOSE_FILES := \
   -f services/ctfd/compose.yml \
   -f services/observability/compose.yml \
   -f services/plane/compose.yml \
-  -f services/docling/compose.yml
+  -f services/docling/compose.yml \
+  -f services/openwebui/compose.yml
 
 # Pin compose project directory/name to avoid cross-CWD conflicts.
 COMPOSE_PROJECT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
@@ -147,6 +149,10 @@ DOCLING_SMOKE_TESTS := \
 	test_docling_make_targets.sh \
 	test_docling_bootstrap_env.sh \
 	test_docling_optional_integrations.sh
+
+WEBUI_SMOKE_TESTS := \
+	test_openwebui_service_config.sh \
+	test_openwebui_make_targets.sh
 
 # Start the stack
 up:
@@ -320,6 +326,17 @@ test-docling:
 	done; \
 	exit $$rc
 
+test-webui:
+	@echo "Running OpenWebUI smoke tests..."
+	@set -euo pipefail; rc=0; \
+	for test_script in $(WEBUI_SMOKE_TESTS); do \
+		echo "==> $$test_script"; \
+		if ! "$(SMOKE_TEST_DIR)/$$test_script"; then \
+			rc=1; \
+		fi; \
+	done; \
+	exit $$rc
+
 # --- Documentation ---
 
 docs-check:
@@ -470,6 +487,27 @@ docling-status:
 	@echo "Docling module status:"
 	COMPOSE_PROFILES=docling "$(SCRIPTS_DIR)/compose.sh" --profile docling $(COMPOSE_OPTS) ps docling docling-redis
 
+# --- OpenWebUI Module ---
+
+webui-up:
+	@echo "Starting OpenWebUI module (profile: webui)..."
+	COMPOSE_PROFILES=webui "$(SCRIPTS_DIR)/compose.sh" --profile webui $(COMPOSE_OPTS) up -d openwebui
+
+webui-down:
+	@echo "Stopping OpenWebUI module..."
+	COMPOSE_PROFILES=webui "$(SCRIPTS_DIR)/compose.sh" --profile webui $(COMPOSE_OPTS) stop openwebui || true
+	COMPOSE_PROFILES=webui "$(SCRIPTS_DIR)/compose.sh" --profile webui $(COMPOSE_OPTS) rm -f openwebui || true
+
+webui-restart: webui-down webui-up
+
+webui-logs:
+	@echo "Showing OpenWebUI module logs..."
+	COMPOSE_PROFILES=webui "$(SCRIPTS_DIR)/compose.sh" --profile webui $(COMPOSE_OPTS) logs -f openwebui
+
+webui-status:
+	@echo "OpenWebUI module status:"
+	COMPOSE_PROFILES=webui "$(SCRIPTS_DIR)/compose.sh" --profile webui $(COMPOSE_OPTS) ps openwebui
+
 # --- Help ---
 
 help:
@@ -519,6 +557,7 @@ help:
 	@echo "  test-observability    Run observability smoke tests only."
 	@echo "  test-plane            Run Plane smoke tests only."
 	@echo "  test-docling          Run Docling smoke tests only."
+	@echo "  test-webui            Run OpenWebUI smoke tests only."
 	@echo ""
 	@echo "Docs:"
 	@echo "  docs-check            Validate multilingual README structure and links."
@@ -571,8 +610,15 @@ help:
 	@echo "  docling-logs             Follow Docling module logs."
 	@echo "  docling-status           Show Docling module status."
 	@echo ""
+	@echo "OpenWebUI:"
+	@echo "  webui-up                 Start the OpenWebUI module (profile: webui)."
+	@echo "  webui-down               Stop and remove OpenWebUI module containers."
+	@echo "  webui-restart            Restart the OpenWebUI module."
+	@echo "  webui-logs               Follow OpenWebUI module logs."
+	@echo "  webui-status             Show OpenWebUI module status."
+	@echo ""
 	@echo "Profiles:"
 	@echo "  Use COMPOSE_PROFILES=<profile_name> before make commands to activate profiles."
-	@echo "  Available profiles: bind, ctfd, docling, le, observability, plane, stepca"
+	@echo "  Available profiles: bind, ctfd, docling, le, observability, plane, stepca, webui"
 	@echo "  Example: COMPOSE_PROFILES=le make up"
 	@echo ""

@@ -81,6 +81,7 @@ RUN_CTFD_TESTS=false
 RUN_OBSERVABILITY_TESTS=false
 RUN_PLANE_TESTS=false
 RUN_DOCLING_TESTS=false
+RUN_WEBUI_TESTS=false
 
 if service_running "traefik" && service_running "whoami"; then
     RUN_CORE_TESTS=true
@@ -99,6 +100,9 @@ if service_running "plane-web" || service_running "plane-api"; then
 fi
 if service_running "docling"; then
     RUN_DOCLING_TESTS=true
+fi
+if service_running "openwebui"; then
+    RUN_WEBUI_TESTS=true
 fi
 
 # --- Test 1: Traefik Readiness ---
@@ -457,6 +461,28 @@ if [ "${RUN_DOCLING_TESTS}" = "true" ]; then
     fi
 else
     log_warn "Skipping Docling smoke suite (service 'docling' not running)."
+fi
+
+# --- Test 37: OpenWebUI Service Config (no sudo) ---
+if [ "${RUN_WEBUI_TESTS}" = "true" ]; then
+    log_info "Running test_openwebui_service_config.sh..."
+    if "$TEST_DIR/test_openwebui_service_config.sh"; then
+        log_success "Test: OpenWebUI Service Config"
+    else
+        log_warn "Test failed: OpenWebUI Service Config"
+        TEST_RESULTS=1
+    fi
+
+    # --- Test 38: OpenWebUI Make Targets (no sudo) ---
+    log_info "Running test_openwebui_make_targets.sh..."
+    if "$TEST_DIR/test_openwebui_make_targets.sh"; then
+        log_success "Test: OpenWebUI Make Targets"
+    else
+        log_warn "Test failed: OpenWebUI Make Targets"
+        TEST_RESULTS=1
+    fi
+else
+    log_warn "Skipping OpenWebUI smoke suite (service 'openwebui' not running)."
 fi
 
 if [ "$TEST_RESULTS" -eq 0 ]; then

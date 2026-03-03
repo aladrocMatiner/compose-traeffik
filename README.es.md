@@ -78,6 +78,7 @@ Guias de TLS:
 - **Grafana**: `https://grafana.${DEV_DOMAIN}` (perfil `observability`; opcional)
 - **Plane**: `https://plane.${DEV_DOMAIN}` (perfil `plane`; opcional)
 - **Docling**: `https://docling.${DEV_DOMAIN}` (perfil `docling`; opcional)
+- **OpenWebUI**: `https://openwebui.${DEV_DOMAIN}` (perfil `webui`; opcional)
 - **Prometheus/Loki/Tempo/Pyroscope**: internos por defecto (perfil `observability`; sin endpoint publico)
 
 <a id="services"></a>
@@ -92,6 +93,7 @@ Guias de TLS:
 - [Observability](services/observability/README.es.md) - perfil opcional `observability` (Grafana/Prometheus/Loki/Tempo/Pyroscope/Alloy + synthetic checks con k6).
 - [Plane](services/plane/README.es.md) - perfil opcional `plane` (gestion de proyectos + PostgreSQL/Redis/RabbitMQ/MinIO).
 - [Docling](services/docling/README.es.md) - perfil opcional `docling` (API de conversion de documentos + Redis interno para modo async/RQ).
+- [OpenWebUI](services/openwebui/README.es.md) - perfil opcional `webui` (interfaz web/chat detras de Traefik).
 
 <a id="docs-map"></a>
 ## Mapa de documentos
@@ -117,6 +119,7 @@ Comandos comunes:
 - `make observability-bootstrap`, `make observability-up`, `make observability-status`, `make observability-k6`
 - `make plane-bootstrap`, `make plane-up`, `make plane-status`
 - `make docling-bootstrap`, `make docling-up`, `make docling-status`
+- `make webui-up`, `make webui-status`
 - `make hosts-generate`, `make hosts-apply`, `make hosts-status`
 
 Archivos auth:
@@ -131,7 +134,7 @@ Defaults de seguridad DNS:
 - Para exponer DNS fuera de loopback de forma intencional, usa `BIND_ALLOW_NONLOCAL_BIND=true`.
 
 Nota de hosts:
-- Si gestionas `ENDPOINTS` manualmente, anyade `ctfd`, `grafana`, `plane` y/o `docling` antes de `make hosts-apply`.
+- Si gestionas `ENDPOINTS` manualmente, anyade `ctfd`, `grafana`, `plane`, `docling` y/o `openwebui` antes de `make hosts-apply`.
 - Anyade `keycloak` tambien si vas a usar Plane con routing local hacia Keycloak.
 - O deja `ENDPOINTS` vacio para auto-discovery por reglas `Host()`.
 

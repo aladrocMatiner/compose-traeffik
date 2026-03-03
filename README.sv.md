@@ -78,6 +78,7 @@ Detaljerade TLS-floden:
 - **Grafana**: `https://grafana.${DEV_DOMAIN}` (profil `observability`; valfri)
 - **Plane**: `https://plane.${DEV_DOMAIN}` (profil `plane`; valfri)
 - **Docling**: `https://docling.${DEV_DOMAIN}` (profil `docling`; valfri)
+- **OpenWebUI**: `https://openwebui.${DEV_DOMAIN}` (profil `webui`; valfri)
 - **Prometheus/Loki/Tempo/Pyroscope**: interna som standard (profil `observability`; ingen publik endpoint)
 
 <a id="services"></a>
@@ -92,6 +93,7 @@ Detaljerade TLS-floden:
 - [Observability](services/observability/README.sv.md) - valfri profil `observability` (Grafana/Prometheus/Loki/Tempo/Pyroscope/Alloy + k6 synthetic checks).
 - [Plane](services/plane/README.sv.md) - valfri profil `plane` (projektledning + PostgreSQL/Redis/RabbitMQ/MinIO).
 - [Docling](services/docling/README.sv.md) - valfri profil `docling` (dokumentkonverterings-API + intern Redis for async/RQ-lage).
+- [OpenWebUI](services/openwebui/README.sv.md) - valfri profil `webui` (webb/chat UI bakom Traefik).
 
 <a id="docs-map"></a>
 ## Dokumentkarta
@@ -117,6 +119,7 @@ Vanliga kommandon:
 - `make observability-bootstrap`, `make observability-up`, `make observability-status`, `make observability-k6`
 - `make plane-bootstrap`, `make plane-up`, `make plane-status`
 - `make docling-bootstrap`, `make docling-up`, `make docling-status`
+- `make webui-up`, `make webui-status`
 - `make hosts-generate`, `make hosts-apply`, `make hosts-status`
 
 Auth-filer:
@@ -131,7 +134,7 @@ DNS-sakerhetsdefaults:
 - For avsiktlig exponering utanfor loopback, satt `BIND_ALLOW_NONLOCAL_BIND=true`.
 
 Hosts-not:
-- Om du hanterar `ENDPOINTS` manuellt, lagg till `ctfd`, `grafana`, `plane` och/eller `docling` innan `make hosts-apply`.
+- Om du hanterar `ENDPOINTS` manuellt, lagg till `ctfd`, `grafana`, `plane`, `docling` och/eller `openwebui` innan `make hosts-apply`.
 - Lagg till `keycloak` ocksa om du planerar Plane med lokal Keycloak-routing.
 - Eller lamna `ENDPOINTS` tomt for auto-discovery via `Host()`-regler.
 

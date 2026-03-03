@@ -102,6 +102,14 @@
         "sv": "Docling",
         "es": "Docling"
       }
+    },
+    {
+      "slug": "openwebui",
+      "title": {
+        "en": "OpenWebUI",
+        "sv": "OpenWebUI",
+        "es": "OpenWebUI"
+      }
     }
   ]
 }

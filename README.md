@@ -78,6 +78,7 @@ For detailed TLS workflows, see:
 - **Grafana**: `https://grafana.${DEV_DOMAIN}` (profile `observability`; optional)
 - **Plane**: `https://plane.${DEV_DOMAIN}` (profile `plane`; optional)
 - **Docling**: `https://docling.${DEV_DOMAIN}` (profile `docling`; optional)
+- **OpenWebUI**: `https://openwebui.${DEV_DOMAIN}` (profile `webui`; optional)
 - **Prometheus/Loki/Tempo/Pyroscope**: internal-only by default (profile `observability`; no public endpoint)
 
 <a id="services"></a>
@@ -92,6 +93,7 @@ For detailed TLS workflows, see:
 - [Observability](services/observability/README.md) - optional profile `observability` (Grafana/Prometheus/Loki/Tempo/Pyroscope/Alloy + k6 synthetic checks).
 - [Plane](services/plane/README.md) - optional profile `plane` (project management app + PostgreSQL/Redis/RabbitMQ/MinIO).
 - [Docling](services/docling/README.md) - optional profile `docling` (document conversion API + internal Redis for async/RQ mode).
+- [OpenWebUI](services/openwebui/README.md) - optional profile `webui` (chat/web UI behind Traefik).
 
 <a id="docs-map"></a>
 ## Docs map
@@ -117,6 +119,7 @@ Common commands:
 - `make observability-bootstrap`, `make observability-up`, `make observability-status`, `make observability-k6`
 - `make plane-bootstrap`, `make plane-up`, `make plane-status`
 - `make docling-bootstrap`, `make docling-up`, `make docling-status`
+- `make webui-up`, `make webui-status`
 - `make hosts-generate`, `make hosts-apply`, `make hosts-status`
 
 Auth files:
@@ -135,7 +138,7 @@ DNS security defaults:
 - Non-loopback exposure requires `BIND_ALLOW_NONLOCAL_BIND=true`.
 
 Hosts endpoint mapping note:
-- If you manage `ENDPOINTS` manually, add `ctfd`, `grafana`, `plane`, and/or `docling` before running `make hosts-apply`.
+- If you manage `ENDPOINTS` manually, add `ctfd`, `grafana`, `plane`, `docling`, and/or `openwebui` before running `make hosts-apply`.
 - Add `keycloak` too if you plan to use Plane with local Keycloak routing.
 - Or leave `ENDPOINTS` empty to use host auto-discovery from service `Host()` rules.
 
