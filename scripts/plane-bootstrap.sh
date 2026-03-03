@@ -159,7 +159,7 @@ set_default_if_empty() {
 }
 
 set_default_if_empty "PLANE_HOSTNAME" "plane"
-set_default_if_empty "PLANE_APP_RELEASE" "v2.4.0"
+set_default_if_empty "PLANE_APP_RELEASE" "stable"
 set_default_if_empty "PLANE_POSTGRES_IMAGE" "postgres:15.7-alpine"
 set_default_if_empty "PLANE_REDIS_IMAGE" "valkey/valkey:7.2.11-alpine"
 set_default_if_empty "PLANE_RABBITMQ_IMAGE" "rabbitmq:3.13.6-management-alpine"

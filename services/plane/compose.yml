@@ -1,6 +1,6 @@
 services:
   plane-web:
-    image: ${PLANE_FRONTEND_IMAGE:-artifacts.plane.so/makeplane/plane-frontend:${PLANE_APP_RELEASE:-v2.4.0}}
+    image: ${PLANE_FRONTEND_IMAGE:-artifacts.plane.so/makeplane/plane-frontend:${PLANE_APP_RELEASE:-stable}}
     container_name: plane-web
     profiles:
       - plane
@@ -39,7 +39,7 @@ services:
       - "traefik.http.services.plane-web-service.loadbalancer.server.port=3000"
 
   plane-space:
-    image: ${PLANE_SPACE_IMAGE:-artifacts.plane.so/makeplane/plane-space:${PLANE_APP_RELEASE:-v2.4.0}}
+    image: ${PLANE_SPACE_IMAGE:-artifacts.plane.so/makeplane/plane-space:${PLANE_APP_RELEASE:-stable}}
     container_name: plane-space
     profiles:
       - plane
@@ -55,7 +55,7 @@ services:
       - plane-internal
 
   plane-admin:
-    image: ${PLANE_ADMIN_IMAGE:-artifacts.plane.so/makeplane/plane-admin:${PLANE_APP_RELEASE:-v2.4.0}}
+    image: ${PLANE_ADMIN_IMAGE:-artifacts.plane.so/makeplane/plane-admin:${PLANE_APP_RELEASE:-stable}}
     container_name: plane-admin
     profiles:
       - plane
@@ -69,7 +69,7 @@ services:
       - plane-internal
 
   plane-live:
-    image: ${PLANE_LIVE_IMAGE:-artifacts.plane.so/makeplane/plane-live:${PLANE_APP_RELEASE:-v2.4.0}}
+    image: ${PLANE_LIVE_IMAGE:-artifacts.plane.so/makeplane/plane-live:${PLANE_APP_RELEASE:-stable}}
     container_name: plane-live
     profiles:
       - plane
@@ -89,7 +89,7 @@ services:
       - REDIS_URL=redis://plane-redis:6379/
 
   plane-api:
-    image: ${PLANE_BACKEND_IMAGE:-artifacts.plane.so/makeplane/plane-backend:${PLANE_APP_RELEASE:-v2.4.0}}
+    image: ${PLANE_BACKEND_IMAGE:-artifacts.plane.so/makeplane/plane-backend:${PLANE_APP_RELEASE:-stable}}
     container_name: plane-api
     profiles:
       - plane
@@ -153,7 +153,7 @@ services:
       - "prometheus.io/path=${PLANE_OBSERVABILITY_METRICS_PATH:-/metrics}"
 
   plane-worker:
-    image: ${PLANE_BACKEND_IMAGE:-artifacts.plane.so/makeplane/plane-backend:${PLANE_APP_RELEASE:-v2.4.0}}
+    image: ${PLANE_BACKEND_IMAGE:-artifacts.plane.so/makeplane/plane-backend:${PLANE_APP_RELEASE:-stable}}
     container_name: plane-worker
     profiles:
       - plane
@@ -199,7 +199,7 @@ services:
       - plane-logs-worker:/code/plane/logs
 
   plane-beat-worker:
-    image: ${PLANE_BACKEND_IMAGE:-artifacts.plane.so/makeplane/plane-backend:${PLANE_APP_RELEASE:-v2.4.0}}
+    image: ${PLANE_BACKEND_IMAGE:-artifacts.plane.so/makeplane/plane-backend:${PLANE_APP_RELEASE:-stable}}
     container_name: plane-beat-worker
     profiles:
       - plane
@@ -245,7 +245,7 @@ services:
       - plane-logs-beat-worker:/code/plane/logs
 
   plane-migrator:
-    image: ${PLANE_BACKEND_IMAGE:-artifacts.plane.so/makeplane/plane-backend:${PLANE_APP_RELEASE:-v2.4.0}}
+    image: ${PLANE_BACKEND_IMAGE:-artifacts.plane.so/makeplane/plane-backend:${PLANE_APP_RELEASE:-stable}}
     container_name: plane-migrator
     profiles:
       - plane
