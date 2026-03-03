@@ -86,6 +86,14 @@
         "sv": "Observability",
         "es": "Observability"
       }
+    },
+    {
+      "slug": "plane",
+      "title": {
+        "en": "Plane",
+        "sv": "Plane",
+        "es": "Plane"
+      }
     }
   ]
 }

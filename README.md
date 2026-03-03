@@ -76,6 +76,7 @@ For detailed TLS workflows, see:
 - **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (profile `stepca`; enabled by default)
 - **CTFd**: `https://ctfd.${DEV_DOMAIN}` (profile `ctfd`; optional)
 - **Grafana**: `https://grafana.${DEV_DOMAIN}` (profile `observability`; optional)
+- **Plane**: `https://plane.${DEV_DOMAIN}` (profile `plane`; optional)
 - **Prometheus/Loki/Tempo/Pyroscope**: internal-only by default (profile `observability`; no public endpoint)
 
 <a id="services"></a>
@@ -88,6 +89,7 @@ For detailed TLS workflows, see:
 - [Step-CA](services/step-ca/README.md) - optional profile `stepca`.
 - [CTFd](services/ctfd/README.md) - optional profile `ctfd` (CTF platform + DB + Redis).
 - [Observability](services/observability/README.md) - optional profile `observability` (Grafana/Prometheus/Loki/Tempo/Pyroscope/Alloy + k6 synthetic checks).
+- [Plane](services/plane/README.md) - optional profile `plane` (project management app + PostgreSQL/Redis/RabbitMQ/MinIO).
 
 <a id="docs-map"></a>
 ## Docs map
@@ -111,6 +113,7 @@ Common commands:
 - `make bind-up`, `make bind-status`, `make bind-restart`, `make bind-provision`
 - `make ctfd-bootstrap`, `make ctfd-up`, `make ctfd-status`
 - `make observability-bootstrap`, `make observability-up`, `make observability-status`, `make observability-k6`
+- `make plane-bootstrap`, `make plane-up`, `make plane-status`
 - `make hosts-generate`, `make hosts-apply`, `make hosts-status`
 
 Auth files:
@@ -129,7 +132,8 @@ DNS security defaults:
 - Non-loopback exposure requires `BIND_ALLOW_NONLOCAL_BIND=true`.
 
 Hosts endpoint mapping note:
-- If you manage `ENDPOINTS` manually, add `ctfd` and/or `grafana` before running `make hosts-apply`.
+- If you manage `ENDPOINTS` manually, add `ctfd`, `grafana`, and/or `plane` before running `make hosts-apply`.
+- Add `keycloak` too if you plan to use Plane with local Keycloak routing.
 - Or leave `ENDPOINTS` empty to use host auto-discovery from service `Host()` rules.
 
 <a id="testing"></a>

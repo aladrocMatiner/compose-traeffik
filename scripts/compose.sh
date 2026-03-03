@@ -17,6 +17,7 @@ COMPOSE_FILES=(
   -f "${REPO_ROOT}/services/step-ca/compose.yml"
   -f "${REPO_ROOT}/services/ctfd/compose.yml"
   -f "${REPO_ROOT}/services/observability/compose.yml"
+  -f "${REPO_ROOT}/services/plane/compose.yml"
 )
 
 run_preflight() {

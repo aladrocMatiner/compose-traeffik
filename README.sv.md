@@ -76,6 +76,7 @@ Detaljerade TLS-floden:
 - **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (profil `stepca`; aktiverad som standard)
 - **CTFd**: `https://ctfd.${DEV_DOMAIN}` (profil `ctfd`; valfri)
 - **Grafana**: `https://grafana.${DEV_DOMAIN}` (profil `observability`; valfri)
+- **Plane**: `https://plane.${DEV_DOMAIN}` (profil `plane`; valfri)
 - **Prometheus/Loki/Tempo/Pyroscope**: interna som standard (profil `observability`; ingen publik endpoint)
 
 <a id="services"></a>
@@ -88,6 +89,7 @@ Detaljerade TLS-floden:
 - [Step-CA](services/step-ca/README.sv.md) - valfri profil `stepca`.
 - [CTFd](services/ctfd/README.sv.md) - valfri profil `ctfd` (CTF-plattform + DB + Redis).
 - [Observability](services/observability/README.sv.md) - valfri profil `observability` (Grafana/Prometheus/Loki/Tempo/Pyroscope/Alloy + k6 synthetic checks).
+- [Plane](services/plane/README.sv.md) - valfri profil `plane` (projektledning + PostgreSQL/Redis/RabbitMQ/MinIO).
 
 <a id="docs-map"></a>
 ## Dokumentkarta
@@ -111,6 +113,7 @@ Vanliga kommandon:
 - `make bind-up`, `make bind-status`, `make bind-restart`, `make bind-provision`
 - `make ctfd-bootstrap`, `make ctfd-up`, `make ctfd-status`
 - `make observability-bootstrap`, `make observability-up`, `make observability-status`, `make observability-k6`
+- `make plane-bootstrap`, `make plane-up`, `make plane-status`
 - `make hosts-generate`, `make hosts-apply`, `make hosts-status`
 
 Auth-filer:
@@ -125,7 +128,8 @@ DNS-sakerhetsdefaults:
 - For avsiktlig exponering utanfor loopback, satt `BIND_ALLOW_NONLOCAL_BIND=true`.
 
 Hosts-not:
-- Om du hanterar `ENDPOINTS` manuellt, lagg till `ctfd` och/eller `grafana` innan `make hosts-apply`.
+- Om du hanterar `ENDPOINTS` manuellt, lagg till `ctfd`, `grafana` och/eller `plane` innan `make hosts-apply`.
+- Lagg till `keycloak` ocksa om du planerar Plane med lokal Keycloak-routing.
 - Eller lamna `ENDPOINTS` tomt for auto-discovery via `Host()`-regler.
 
 <a id="testing"></a>

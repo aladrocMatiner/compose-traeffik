@@ -24,6 +24,7 @@ This directory contains smoke tests that verify Traefik readiness, routing, TLS,
    make test-dns
    make test-ctfd
    make test-observability
+   make test-plane
    ```
 
 3. **Run a single test**
@@ -62,6 +63,11 @@ This directory contains smoke tests that verify Traefik readiness, routing, TLS,
 | `tests/smoke/test_observability_grafana_provisioning.sh` | Validate Grafana datasources and dashboard provisioning assets for core + tracing/profiling packs. | Grafana provisioning files and dashboard JSON. | Prometheus/Loki/Tempo/Pyroscope datasources and dashboard paths/queries are present. |
 | `tests/smoke/test_observability_k6_wiring.sh` | Validate k6 target wiring and script availability for synthetic checks. | `Makefile`, `services/observability/compose.yml`, `services/observability/k6/smoke.js`. | `observability-k6` exists and runs `k6` via compose profile wiring. |
 | `tests/smoke/test_observability_app_pack_tolerance.sh` | Validate core observability assets remain app-agnostic. | Alloy config, `scripts/validate-env.sh`. | No app-specific selectors are present and observability-only preflight still passes cleanly. |
+| `tests/smoke/test_plane_service_config.sh` | Validate Plane compose wiring, Traefik exposure, persistence, and dependency startup coordination. | `services/plane/compose.yml`, `grep`, `awk`. | Plane services/dependencies exist, no host ports are published, and healthcheck wiring exists. |
+| `tests/smoke/test_plane_guardrails.sh` | Validate preflight guardrails for Plane core config. | `scripts/validate-env.sh`. | Missing/invalid Plane config fails; valid config passes. |
+| `tests/smoke/test_plane_make_targets.sh` | Validate Plane Make target wiring and compose wrapper usage. | `Makefile`, `awk`, `grep`. | `plane-*` targets exist and lifecycle targets use `scripts/compose.sh --profile plane`. |
+| `tests/smoke/test_plane_bootstrap_env.sh` | Validate `plane-bootstrap` secret generation and idempotency. | `.env.example`, `scripts/plane-bootstrap.sh`, `mktemp`. | Missing Plane secrets are generated and preserved on rerun. |
+| `tests/smoke/test_plane_optional_integrations.sh` | Validate optional Keycloak/OIDC and observability toggle behavior. | `services/plane/compose.yml`, `scripts/validate-env.sh`. | Disabled toggles do not block startup; enabled OIDC requires complete contract. |
 
 ## Configuration
 
@@ -75,6 +81,7 @@ Smoke tests use environment variables loaded from `.env` via `scripts/healthchec
 - `CTFD_*` (used by CTFd guardrail/bootstrap tests when provided inline)
 - `GRAFANA_*` (used by observability guardrail/bootstrap tests when provided inline)
 - `K6_*` (used by observability synthetic-check and validation tests when provided inline)
+- `PLANE_*` (used by Plane guardrail/bootstrap/integration tests when provided inline)
 
 Ensure `.env` exists (prefer `make bootstrap`) before running tests. Optional profiles
 are enabled by default via `COMPOSE_PROFILES` in `.env`; edit it if you want a smaller stack.

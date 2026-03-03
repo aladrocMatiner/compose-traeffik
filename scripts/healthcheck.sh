@@ -79,6 +79,7 @@ RUN_CORE_TESTS=false
 RUN_BIND_TESTS=false
 RUN_CTFD_TESTS=false
 RUN_OBSERVABILITY_TESTS=false
+RUN_PLANE_TESTS=false
 
 if service_running "traefik" && service_running "whoami"; then
     RUN_CORE_TESTS=true
@@ -91,6 +92,9 @@ if service_running "ctfd"; then
 fi
 if service_running "grafana" || service_running "prometheus" || service_running "loki" || service_running "tempo" || service_running "pyroscope" || service_running "alloy"; then
     RUN_OBSERVABILITY_TESTS=true
+fi
+if service_running "plane-web" || service_running "plane-api"; then
+    RUN_PLANE_TESTS=true
 fi
 
 # --- Test 1: Traefik Readiness ---
@@ -351,6 +355,55 @@ if [ "${RUN_OBSERVABILITY_TESTS}" = "true" ]; then
     fi
 else
     log_warn "Skipping observability smoke suite (none of grafana/prometheus/loki/tempo/pyroscope/alloy running)."
+fi
+
+# --- Test 27: Plane Service Config (no sudo) ---
+if [ "${RUN_PLANE_TESTS}" = "true" ]; then
+    log_info "Running test_plane_service_config.sh..."
+    if "$TEST_DIR/test_plane_service_config.sh"; then
+        log_success "Test: Plane Service Config"
+    else
+        log_warn "Test failed: Plane Service Config"
+        TEST_RESULTS=1
+    fi
+
+    # --- Test 28: Plane Guardrails (no sudo) ---
+    log_info "Running test_plane_guardrails.sh..."
+    if "$TEST_DIR/test_plane_guardrails.sh"; then
+        log_success "Test: Plane Guardrails"
+    else
+        log_warn "Test failed: Plane Guardrails"
+        TEST_RESULTS=1
+    fi
+
+    # --- Test 29: Plane Make Targets (no sudo) ---
+    log_info "Running test_plane_make_targets.sh..."
+    if "$TEST_DIR/test_plane_make_targets.sh"; then
+        log_success "Test: Plane Make Targets"
+    else
+        log_warn "Test failed: Plane Make Targets"
+        TEST_RESULTS=1
+    fi
+
+    # --- Test 30: Plane Bootstrap Env (no sudo) ---
+    log_info "Running test_plane_bootstrap_env.sh..."
+    if "$TEST_DIR/test_plane_bootstrap_env.sh"; then
+        log_success "Test: Plane Bootstrap Env"
+    else
+        log_warn "Test failed: Plane Bootstrap Env"
+        TEST_RESULTS=1
+    fi
+
+    # --- Test 31: Plane Optional Integrations (no sudo) ---
+    log_info "Running test_plane_optional_integrations.sh..."
+    if "$TEST_DIR/test_plane_optional_integrations.sh"; then
+        log_success "Test: Plane Optional Integrations"
+    else
+        log_warn "Test failed: Plane Optional Integrations"
+        TEST_RESULTS=1
+    fi
+else
+    log_warn "Skipping Plane smoke suite (service 'plane-web'/'plane-api' not running)."
 fi
 
 if [ "$TEST_RESULTS" -eq 0 ]; then

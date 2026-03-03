@@ -18,6 +18,18 @@ BIND_BIND_ADDRESS_ENV="${BIND_BIND_ADDRESS:-}"
 BIND_ALLOW_NONLOCAL_BIND_ENV="${BIND_ALLOW_NONLOCAL_BIND:-}"
 CTFD_HOSTNAME_ENV="${CTFD_HOSTNAME:-}"
 GRAFANA_HOSTNAME_ENV="${GRAFANA_HOSTNAME:-}"
+PLANE_HOSTNAME_ENV="${PLANE_HOSTNAME:-}"
+PLANE_OIDC_ENABLED_ENV="${PLANE_OIDC_ENABLED:-}"
+PLANE_KEYCLOAK_MODE_ENV="${PLANE_KEYCLOAK_MODE:-}"
+PLANE_KEYCLOAK_INTERNAL_URL_ENV="${PLANE_KEYCLOAK_INTERNAL_URL:-}"
+PLANE_KEYCLOAK_EXTERNAL_URL_ENV="${PLANE_KEYCLOAK_EXTERNAL_URL:-}"
+PLANE_OIDC_ISSUER_ENV="${PLANE_OIDC_ISSUER:-}"
+PLANE_OIDC_CLIENT_ID_ENV="${PLANE_OIDC_CLIENT_ID:-}"
+PLANE_OIDC_CLIENT_SECRET_ENV="${PLANE_OIDC_CLIENT_SECRET:-}"
+PLANE_OIDC_REDIRECT_URI_ENV="${PLANE_OIDC_REDIRECT_URI:-}"
+PLANE_OBSERVABILITY_ENABLED_ENV="${PLANE_OBSERVABILITY_ENABLED:-}"
+PLANE_OBSERVABILITY_METRICS_PATH_ENV="${PLANE_OBSERVABILITY_METRICS_PATH:-}"
+PLANE_OTEL_EXPORTER_OTLP_ENDPOINT_ENV="${PLANE_OTEL_EXPORTER_OTLP_ENDPOINT:-}"
 
 load_env
 
@@ -41,6 +53,42 @@ if [ -n "${CTFD_HOSTNAME_ENV}" ]; then
 fi
 if [ -n "${GRAFANA_HOSTNAME_ENV}" ]; then
     GRAFANA_HOSTNAME="${GRAFANA_HOSTNAME_ENV}"
+fi
+if [ -n "${PLANE_HOSTNAME_ENV}" ]; then
+    PLANE_HOSTNAME="${PLANE_HOSTNAME_ENV}"
+fi
+if [ -n "${PLANE_OIDC_ENABLED_ENV}" ]; then
+    PLANE_OIDC_ENABLED="${PLANE_OIDC_ENABLED_ENV}"
+fi
+if [ -n "${PLANE_KEYCLOAK_MODE_ENV}" ]; then
+    PLANE_KEYCLOAK_MODE="${PLANE_KEYCLOAK_MODE_ENV}"
+fi
+if [ -n "${PLANE_KEYCLOAK_INTERNAL_URL_ENV}" ]; then
+    PLANE_KEYCLOAK_INTERNAL_URL="${PLANE_KEYCLOAK_INTERNAL_URL_ENV}"
+fi
+if [ -n "${PLANE_KEYCLOAK_EXTERNAL_URL_ENV}" ]; then
+    PLANE_KEYCLOAK_EXTERNAL_URL="${PLANE_KEYCLOAK_EXTERNAL_URL_ENV}"
+fi
+if [ -n "${PLANE_OIDC_ISSUER_ENV}" ]; then
+    PLANE_OIDC_ISSUER="${PLANE_OIDC_ISSUER_ENV}"
+fi
+if [ -n "${PLANE_OIDC_CLIENT_ID_ENV}" ]; then
+    PLANE_OIDC_CLIENT_ID="${PLANE_OIDC_CLIENT_ID_ENV}"
+fi
+if [ -n "${PLANE_OIDC_CLIENT_SECRET_ENV}" ]; then
+    PLANE_OIDC_CLIENT_SECRET="${PLANE_OIDC_CLIENT_SECRET_ENV}"
+fi
+if [ -n "${PLANE_OIDC_REDIRECT_URI_ENV}" ]; then
+    PLANE_OIDC_REDIRECT_URI="${PLANE_OIDC_REDIRECT_URI_ENV}"
+fi
+if [ -n "${PLANE_OBSERVABILITY_ENABLED_ENV}" ]; then
+    PLANE_OBSERVABILITY_ENABLED="${PLANE_OBSERVABILITY_ENABLED_ENV}"
+fi
+if [ -n "${PLANE_OBSERVABILITY_METRICS_PATH_ENV}" ]; then
+    PLANE_OBSERVABILITY_METRICS_PATH="${PLANE_OBSERVABILITY_METRICS_PATH_ENV}"
+fi
+if [ -n "${PLANE_OTEL_EXPORTER_OTLP_ENDPOINT_ENV}" ]; then
+    PLANE_OTEL_EXPORTER_OTLP_ENDPOINT="${PLANE_OTEL_EXPORTER_OTLP_ENDPOINT_ENV}"
 fi
 
 resolve_auth_path() {
@@ -223,6 +271,11 @@ validate_http_url() {
     fi
 }
 
+is_true() {
+    local value="${1:-}"
+    [ "$value" = "true" ] || [ "$value" = "1" ] || [ "$value" = "yes" ]
+}
+
 if [ "${TRAEFIK_DASHBOARD:-false}" = "true" ]; then
     require_auth_file "Traefik dashboard" "${TRAEFIK_DASHBOARD_BASIC_AUTH_HTPASSWD_PATH:-}"
 fi
@@ -261,4 +314,44 @@ if [ -n "${K6_TARGET_URL:-}" ] || [ -n "${K6_ITERATIONS:-}" ] || [ -n "${K6_SLEE
     validate_http_url "${K6_TARGET_URL:-}" "K6_TARGET_URL"
     validate_positive_int "${K6_ITERATIONS:-0}" "K6_ITERATIONS"
     validate_positive_int "${K6_SLEEP_SECONDS:-0}" "K6_SLEEP_SECONDS"
+fi
+
+if is_profile_enabled "plane"; then
+    validate_subdomain_label "${PLANE_HOSTNAME:-plane}" "PLANE_HOSTNAME"
+    require_non_placeholder "PLANE_SECRET_KEY" "${PLANE_SECRET_KEY:-}" "make plane-bootstrap"
+    require_non_placeholder "PLANE_LIVE_SERVER_SECRET_KEY" "${PLANE_LIVE_SERVER_SECRET_KEY:-}" "make plane-bootstrap"
+    require_non_placeholder "PLANE_POSTGRES_PASSWORD" "${PLANE_POSTGRES_PASSWORD:-}" "make plane-bootstrap"
+    require_non_placeholder "PLANE_RABBITMQ_PASSWORD" "${PLANE_RABBITMQ_PASSWORD:-}" "make plane-bootstrap"
+    require_non_placeholder "PLANE_AWS_SECRET_ACCESS_KEY" "${PLANE_AWS_SECRET_ACCESS_KEY:-}" "make plane-bootstrap"
+
+    if is_true "${PLANE_OIDC_ENABLED:-false}"; then
+        require_non_placeholder "PLANE_OIDC_ISSUER" "${PLANE_OIDC_ISSUER:-}"
+        require_non_placeholder "PLANE_OIDC_CLIENT_ID" "${PLANE_OIDC_CLIENT_ID:-}"
+        require_non_placeholder "PLANE_OIDC_CLIENT_SECRET" "${PLANE_OIDC_CLIENT_SECRET:-}"
+        require_non_placeholder "PLANE_OIDC_REDIRECT_URI" "${PLANE_OIDC_REDIRECT_URI:-}"
+        validate_http_url "${PLANE_OIDC_ISSUER:-}" "PLANE_OIDC_ISSUER"
+        validate_http_url "${PLANE_OIDC_REDIRECT_URI:-}" "PLANE_OIDC_REDIRECT_URI"
+
+        case "${PLANE_KEYCLOAK_MODE:-external}" in
+            local)
+                validate_http_url "${PLANE_KEYCLOAK_INTERNAL_URL:-http://keycloak:8080}" "PLANE_KEYCLOAK_INTERNAL_URL"
+                ;;
+            external)
+                require_non_placeholder "PLANE_KEYCLOAK_EXTERNAL_URL" "${PLANE_KEYCLOAK_EXTERNAL_URL:-}"
+                validate_http_url "${PLANE_KEYCLOAK_EXTERNAL_URL:-}" "PLANE_KEYCLOAK_EXTERNAL_URL"
+                ;;
+            *)
+                log_error "PLANE_KEYCLOAK_MODE must be one of: local, external."
+                ;;
+        esac
+    fi
+
+    if is_true "${PLANE_OBSERVABILITY_ENABLED:-false}"; then
+        if [ -n "${PLANE_OTEL_EXPORTER_OTLP_ENDPOINT:-}" ]; then
+            validate_http_url "${PLANE_OTEL_EXPORTER_OTLP_ENDPOINT:-}" "PLANE_OTEL_EXPORTER_OTLP_ENDPOINT"
+        fi
+        if [ -n "${PLANE_OBSERVABILITY_METRICS_PATH:-}" ] && [[ "${PLANE_OBSERVABILITY_METRICS_PATH}" != /* ]]; then
+            log_error "PLANE_OBSERVABILITY_METRICS_PATH must start with '/'. Got: ${PLANE_OBSERVABILITY_METRICS_PATH}"
+        fi
+    fi
 fi

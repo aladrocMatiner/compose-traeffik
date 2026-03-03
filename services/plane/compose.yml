@@ -1,0 +1,384 @@
+services:
+  plane-web:
+    image: ${PLANE_FRONTEND_IMAGE:-artifacts.plane.so/makeplane/plane-frontend:${PLANE_APP_RELEASE:-v2.4.0}}
+    container_name: plane-web
+    profiles:
+      - plane
+    restart: unless-stopped
+    depends_on:
+      plane-api:
+        condition: service_started
+      plane-worker:
+        condition: service_started
+    networks:
+      - proxy
+      - plane-internal
+    environment:
+      - WEB_URL=https://${PLANE_HOSTNAME:-plane}.${DEV_DOMAIN}
+      - CORS_ALLOWED_ORIGINS=https://${PLANE_HOSTNAME:-plane}.${DEV_DOMAIN}
+      - API_BASE_URL=http://plane-api:8000
+      - PLANE_OIDC_ENABLED=${PLANE_OIDC_ENABLED:-false}
+      - PLANE_OIDC_ISSUER=${PLANE_OIDC_ISSUER:-}
+      - PLANE_OIDC_CLIENT_ID=${PLANE_OIDC_CLIENT_ID:-}
+      - PLANE_OIDC_CLIENT_SECRET=${PLANE_OIDC_CLIENT_SECRET:-}
+      - PLANE_OIDC_REDIRECT_URI=${PLANE_OIDC_REDIRECT_URI:-}
+      - PLANE_KEYCLOAK_MODE=${PLANE_KEYCLOAK_MODE:-external}
+      - PLANE_KEYCLOAK_INTERNAL_URL=${PLANE_KEYCLOAK_INTERNAL_URL:-http://keycloak:8080}
+      - PLANE_KEYCLOAK_EXTERNAL_URL=${PLANE_KEYCLOAK_EXTERNAL_URL:-}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.plane-web.rule=Host(`${PLANE_HOSTNAME:-plane}.${DEV_DOMAIN}`)"
+      - "traefik.http.routers.plane-web.entrypoints=web"
+      - "traefik.http.routers.plane-web.middlewares=${HTTP_TO_HTTPS_MIDDLEWARE:-redirect-to-https@file}"
+      - "traefik.http.routers.plane-websecure.rule=Host(`${PLANE_HOSTNAME:-plane}.${DEV_DOMAIN}`)"
+      - "traefik.http.routers.plane-websecure.entrypoints=websecure"
+      - "traefik.http.routers.plane-websecure.service=plane-web-service"
+      - "traefik.http.routers.plane-websecure.tls=true"
+      - "traefik.http.routers.plane-websecure.tls.certresolver=${TLS_CERT_RESOLVER:-}"
+      - "traefik.http.routers.plane-websecure.middlewares=security-headers@file"
+      - "traefik.http.services.plane-web-service.loadbalancer.server.port=3000"
+
+  plane-space:
+    image: ${PLANE_SPACE_IMAGE:-artifacts.plane.so/makeplane/plane-space:${PLANE_APP_RELEASE:-v2.4.0}}
+    container_name: plane-space
+    profiles:
+      - plane
+    restart: unless-stopped
+    depends_on:
+      plane-api:
+        condition: service_started
+      plane-worker:
+        condition: service_started
+      plane-web:
+        condition: service_started
+    networks:
+      - plane-internal
+
+  plane-admin:
+    image: ${PLANE_ADMIN_IMAGE:-artifacts.plane.so/makeplane/plane-admin:${PLANE_APP_RELEASE:-v2.4.0}}
+    container_name: plane-admin
+    profiles:
+      - plane
+    restart: unless-stopped
+    depends_on:
+      plane-api:
+        condition: service_started
+      plane-web:
+        condition: service_started
+    networks:
+      - plane-internal
+
+  plane-live:
+    image: ${PLANE_LIVE_IMAGE:-artifacts.plane.so/makeplane/plane-live:${PLANE_APP_RELEASE:-v2.4.0}}
+    container_name: plane-live
+    profiles:
+      - plane
+    restart: unless-stopped
+    depends_on:
+      plane-api:
+        condition: service_started
+      plane-web:
+        condition: service_started
+      plane-redis:
+        condition: service_healthy
+    networks:
+      - plane-internal
+    environment:
+      - API_BASE_URL=http://plane-api:8000
+      - LIVE_SERVER_SECRET_KEY=${PLANE_LIVE_SERVER_SECRET_KEY:-}
+      - REDIS_URL=redis://plane-redis:6379/
+
+  plane-api:
+    image: ${PLANE_BACKEND_IMAGE:-artifacts.plane.so/makeplane/plane-backend:${PLANE_APP_RELEASE:-v2.4.0}}
+    container_name: plane-api
+    profiles:
+      - plane
+    restart: unless-stopped
+    command: ./bin/docker-entrypoint-api.sh
+    depends_on:
+      plane-db:
+        condition: service_healthy
+      plane-redis:
+        condition: service_healthy
+      plane-mq:
+        condition: service_healthy
+      plane-minio:
+        condition: service_started
+    networks:
+      - plane-internal
+    environment:
+      - WEB_URL=https://${PLANE_HOSTNAME:-plane}.${DEV_DOMAIN}
+      - CORS_ALLOWED_ORIGINS=https://${PLANE_HOSTNAME:-plane}.${DEV_DOMAIN}
+      - API_BASE_URL=http://plane-api:8000
+      - DATABASE_URL=postgresql://${PLANE_POSTGRES_USER:-plane}:${PLANE_POSTGRES_PASSWORD:-}@plane-db:5432/${PLANE_POSTGRES_DB:-plane}
+      - REDIS_URL=redis://plane-redis:6379/
+      - AMQP_URL=amqp://${PLANE_RABBITMQ_USER:-plane}:${PLANE_RABBITMQ_PASSWORD:-}@plane-mq:5672/${PLANE_RABBITMQ_VHOST:-plane}
+      - SECRET_KEY=${PLANE_SECRET_KEY:-}
+      - LIVE_SERVER_SECRET_KEY=${PLANE_LIVE_SERVER_SECRET_KEY:-}
+      - USE_MINIO=${PLANE_USE_MINIO:-1}
+      - AWS_REGION=${PLANE_AWS_REGION:-}
+      - AWS_ACCESS_KEY_ID=${PLANE_AWS_ACCESS_KEY_ID:-access-key}
+      - AWS_SECRET_ACCESS_KEY=${PLANE_AWS_SECRET_ACCESS_KEY:-}
+      - AWS_S3_ENDPOINT_URL=${PLANE_AWS_S3_ENDPOINT_URL:-http://plane-minio:9000}
+      - AWS_S3_BUCKET_NAME=${PLANE_AWS_S3_BUCKET_NAME:-uploads}
+      - FILE_SIZE_LIMIT=${PLANE_FILE_SIZE_LIMIT:-5242880}
+      - API_KEY_RATE_LIMIT=${PLANE_API_KEY_RATE_LIMIT:-60/minute}
+      - MINIO_ENDPOINT_SSL=${PLANE_MINIO_ENDPOINT_SSL:-0}
+      - TRUSTED_PROXIES=${PLANE_TRUSTED_PROXIES:-0.0.0.0/0}
+      - PLANE_OIDC_ENABLED=${PLANE_OIDC_ENABLED:-false}
+      - PLANE_OIDC_ISSUER=${PLANE_OIDC_ISSUER:-}
+      - PLANE_OIDC_CLIENT_ID=${PLANE_OIDC_CLIENT_ID:-}
+      - PLANE_OIDC_CLIENT_SECRET=${PLANE_OIDC_CLIENT_SECRET:-}
+      - PLANE_OIDC_REDIRECT_URI=${PLANE_OIDC_REDIRECT_URI:-}
+      - PLANE_KEYCLOAK_MODE=${PLANE_KEYCLOAK_MODE:-external}
+      - PLANE_KEYCLOAK_INTERNAL_URL=${PLANE_KEYCLOAK_INTERNAL_URL:-http://keycloak:8080}
+      - PLANE_KEYCLOAK_EXTERNAL_URL=${PLANE_KEYCLOAK_EXTERNAL_URL:-}
+      - PLANE_OBSERVABILITY_ENABLED=${PLANE_OBSERVABILITY_ENABLED:-false}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${PLANE_OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      - OTEL_SERVICE_NAME=${PLANE_OTEL_SERVICE_NAME:-plane-api}
+      - OTEL_RESOURCE_ATTRIBUTES=${PLANE_OTEL_RESOURCE_ATTRIBUTES:-service.name=plane-api}
+      - PROMETHEUS_METRICS_PATH=${PLANE_OBSERVABILITY_METRICS_PATH:-/metrics}
+    volumes:
+      - plane-logs-api:/code/plane/logs
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import socket; s=socket.socket(); s.settimeout(2); s.connect((\"127.0.0.1\", 8000)); s.close()'"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    labels:
+      - "plane.observability.enabled=${PLANE_OBSERVABILITY_ENABLED:-false}"
+      - "prometheus.io/scrape=${PLANE_OBSERVABILITY_ENABLED:-false}"
+      - "prometheus.io/port=8000"
+      - "prometheus.io/path=${PLANE_OBSERVABILITY_METRICS_PATH:-/metrics}"
+
+  plane-worker:
+    image: ${PLANE_BACKEND_IMAGE:-artifacts.plane.so/makeplane/plane-backend:${PLANE_APP_RELEASE:-v2.4.0}}
+    container_name: plane-worker
+    profiles:
+      - plane
+    restart: unless-stopped
+    command: ./bin/docker-entrypoint-worker.sh
+    depends_on:
+      plane-api:
+        condition: service_healthy
+      plane-db:
+        condition: service_healthy
+      plane-redis:
+        condition: service_healthy
+      plane-mq:
+        condition: service_healthy
+      plane-minio:
+        condition: service_started
+    networks:
+      - plane-internal
+    environment:
+      - WEB_URL=https://${PLANE_HOSTNAME:-plane}.${DEV_DOMAIN}
+      - CORS_ALLOWED_ORIGINS=https://${PLANE_HOSTNAME:-plane}.${DEV_DOMAIN}
+      - API_BASE_URL=http://plane-api:8000
+      - DATABASE_URL=postgresql://${PLANE_POSTGRES_USER:-plane}:${PLANE_POSTGRES_PASSWORD:-}@plane-db:5432/${PLANE_POSTGRES_DB:-plane}
+      - REDIS_URL=redis://plane-redis:6379/
+      - AMQP_URL=amqp://${PLANE_RABBITMQ_USER:-plane}:${PLANE_RABBITMQ_PASSWORD:-}@plane-mq:5672/${PLANE_RABBITMQ_VHOST:-plane}
+      - SECRET_KEY=${PLANE_SECRET_KEY:-}
+      - LIVE_SERVER_SECRET_KEY=${PLANE_LIVE_SERVER_SECRET_KEY:-}
+      - USE_MINIO=${PLANE_USE_MINIO:-1}
+      - AWS_REGION=${PLANE_AWS_REGION:-}
+      - AWS_ACCESS_KEY_ID=${PLANE_AWS_ACCESS_KEY_ID:-access-key}
+      - AWS_SECRET_ACCESS_KEY=${PLANE_AWS_SECRET_ACCESS_KEY:-}
+      - AWS_S3_ENDPOINT_URL=${PLANE_AWS_S3_ENDPOINT_URL:-http://plane-minio:9000}
+      - AWS_S3_BUCKET_NAME=${PLANE_AWS_S3_BUCKET_NAME:-uploads}
+      - FILE_SIZE_LIMIT=${PLANE_FILE_SIZE_LIMIT:-5242880}
+      - API_KEY_RATE_LIMIT=${PLANE_API_KEY_RATE_LIMIT:-60/minute}
+      - MINIO_ENDPOINT_SSL=${PLANE_MINIO_ENDPOINT_SSL:-0}
+      - TRUSTED_PROXIES=${PLANE_TRUSTED_PROXIES:-0.0.0.0/0}
+      - PLANE_OBSERVABILITY_ENABLED=${PLANE_OBSERVABILITY_ENABLED:-false}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${PLANE_OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      - OTEL_SERVICE_NAME=${PLANE_OTEL_SERVICE_NAME:-plane-worker}
+      - OTEL_RESOURCE_ATTRIBUTES=${PLANE_OTEL_RESOURCE_ATTRIBUTES:-service.name=plane-worker}
+    volumes:
+      - plane-logs-worker:/code/plane/logs
+
+  plane-beat-worker:
+    image: ${PLANE_BACKEND_IMAGE:-artifacts.plane.so/makeplane/plane-backend:${PLANE_APP_RELEASE:-v2.4.0}}
+    container_name: plane-beat-worker
+    profiles:
+      - plane
+    restart: unless-stopped
+    command: ./bin/docker-entrypoint-beat.sh
+    depends_on:
+      plane-api:
+        condition: service_healthy
+      plane-db:
+        condition: service_healthy
+      plane-redis:
+        condition: service_healthy
+      plane-mq:
+        condition: service_healthy
+      plane-minio:
+        condition: service_started
+    networks:
+      - plane-internal
+    environment:
+      - WEB_URL=https://${PLANE_HOSTNAME:-plane}.${DEV_DOMAIN}
+      - CORS_ALLOWED_ORIGINS=https://${PLANE_HOSTNAME:-plane}.${DEV_DOMAIN}
+      - API_BASE_URL=http://plane-api:8000
+      - DATABASE_URL=postgresql://${PLANE_POSTGRES_USER:-plane}:${PLANE_POSTGRES_PASSWORD:-}@plane-db:5432/${PLANE_POSTGRES_DB:-plane}
+      - REDIS_URL=redis://plane-redis:6379/
+      - AMQP_URL=amqp://${PLANE_RABBITMQ_USER:-plane}:${PLANE_RABBITMQ_PASSWORD:-}@plane-mq:5672/${PLANE_RABBITMQ_VHOST:-plane}
+      - SECRET_KEY=${PLANE_SECRET_KEY:-}
+      - LIVE_SERVER_SECRET_KEY=${PLANE_LIVE_SERVER_SECRET_KEY:-}
+      - USE_MINIO=${PLANE_USE_MINIO:-1}
+      - AWS_REGION=${PLANE_AWS_REGION:-}
+      - AWS_ACCESS_KEY_ID=${PLANE_AWS_ACCESS_KEY_ID:-access-key}
+      - AWS_SECRET_ACCESS_KEY=${PLANE_AWS_SECRET_ACCESS_KEY:-}
+      - AWS_S3_ENDPOINT_URL=${PLANE_AWS_S3_ENDPOINT_URL:-http://plane-minio:9000}
+      - AWS_S3_BUCKET_NAME=${PLANE_AWS_S3_BUCKET_NAME:-uploads}
+      - FILE_SIZE_LIMIT=${PLANE_FILE_SIZE_LIMIT:-5242880}
+      - API_KEY_RATE_LIMIT=${PLANE_API_KEY_RATE_LIMIT:-60/minute}
+      - MINIO_ENDPOINT_SSL=${PLANE_MINIO_ENDPOINT_SSL:-0}
+      - TRUSTED_PROXIES=${PLANE_TRUSTED_PROXIES:-0.0.0.0/0}
+      - PLANE_OBSERVABILITY_ENABLED=${PLANE_OBSERVABILITY_ENABLED:-false}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${PLANE_OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      - OTEL_SERVICE_NAME=${PLANE_OTEL_SERVICE_NAME:-plane-beat-worker}
+      - OTEL_RESOURCE_ATTRIBUTES=${PLANE_OTEL_RESOURCE_ATTRIBUTES:-service.name=plane-beat-worker}
+    volumes:
+      - plane-logs-beat-worker:/code/plane/logs
+
+  plane-migrator:
+    image: ${PLANE_BACKEND_IMAGE:-artifacts.plane.so/makeplane/plane-backend:${PLANE_APP_RELEASE:-v2.4.0}}
+    container_name: plane-migrator
+    profiles:
+      - plane
+    restart: on-failure
+    command: ./bin/docker-entrypoint-migrator.sh
+    depends_on:
+      plane-db:
+        condition: service_healthy
+      plane-redis:
+        condition: service_healthy
+      plane-mq:
+        condition: service_healthy
+      plane-minio:
+        condition: service_started
+    networks:
+      - plane-internal
+    environment:
+      - WEB_URL=https://${PLANE_HOSTNAME:-plane}.${DEV_DOMAIN}
+      - CORS_ALLOWED_ORIGINS=https://${PLANE_HOSTNAME:-plane}.${DEV_DOMAIN}
+      - API_BASE_URL=http://plane-api:8000
+      - DATABASE_URL=postgresql://${PLANE_POSTGRES_USER:-plane}:${PLANE_POSTGRES_PASSWORD:-}@plane-db:5432/${PLANE_POSTGRES_DB:-plane}
+      - REDIS_URL=redis://plane-redis:6379/
+      - AMQP_URL=amqp://${PLANE_RABBITMQ_USER:-plane}:${PLANE_RABBITMQ_PASSWORD:-}@plane-mq:5672/${PLANE_RABBITMQ_VHOST:-plane}
+      - SECRET_KEY=${PLANE_SECRET_KEY:-}
+      - LIVE_SERVER_SECRET_KEY=${PLANE_LIVE_SERVER_SECRET_KEY:-}
+      - USE_MINIO=${PLANE_USE_MINIO:-1}
+      - AWS_REGION=${PLANE_AWS_REGION:-}
+      - AWS_ACCESS_KEY_ID=${PLANE_AWS_ACCESS_KEY_ID:-access-key}
+      - AWS_SECRET_ACCESS_KEY=${PLANE_AWS_SECRET_ACCESS_KEY:-}
+      - AWS_S3_ENDPOINT_URL=${PLANE_AWS_S3_ENDPOINT_URL:-http://plane-minio:9000}
+      - AWS_S3_BUCKET_NAME=${PLANE_AWS_S3_BUCKET_NAME:-uploads}
+      - FILE_SIZE_LIMIT=${PLANE_FILE_SIZE_LIMIT:-5242880}
+      - API_KEY_RATE_LIMIT=${PLANE_API_KEY_RATE_LIMIT:-60/minute}
+      - MINIO_ENDPOINT_SSL=${PLANE_MINIO_ENDPOINT_SSL:-0}
+      - TRUSTED_PROXIES=${PLANE_TRUSTED_PROXIES:-0.0.0.0/0}
+    volumes:
+      - plane-logs-migrator:/code/plane/logs
+
+  plane-db:
+    image: ${PLANE_POSTGRES_IMAGE:-postgres:15.7-alpine}
+    container_name: plane-db
+    profiles:
+      - plane
+    restart: unless-stopped
+    command: postgres -c max_connections=1000
+    networks:
+      - plane-internal
+    environment:
+      - POSTGRES_USER=${PLANE_POSTGRES_USER:-plane}
+      - POSTGRES_PASSWORD=${PLANE_POSTGRES_PASSWORD:-}
+      - POSTGRES_DB=${PLANE_POSTGRES_DB:-plane}
+      - PGDATA=${PLANE_POSTGRES_PGDATA:-/var/lib/postgresql/data}
+    volumes:
+      - plane-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  plane-redis:
+    image: ${PLANE_REDIS_IMAGE:-valkey/valkey:7.2.11-alpine}
+    container_name: plane-redis
+    profiles:
+      - plane
+    restart: unless-stopped
+    networks:
+      - plane-internal
+    volumes:
+      - plane-redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+  plane-mq:
+    image: ${PLANE_RABBITMQ_IMAGE:-rabbitmq:3.13.6-management-alpine}
+    container_name: plane-mq
+    profiles:
+      - plane
+    restart: unless-stopped
+    networks:
+      - plane-internal
+    environment:
+      - RABBITMQ_DEFAULT_USER=${PLANE_RABBITMQ_USER:-plane}
+      - RABBITMQ_DEFAULT_PASS=${PLANE_RABBITMQ_PASSWORD:-}
+      - RABBITMQ_DEFAULT_VHOST=${PLANE_RABBITMQ_VHOST:-plane}
+    volumes:
+      - plane-rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  plane-minio:
+    image: ${PLANE_MINIO_IMAGE:-minio/minio:RELEASE.2025-09-07T16-13-09Z}
+    container_name: plane-minio
+    profiles:
+      - plane
+    restart: unless-stopped
+    command: server /export --console-address ":9090"
+    networks:
+      - plane-internal
+    environment:
+      - MINIO_ROOT_USER=${PLANE_AWS_ACCESS_KEY_ID:-access-key}
+      - MINIO_ROOT_PASSWORD=${PLANE_AWS_SECRET_ACCESS_KEY:-}
+    volumes:
+      - plane-uploads:/export
+
+networks:
+  plane-internal:
+    name: plane-internal
+    internal: true
+
+volumes:
+  plane-pgdata:
+    name: plane-pgdata
+  plane-redisdata:
+    name: plane-redisdata
+  plane-rabbitmq-data:
+    name: plane-rabbitmq-data
+  plane-uploads:
+    name: plane-uploads
+  plane-logs-api:
+    name: plane-logs-api
+  plane-logs-worker:
+    name: plane-logs-worker
+  plane-logs-beat-worker:
+    name: plane-logs-beat-worker
+  plane-logs-migrator:
+    name: plane-logs-migrator

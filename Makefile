@@ -23,7 +23,8 @@ SHELL := /bin/bash # Ensure bash is used for shell commands
         hosts-generate hosts-apply hosts-remove hosts-status \
         bind-up bind-down bind-restart bind-logs bind-status bind-provision bind-provision-dry \
         ctfd-bootstrap ctfd-up ctfd-down ctfd-restart ctfd-logs ctfd-status \
-        observability-bootstrap observability-up observability-down observability-restart observability-logs observability-status observability-k6
+        observability-bootstrap observability-up observability-down observability-restart observability-logs observability-status observability-k6 \
+        plane-bootstrap plane-up plane-down plane-restart plane-logs plane-status test-plane
 
 # Include .env for environment variables if it exists.
 # This makes variables in .env available to the Makefile.
@@ -41,7 +42,8 @@ COMPOSE_FILES := \
   -f services/certbot/compose.yml \
   -f services/step-ca/compose.yml \
   -f services/ctfd/compose.yml \
-  -f services/observability/compose.yml
+  -f services/observability/compose.yml \
+  -f services/plane/compose.yml
 
 # Pin compose project directory/name to avoid cross-CWD conflicts.
 COMPOSE_PROJECT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
@@ -84,6 +86,11 @@ ifneq ($(ENV_FILE),)
 OBS_ENV_ARGS += --env-file $(ENV_FILE)
 endif
 
+PLANE_ENV_ARGS :=
+ifneq ($(ENV_FILE),)
+PLANE_ENV_ARGS += --env-file $(ENV_FILE)
+endif
+
 SMOKE_TEST_DIR := $(REPO_ROOT)/tests/smoke
 
 CORE_SMOKE_TESTS := \
@@ -119,6 +126,13 @@ OBSERVABILITY_SMOKE_TESTS := \
 	test_observability_grafana_provisioning.sh \
 	test_observability_k6_wiring.sh \
 	test_observability_app_pack_tolerance.sh
+
+PLANE_SMOKE_TESTS := \
+	test_plane_service_config.sh \
+	test_plane_guardrails.sh \
+	test_plane_make_targets.sh \
+	test_plane_bootstrap_env.sh \
+	test_plane_optional_integrations.sh
 
 # Start the stack
 up:
@@ -270,6 +284,17 @@ test-observability:
 	done; \
 	exit $$rc
 
+test-plane:
+	@echo "Running Plane smoke tests..."
+	@set -euo pipefail; rc=0; \
+	for test_script in $(PLANE_SMOKE_TESTS); do \
+		echo "==> $$test_script"; \
+		if ! "$(SMOKE_TEST_DIR)/$$test_script"; then \
+			rc=1; \
+		fi; \
+	done; \
+	exit $$rc
+
 # --- Documentation ---
 
 docs-check:
@@ -372,6 +397,30 @@ observability-k6:
 	@echo "Running observability synthetic check with k6 against $(K6_TARGET_URL)..."
 	COMPOSE_PROFILES=observability "$(SCRIPTS_DIR)/compose.sh" --profile observability $(COMPOSE_OPTS) run --rm k6
 
+# --- Plane Module ---
+
+plane-bootstrap:
+	"$(SCRIPTS_DIR)/plane-bootstrap.sh" $(PLANE_ENV_ARGS)
+
+plane-up:
+	@echo "Starting Plane module (profile: plane)..."
+	COMPOSE_PROFILES=plane "$(SCRIPTS_DIR)/compose.sh" --profile plane $(COMPOSE_OPTS) up -d plane-web plane-space plane-admin plane-live plane-api plane-worker plane-beat-worker plane-migrator plane-db plane-redis plane-mq plane-minio
+
+plane-down:
+	@echo "Stopping Plane module..."
+	COMPOSE_PROFILES=plane "$(SCRIPTS_DIR)/compose.sh" --profile plane $(COMPOSE_OPTS) stop plane-web plane-space plane-admin plane-live plane-api plane-worker plane-beat-worker plane-migrator plane-db plane-redis plane-mq plane-minio || true
+	COMPOSE_PROFILES=plane "$(SCRIPTS_DIR)/compose.sh" --profile plane $(COMPOSE_OPTS) rm -f plane-web plane-space plane-admin plane-live plane-api plane-worker plane-beat-worker plane-migrator plane-db plane-redis plane-mq plane-minio || true
+
+plane-restart: plane-down plane-up
+
+plane-logs:
+	@echo "Showing Plane module logs..."
+	COMPOSE_PROFILES=plane "$(SCRIPTS_DIR)/compose.sh" --profile plane $(COMPOSE_OPTS) logs -f plane-web plane-space plane-admin plane-live plane-api plane-worker plane-beat-worker plane-migrator plane-db plane-redis plane-mq plane-minio
+
+plane-status:
+	@echo "Plane module status:"
+	COMPOSE_PROFILES=plane "$(SCRIPTS_DIR)/compose.sh" --profile plane $(COMPOSE_OPTS) ps plane-web plane-space plane-admin plane-live plane-api plane-worker plane-beat-worker plane-migrator plane-db plane-redis plane-mq plane-minio
+
 # --- Help ---
 
 help:
@@ -419,6 +468,7 @@ help:
 	@echo "  test-dns              Run DNS/BIND smoke tests only."
 	@echo "  test-ctfd             Run CTFd smoke tests only."
 	@echo "  test-observability    Run observability smoke tests only."
+	@echo "  test-plane            Run Plane smoke tests only."
 	@echo ""
 	@echo "Docs:"
 	@echo "  docs-check            Validate multilingual README structure and links."
@@ -455,8 +505,16 @@ help:
 	@echo "  observability-status     Show observability module status."
 	@echo "  observability-k6         Run on-demand synthetic HTTP checks with k6."
 	@echo ""
+	@echo "Plane:"
+	@echo "  plane-bootstrap          Generate/persist Plane secrets in .env."
+	@echo "  plane-up                 Start the Plane module (profile: plane)."
+	@echo "  plane-down               Stop and remove Plane module containers."
+	@echo "  plane-restart            Restart the Plane module."
+	@echo "  plane-logs               Follow Plane module logs."
+	@echo "  plane-status             Show Plane module status."
+	@echo ""
 	@echo "Profiles:"
 	@echo "  Use COMPOSE_PROFILES=<profile_name> before make commands to activate profiles."
-	@echo "  Available profiles: bind, ctfd, le, observability, stepca"
+	@echo "  Available profiles: bind, ctfd, le, observability, plane, stepca"
 	@echo "  Example: COMPOSE_PROFILES=le make up"
 	@echo ""
