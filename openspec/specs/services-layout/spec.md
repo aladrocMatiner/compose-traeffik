@@ -24,3 +24,20 @@ The system SHALL provide a migration note detailing what moved and how to update
 - **WHEN** a user upgrades
 - **THEN** they can update any custom compose overrides or mounts using the provided mapping
 
+### Requirement: Rocket.Chat service layout follows service module conventions
+The system SHALL place the Rocket.Chat module under `services/rocketchat/` with a compose file and multilingual service documentation.
+
+#### Scenario: Contributor inspects Rocket.Chat service directory
+- **WHEN** a contributor opens `services/rocketchat/`
+- **THEN** the directory contains `compose.yml`, `README.md`, `README.sv.md`, and `README.es.md`
+- **AND** any generated bootstrap artifacts are kept in a dedicated gitignored `rendered/` subdirectory
+
+### Requirement: FreeIPA service module exists under services/
+The system SHALL provide a dedicated FreeIPA service module under `services/freeipa/` with compose and multilingual README files.
+
+#### Scenario: Operator inspects service layout
+- **WHEN** an operator inspects `services/freeipa/`
+- **THEN** `compose.yml` exists
+- **AND** `README.md`, `README.es.md`, and `README.sv.md` exist
+- **AND** the module is integrated in compose layering via `Makefile`.
+

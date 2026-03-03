@@ -52,4 +52,4 @@
 - [x] 8.1 Run `openspec validate add-gitlab-service-module --strict`.
 - [x] 8.2 Run `make docs-check`.
 - [x] 8.3 Run GitLab smoke tests (`make test-gitlab`) and shared suite wiring checks.
-- [ ] 8.4 Perform manual runtime validation (GitLab up, Traefik route, health, SSH port, optional OIDC metadata behavior).
+- [x] 8.4 Perform manual runtime validation (GitLab up, Traefik route, health, SSH port, optional OIDC metadata behavior).

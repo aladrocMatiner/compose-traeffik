@@ -27,3 +27,19 @@ The system SHALL include a docs validation script and Makefile target to verify 
 - **THEN** it fails on missing README variants, broken links, or selector mismatches
 - **AND** DNS/BIND documentation parity issues are surfaced as validation failures
 
+### Requirement: Rocket.Chat docs maintain multilingual parity
+The system SHALL provide Rocket.Chat service documentation and root README references in EN/SV/ES with consistent anchors and language selectors.
+
+#### Scenario: User switches Rocket.Chat docs language
+- **WHEN** a user opens the Rocket.Chat service page in EN, SV, or ES
+- **THEN** each page contains the standard service anchors and links to the equivalent language variants
+- **AND** root README service links point to the matching language file for Rocket.Chat
+
+### Requirement: Semaphore UI multilingual documentation parity
+The system SHALL provide EN/SV/ES Semaphore UI documentation pages (including observability integration docs if split out) with language selector parity.
+
+#### Scenario: Semaphore UI docs language switching
+- **WHEN** a user opens a Semaphore UI README in any supported language
+- **THEN** they can navigate to equivalent Semaphore UI docs in EN/SV/ES
+- **AND** equivalent pages preserve section structure parity
+
