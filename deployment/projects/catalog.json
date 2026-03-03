@@ -43,6 +43,10 @@
     {
       "id": "traefik-webui",
       "manifest": "deployment/projects/traefik-webui/manifest.json"
+    },
+    {
+      "id": "traefik-awx",
+      "manifest": "deployment/projects/traefik-awx/manifest.json"
     }
   ]
 }

@@ -35,6 +35,7 @@ make deployment-project project=traefik-gitlab target=qemu os=ubuntu
 make deployment-project project=traefik-litellm target=qemu os=ubuntu
 make deployment-project project=traefik-webui target=qemu os=ubuntu
 make deployment-project project=traefik-docling target=qemu os=ubuntu
+make deployment-project project=traefik-awx target=qemu os=ubuntu
 ```
 
 Notas para `traefik-dns-bind`:
@@ -62,3 +63,9 @@ Notas para `traefik-webui`:
 - Despliega `openwebui` detras de Traefik (`https://openwebui.local.test` por defecto).
 - Depende de `traefik-stepca` para TLS por defecto (`tls_mode=stepca-acme`), con override soportado via `tls_mode=letsencrypt-acme`.
 - Usa contrato de manifiesto cerrado: solo despliega `traefik` + `openwebui` (sin overrides ad-hoc de servicios).
+
+Notas para `traefik-awx`:
+
+- Estado actual: contrato de despliegue disponible en catálogo, pero runtime híbrido AWX (`k3d` + operator) aún no integrado en `deployment-project`.
+- `make deployment-project project=traefik-awx ...` falla de forma intencional antes de `docker compose up -d`.
+- Camino de transición esperado: integrar en `deployment-project` el flujo AWX basado en `scripts/awx-k3d-up.sh` + `scripts/awx-up.sh` y su contrato OIDC/TLS.

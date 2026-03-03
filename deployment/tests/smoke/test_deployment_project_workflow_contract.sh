@@ -63,6 +63,23 @@ if ! printf '%s' "$docling_out" | grep -q "Transition path"; then
     log_error "traefik-docling guardrail must provide explicit transition guidance"
 fi
 
+set +e
+awx_out="$($RUNNER run --project traefik-awx 2>&1)"
+awx_rc=$?
+set -e
+if [ "$awx_rc" -eq 0 ]; then
+    log_error "traefik-awx must fail while runtime hybrid implementation is pending in deployment-project"
+fi
+if ! printf '%s' "$awx_out" | grep -q "deployment-contract only"; then
+    log_error "traefik-awx guardrail must declare deployment-only contract status"
+fi
+if ! printf '%s' "$awx_out" | grep -q "No compose apply was attempted"; then
+    log_error "traefik-awx guardrail must confirm compose apply was skipped"
+fi
+if ! printf '%s' "$awx_out" | grep -q "k3d+AWX operator project workflow"; then
+    log_error "traefik-awx guardrail must provide explicit transition guidance"
+fi
+
 if ! awk '
   /run_stage provision/ { p=NR }
   /run_stage wait/ { w=NR }

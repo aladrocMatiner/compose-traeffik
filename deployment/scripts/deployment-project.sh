@@ -102,17 +102,25 @@ check_project_runtime_implementation() {
   local project_id="$1"
   local manifest_path="$2"
 
-  if [[ "${project_id}" != "traefik-docling" ]]; then
-    return 0
-  fi
-
   local compose_profile
   compose_profile="$(jq -r '.compose_profile' "${manifest_path}")"
-  local docling_compose_path="${REPO_ROOT}/services/docling/compose.yml"
-
-  if [[ ! -f "${docling_compose_path}" ]]; then
-    die "Project '${project_id}' is deployment-contract only: Docling service runtime implementation is pending (missing ${docling_compose_path}, profile=${compose_profile}). No compose apply was attempted. Transition path: implement services/docling and profile '${compose_profile}', then retry make deployment-project project=${project_id}."
-  fi
+  case "${project_id}" in
+    traefik-docling)
+      local docling_compose_path="${REPO_ROOT}/services/docling/compose.yml"
+      if [[ ! -f "${docling_compose_path}" ]]; then
+        die "Project '${project_id}' is deployment-contract only: Docling service runtime implementation is pending (missing ${docling_compose_path}, profile=${compose_profile}). No compose apply was attempted. Transition path: implement services/docling and profile '${compose_profile}', then retry make deployment-project project=${project_id}."
+      fi
+      ;;
+    traefik-awx)
+      local awx_service_path="${REPO_ROOT}/services/awx"
+      local awx_k3d_script="${REPO_ROOT}/scripts/awx-k3d-up.sh"
+      if [[ ! -d "${awx_service_path}" || ! -x "${awx_k3d_script}" ]]; then
+        die "Project '${project_id}' is deployment-contract only: AWX runtime hybrid implementation is pending for deployment-project (missing ${awx_service_path} and/or ${awx_k3d_script}, profile=${compose_profile}). No compose apply was attempted. Transition path: integrate k3d+AWX operator project workflow in deployment-project and retry make deployment-project project=${project_id}."
+      fi
+      ;;
+    *)
+      ;;
+  esac
 }
 
 terraform_dir_for_target() {
@@ -143,6 +151,7 @@ default_vm_ip_for_project() {
     traefik-dns-bind) printf '192.168.122.57\n' ;;
     traefik-litellm) printf '192.168.122.58\n' ;;
     traefik-webui) printf '192.168.122.59\n' ;;
+    traefik-awx) printf '192.168.122.60\n' ;;
     *)
       local hash octet
       hash="$(printf '%s' "${project_id}" | cksum | awk '{print $1}')"

@@ -1,0 +1,27 @@
+{
+  "id": "traefik-awx",
+  "description": "Deployment-only project contract for AWX behind Traefik. Runtime hybrid implementation (k3d + awx-operator workflow) is pending in deployment-project.",
+  "repo_url": "https://github.com/aladrocMatiner/compose-traeffik.git",
+  "repo_ref": "b34c424b017874b47dd3a633586727d29860985f",
+  "compose_profile": "awx",
+  "services": [
+    "traefik",
+    "awx"
+  ],
+  "deploy_playbook": "deployment/ansible/playbooks/project_deploy.yml",
+  "required_env": [
+    "BASE_DOMAIN",
+    "DEV_DOMAIN"
+  ],
+  "tls_mode": "stepca-acme",
+  "depends_on_projects": [
+    "traefik-stepca",
+    "traefik-keycloak"
+  ],
+  "oidc": {
+    "enabled": true,
+    "realm": "local.test",
+    "client_id": "awx"
+  },
+  "public_host": "awx.local.test"
+}

@@ -39,6 +39,7 @@ Current catalog projects:
 - `traefik-litellm`
 - `traefik-docling`
 - `traefik-webui`
+- `traefik-awx`
 
 `traefik-observability` contract highlights:
 
@@ -90,6 +91,13 @@ Current catalog projects:
 - defaults to `tls_mode=stepca-acme` (override allowed with `tls_mode=...`)
 - depends on `traefik-stepca`
 - deploys `openwebui` behind Traefik on `https://openwebui.<BASE_DOMAIN>`
+
+`traefik-awx` contract highlights:
+
+- default contract requires StepCA + Keycloak dependencies (`traefik-stepca`, `traefik-keycloak`)
+- defaults to `tls_mode=stepca-acme` (override allowed with `tls_mode=...`)
+- current state is deployment-only for `deployment-project`: runner fails before compose apply with an explicit hybrid-runtime pending guardrail
+- transition path is explicit in guardrail output (`k3d + AWX operator` workflow integration in `deployment-project`)
 
 Keycloak bootstrap + OIDC operational contract:
 

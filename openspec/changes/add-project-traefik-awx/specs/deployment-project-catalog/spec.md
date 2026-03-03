@@ -1,47 +1,43 @@
 ## ADDED Requirements
 
-### Requirement: Project `traefik-awx` deploys AWX behind Traefik
-The system SHALL publish AWX through Traefik reverse proxy in the `traefik-awx` project workflow.
+### Requirement: Project `traefik-awx` is discoverable in deployment catalog before runtime integration
+The system SHALL allow `traefik-awx` to be represented in the deployment project catalog even when AWX hybrid runtime integration is not yet implemented in `deployment-project`.
 
-#### Scenario: Operator selects `project=traefik-awx`
-- **WHEN** an operator runs `make deployment-project project=traefik-awx`
-- **THEN** runtime routing for AWX is exposed through Traefik-managed routes
-- **AND** AWX is not exposed as a direct bypass of the Traefik edge path
+#### Scenario: Operator lists available projects
+- **WHEN** an operator runs a project catalog listing command
+- **THEN** `traefik-awx` appears as a supported project identifier
+- **AND** the project contract is discoverable without requiring runtime availability
 
-### Requirement: Project `traefik-awx` declares dependencies on StepCA and Keycloak projects
-The system SHALL provide a predefined project `traefik-awx` whose manifest declares dependencies on `traefik-stepca` and `traefik-keycloak`.
+### Requirement: Project `traefik-awx` declares StepCA/Keycloak dependencies and TLS baseline
+The system SHALL define `traefik-stepca` and `traefik-keycloak` as dependencies for `traefik-awx` and SHALL default TLS mode to StepCA-backed ACME unless an explicit supported override is provided.
 
-#### Scenario: AWX project manifest is inspected
+#### Scenario: AWX manifest contract is inspected
 - **WHEN** an operator inspects the `traefik-awx` project definition
 - **THEN** `depends_on_projects` includes `traefik-stepca` and `traefik-keycloak`
-- **AND** dependency intent is explicit without relying on external documentation
+- **AND** default `tls_mode` is `stepca-acme`
+- **AND** supported TLS override behavior is explicit in deployment contract
 
-### Requirement: Project `traefik-awx` defaults to StepCA ACME for certificates through Traefik TLS termination
-The system SHALL default `traefik-awx` project TLS mode to StepCA-backed ACME unless an explicit supported override is provided, and TLS termination SHALL be handled by Traefik according to the selected OpenSpec TLS mode.
+### Requirement: Project `traefik-awx` declares Keycloak OIDC authentication contract
+The system SHALL declare AWX Keycloak authentication intent in the project manifest contract.
 
-#### Scenario: Default TLS mode is applied
-- **WHEN** `project=traefik-awx` is run without TLS override
-- **THEN** runtime configuration uses StepCA ACME as certificate source
-- **AND** Traefik certificate resolution uses StepCA ACME settings from project/environment contract
-- **AND** deployment proceeds only when required StepCA ACME settings are available
+#### Scenario: OIDC contract is inspected
+- **WHEN** an operator inspects the `traefik-awx` project definition
+- **THEN** `oidc.enabled` is `true`
+- **AND** `oidc.realm` and `oidc.client_id` are explicitly defined
 
-#### Scenario: TLS override is provided
-- **WHEN** an operator provides an explicit supported `tls_mode` override
-- **THEN** the project uses the requested TLS mode instead of StepCA ACME default
-- **AND** deployment validates mode-specific required variables before compose apply
+### Requirement: Project `traefik-awx` fails fast before compose apply while runtime integration is pending
+The system SHALL stop deployment before compose apply for `traefik-awx` when required AWX hybrid runtime integration is missing from `deployment-project`.
 
-### Requirement: Project `traefik-awx` enforces Keycloak-based authentication contract
-The system SHALL configure AWX authentication integration with Keycloak according to the project manifest contract.
+#### Scenario: Operator deploys `traefik-awx` before hybrid integration is implemented
+- **WHEN** an operator runs `make deployment-project project=traefik-awx`
+- **THEN** deployment exits before `docker compose up -d`
+- **AND** the error message clearly states that AWX runtime hybrid integration is pending
+- **AND** the message provides an explicit transition path
 
-#### Scenario: Auth contract is applied
-- **WHEN** `project=traefik-awx` is deployed with dependencies satisfied
-- **THEN** runtime config applies Keycloak-backed authentication for AWX sign-in
-- **AND** deployment fails fast if required Keycloak integration variables are missing
+### Requirement: Project `traefik-awx` enforces manifest service contract
+The system SHALL keep service selection bound to manifest-declared services and SHALL reject ad-hoc runtime service overrides for `traefik-awx`.
 
-### Requirement: Project `traefik-awx` deploys only manifest-declared services
-The system SHALL deploy only services declared by the `traefik-awx` manifest and SHALL reject ad-hoc runtime service overrides.
-
-#### Scenario: Runtime service override conflicts with manifest
-- **WHEN** runtime inputs attempt to deploy services outside the manifest service list
+#### Scenario: Runtime service override conflicts with AWX manifest
+- **WHEN** runtime input attempts to deploy services outside the manifest service list
 - **THEN** deployment fails with a contract-violation message
-- **AND** `docker compose up -d` is not executed with conflicting service selection
+- **AND** compose apply is not executed with conflicting service selection

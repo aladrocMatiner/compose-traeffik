@@ -27,6 +27,7 @@ DNS_BIND_MANIFEST="$REPO_ROOT/deployment/projects/traefik-dns-bind/manifest.json
 LITELLM_MANIFEST="$REPO_ROOT/deployment/projects/traefik-litellm/manifest.json"
 DOCLING_MANIFEST="$REPO_ROOT/deployment/projects/traefik-docling/manifest.json"
 WEBUI_MANIFEST="$REPO_ROOT/deployment/projects/traefik-webui/manifest.json"
+AWX_MANIFEST="$REPO_ROOT/deployment/projects/traefik-awx/manifest.json"
 
 check_command "jq"
 check_command "make"
@@ -69,8 +70,11 @@ fi
 if [ ! -f "$WEBUI_MANIFEST" ]; then
     log_error "Missing traefik-webui manifest: $WEBUI_MANIFEST"
 fi
+if [ ! -f "$AWX_MANIFEST" ]; then
+    log_error "Missing traefik-awx manifest: $AWX_MANIFEST"
+fi
 list_output="$(make -s -C "$REPO_ROOT" deployment-project-list)"
-expected_list=$'traefik-stepca\ntraefik-keycloak\ntraefik-observability\ntraefik-wikijs\ntraefik-semaphoreui\ntraefik-rocketchat\ntraefik-gitlab\ntraefik-dns-bind\ntraefik-litellm\ntraefik-docling\ntraefik-webui'
+expected_list=$'traefik-stepca\ntraefik-keycloak\ntraefik-observability\ntraefik-wikijs\ntraefik-semaphoreui\ntraefik-rocketchat\ntraefik-gitlab\ntraefik-dns-bind\ntraefik-litellm\ntraefik-docling\ntraefik-webui\ntraefik-awx'
 if [ "$list_output" != "$expected_list" ]; then
     log_error "deployment-project-list output drifted. Expected:\n${expected_list}\nGot:\n${list_output}"
 fi
@@ -111,6 +115,9 @@ if ! jq -e '.projects[] | select(.id=="traefik-docling") | .manifest == "deploym
 fi
 if ! jq -e '.projects[] | select(.id=="traefik-webui") | .manifest == "deployment/projects/traefik-webui/manifest.json"' "$CATALOG" >/dev/null; then
     log_error "Catalog entry for traefik-webui is missing or points to an unexpected manifest path"
+fi
+if ! jq -e '.projects[] | select(.id=="traefik-awx") | .manifest == "deployment/projects/traefik-awx/manifest.json"' "$CATALOG" >/dev/null; then
+    log_error "Catalog entry for traefik-awx is missing or points to an unexpected manifest path"
 fi
 
 if ! jq -e '
@@ -320,6 +327,26 @@ if ! jq -e '
     .public_host == "openwebui.local.test"
 ' "$WEBUI_MANIFEST" >/dev/null; then
   log_error "traefik-webui manifest contract is invalid"
+fi
+
+if ! jq -e '
+    .id == "traefik-awx" and
+    (.description | type == "string" and length > 0) and
+    (.repo_url | type == "string" and length > 0) and
+    (.repo_ref | test("^[0-9a-f]{40}$")) and
+    .compose_profile == "awx" and
+    (.services == ["traefik", "awx"]) and
+    .deploy_playbook == "deployment/ansible/playbooks/project_deploy.yml" and
+    (.required_env | index("BASE_DOMAIN")) and
+    (.required_env | index("DEV_DOMAIN")) and
+    .tls_mode == "stepca-acme" and
+    (.depends_on_projects == ["traefik-stepca", "traefik-keycloak"]) and
+    (.oidc.enabled == true) and
+    (.oidc.realm == "local.test") and
+    (.oidc.client_id == "awx") and
+    .public_host == "awx.local.test"
+' "$AWX_MANIFEST" >/dev/null; then
+  log_error "traefik-awx manifest contract is invalid"
 fi
 
 
