@@ -15,7 +15,7 @@ This directory contains scripts used by the `make deployment-*` workflow.
 Project orchestration entrypoints:
 
 - `make deployment-project-list` -> `deployment-project.sh list`
-- `make deployment-project project=<id> [target=<qemu>] [os=<ubuntu>] [tls_mode=<stepca-acme|letsencrypt-acme>]`
+- `make deployment-project project=<id> [target=<qemu>] [os=<ubuntu|ubuntu20.04|ubuntu22.04|ubuntu24.04>] [tls_mode=<stepca-acme|letsencrypt-acme>]`
 
 Manifest dependency guardrails (`depends_on_projects`):
 
@@ -35,7 +35,10 @@ Current catalog projects:
 - `traefik-semaphoreui`
 - `traefik-rocketchat`
 - `traefik-gitlab`
+- `traefik-dns-bind`
 - `traefik-litellm`
+- `traefik-docling`
+- `traefik-webui`
 
 `traefik-observability` contract highlights:
 
@@ -74,6 +77,19 @@ Current catalog projects:
 - configures Keycloak OIDC contract for LiteLLM (`realm=local.test`, `client_id=litellm`) during deployment
 - defaults to OpenAI-compatible inference backend `http://10.64.70.81:11434/v1` and model `openai/gpt-oss:20b` (override with `OPENAI_API_BASE` / `LITELLM_MODEL`)
 - configures Keycloak role mapping (`realm_access.roles`) and assigns realm role `litellm_proxy_admin` to bootstrap user so SSO user becomes LiteLLM `proxy_admin`
+
+`traefik-docling` contract highlights:
+
+- deployable project id is already registered in catalog and manifest wiring
+- defaults to `tls_mode=stepca-acme` and depends on `traefik-stepca`
+- current state is deployment-only: runner fails before compose apply with an explicit "service runtime implementation is pending" guardrail
+- transition path is explicit in guardrail output (`services/docling/compose.yml` + `docling` profile implementation)
+
+`traefik-webui` contract highlights:
+
+- defaults to `tls_mode=stepca-acme` (override allowed with `tls_mode=...`)
+- depends on `traefik-stepca`
+- deploys `openwebui` behind Traefik on `https://openwebui.<BASE_DOMAIN>`
 
 Keycloak bootstrap + OIDC operational contract:
 

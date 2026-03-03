@@ -9,11 +9,11 @@ usage() {
 Usage:
   deployment/scripts/host-bootstrap-check.sh [--host IP] [--user USER] [--port PORT] [--identity PATH]
                                  [--target <libvirt|qemu|proxmox>]
-                                 [--os <ubuntu|debian|debian12|debian13|gentoo|opensuse-leap|almalinux9|rockylinux9|fedora-cloud>]
+                                 [--os <ubuntu|ubuntu20.04|ubuntu22.04|ubuntu24.04|debian|debian12|debian13|gentoo|opensuse-leap|almalinux9|rockylinux9|fedora-cloud>]
                                  [--init <openrc|systemd>] [--terraform-dir DIR]
 
 Checks SSH reachability and Docker readiness on a provisioned host.
-Current implementation supports Ubuntu and Debian (12/13) Docker checks.
+Current implementation supports Ubuntu LTS selectors and Debian (12/13) Docker checks.
 EOF
 }
 
@@ -51,9 +51,13 @@ validate_target_os_init() {
     *) die "Unsupported --target '${TARGET}'. Supported values: libvirt, qemu, proxmox" ;;
   esac
   case "${OS_FAMILY}" in
-    ubuntu|debian|debian12|debian13|gentoo|opensuse-leap|almalinux9|rockylinux9|fedora-cloud) ;;
-    *) die "Unsupported --os '${OS_FAMILY}'. Supported values: ubuntu, debian, debian12, debian13, gentoo, opensuse-leap, almalinux9, rockylinux9, fedora-cloud" ;;
+    ubuntu|ubuntu20.04|ubuntu22.04|ubuntu24.04|debian|debian12|debian13|gentoo|opensuse-leap|almalinux9|rockylinux9|fedora-cloud) ;;
+    *) die "Unsupported --os '${OS_FAMILY}'. Supported values: ubuntu, ubuntu20.04, ubuntu22.04, ubuntu24.04, debian, debian12, debian13, gentoo, opensuse-leap, almalinux9, rockylinux9, fedora-cloud" ;;
   esac
+
+  if [[ "${OS_FAMILY}" == "ubuntu" ]]; then
+    OS_FAMILY="ubuntu24.04"
+  fi
 
   if [[ "${OS_FAMILY}" == "debian" ]]; then
     OS_FAMILY="debian13"
@@ -157,11 +161,11 @@ if [[ -z "${TF_DIR:-}" ]]; then
   TF_DIR="$(terraform_dir_for_target "${TARGET}")"
 fi
 
-if [[ "${OS_FAMILY}" != "ubuntu" && "${OS_FAMILY}" != "debian13" && "${OS_FAMILY}" != "debian12" ]]; then
+if [[ "${OS_FAMILY}" != "ubuntu24.04" && "${OS_FAMILY}" != "ubuntu22.04" && "${OS_FAMILY}" != "ubuntu20.04" && "${OS_FAMILY}" != "debian13" && "${OS_FAMILY}" != "debian12" ]]; then
   if [[ "${OS_FAMILY}" == "gentoo" ]]; then
-    die "Docker readiness checks are not implemented for --os gentoo --init ${INIT_SYSTEM} in v1 (current implementation: ubuntu/debian12/debian13 only)"
+    die "Docker readiness checks are not implemented for --os gentoo --init ${INIT_SYSTEM} in v1 (current implementation: ubuntu20.04/ubuntu22.04/ubuntu24.04/debian12/debian13 only)"
   fi
-  die "Docker readiness checks are not implemented for --os ${OS_FAMILY} in v1 (current implementation: ubuntu/debian12/debian13 only)"
+  die "Docker readiness checks are not implemented for --os ${OS_FAMILY} in v1 (current implementation: ubuntu20.04/ubuntu22.04/ubuntu24.04/debian12/debian13 only)"
 fi
 
 check_cmd ssh

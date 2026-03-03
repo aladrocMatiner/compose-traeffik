@@ -98,6 +98,23 @@ validate_manifest() {
   ' "${manifest_path}" >/dev/null || die "Invalid project manifest schema: ${manifest_path}"
 }
 
+check_project_runtime_implementation() {
+  local project_id="$1"
+  local manifest_path="$2"
+
+  if [[ "${project_id}" != "traefik-docling" ]]; then
+    return 0
+  fi
+
+  local compose_profile
+  compose_profile="$(jq -r '.compose_profile' "${manifest_path}")"
+  local docling_compose_path="${REPO_ROOT}/services/docling/compose.yml"
+
+  if [[ ! -f "${docling_compose_path}" ]]; then
+    die "Project '${project_id}' is deployment-contract only: Docling service runtime implementation is pending (missing ${docling_compose_path}, profile=${compose_profile}). No compose apply was attempted. Transition path: implement services/docling and profile '${compose_profile}', then retry make deployment-project project=${project_id}."
+  fi
+}
+
 terraform_dir_for_target() {
   local t="$1"
   case "${t}" in
@@ -125,6 +142,7 @@ default_vm_ip_for_project() {
     traefik-gitlab) printf '192.168.122.56\n' ;;
     traefik-dns-bind) printf '192.168.122.57\n' ;;
     traefik-litellm) printf '192.168.122.58\n' ;;
+    traefik-webui) printf '192.168.122.59\n' ;;
     *)
       local hash octet
       hash="$(printf '%s' "${project_id}" | cksum | awk '{print $1}')"
@@ -419,6 +437,7 @@ run_project() {
   fi
   log "Manifest source=${manifest_path}"
   log "Repo=${manifest_repo_url} ref=${manifest_repo_ref} profile=${manifest_profile} services=${manifest_services} tls_mode=${manifest_tls_mode}"
+  check_project_runtime_implementation "${PROJECT_ID}" "${manifest_path}"
 
   local target_normalized
   target_normalized="$(normalize_target "${TARGET_INPUT}")"

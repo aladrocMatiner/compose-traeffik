@@ -154,6 +154,23 @@ else
 fi
 
 # --- Test 13: Deployment Make Target Wiring (no sudo) ---
+log_info "Running test_openwebui_service_config.sh..."
+if "$TEST_DIR/test_openwebui_service_config.sh"; then
+    log_success "Test: OpenWebUI Service Config"
+else
+    log_warn "Test failed: OpenWebUI Service Config"
+    TEST_RESULTS=1
+fi
+
+log_info "Running test_openwebui_make_targets.sh..."
+if "$TEST_DIR/test_openwebui_make_targets.sh"; then
+    log_success "Test: OpenWebUI Make Target Wiring"
+else
+    log_warn "Test failed: OpenWebUI Make Target Wiring"
+    TEST_RESULTS=1
+fi
+
+# --- Test 15: Deployment Make Target Wiring (no sudo) ---
 log_info "Running test_deployment_make_targets.sh..."
 if "$DEPLOYMENT_TEST_DIR/test_deployment_make_targets.sh"; then
     log_success "Test: Deployment Make Target Wiring"
@@ -162,7 +179,7 @@ else
     TEST_RESULTS=1
 fi
 
-# --- Test 14: Deployment Access CLI Guardrails (no sudo) ---
+# --- Test 16: Deployment Access CLI Guardrails (no sudo) ---
 log_info "Running test_deployment_access_cli.sh..."
 if "$DEPLOYMENT_TEST_DIR/test_deployment_access_cli.sh"; then
     log_success "Test: Deployment Access CLI Guardrails"
@@ -171,7 +188,7 @@ else
     TEST_RESULTS=1
 fi
 
-# --- Test 15: Deployment Profile Metadata (no sudo) ---
+# --- Test 17: Deployment Profile Metadata (no sudo) ---
 log_info "Running test_deployment_profile_metadata.sh..."
 if "$DEPLOYMENT_TEST_DIR/test_deployment_profile_metadata.sh"; then
     log_success "Test: Deployment Profile Metadata"
@@ -180,7 +197,7 @@ else
     TEST_RESULTS=1
 fi
 
-# --- Test 16: Deployment List Command Outputs (no sudo) ---
+# --- Test 18: Deployment List Command Outputs (no sudo) ---
 log_info "Running test_deployment_list_commands.sh..."
 if "$DEPLOYMENT_TEST_DIR/test_deployment_list_commands.sh"; then
     log_success "Test: Deployment List Commands"
@@ -189,7 +206,7 @@ else
     TEST_RESULTS=1
 fi
 
-# --- Test 17: Deployment Ansible Roles Syntax/Lint (no sudo) ---
+# --- Test 19: Deployment Ansible Roles Syntax/Lint (no sudo) ---
 log_info "Running test_deployment_ansible_roles.sh..."
 if "$DEPLOYMENT_TEST_DIR/test_deployment_ansible_roles.sh"; then
     log_success "Test: Deployment Ansible Roles"
@@ -198,7 +215,7 @@ else
     TEST_RESULTS=1
 fi
 
-# --- Test 18: Deployment Project Workflow Contract (no sudo) ---
+# --- Test 20: Deployment Project Workflow Contract (no sudo) ---
 log_info "Running test_deployment_project_workflow_contract.sh..."
 if "$DEPLOYMENT_TEST_DIR/test_deployment_project_workflow_contract.sh"; then
     log_success "Test: Deployment Project Workflow Contract"
@@ -207,7 +224,7 @@ else
     TEST_RESULTS=1
 fi
 
-# --- Test 19: Deployment Project Catalog Contract (no sudo) ---
+# --- Test 21: Deployment Project Catalog Contract (no sudo) ---
 log_info "Running test_deployment_project_catalog.sh..."
 if "$DEPLOYMENT_TEST_DIR/test_deployment_project_catalog.sh"; then
     log_success "Test: Deployment Project Catalog Contract"
@@ -216,7 +233,7 @@ else
     TEST_RESULTS=1
 fi
 
-# --- Test 20: Keycloak/OIDC Idempotency Contract (no sudo) ---
+# --- Test 22: Keycloak/OIDC Idempotency Contract (no sudo) ---
 log_info "Running test_deployment_keycloak_oidc_idempotency_contract.sh..."
 if "$DEPLOYMENT_TEST_DIR/test_deployment_keycloak_oidc_idempotency_contract.sh"; then
     log_success "Test: Keycloak/OIDC Idempotency Contract"

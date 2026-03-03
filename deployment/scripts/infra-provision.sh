@@ -8,7 +8,7 @@ usage() {
   cat <<'EOF'
 Usage:
   deployment/scripts/infra-provision.sh <apply|plan|destroy|output|ssh> [--target <libvirt|qemu|proxmox>]
-                            [--os <ubuntu|debian|debian12|debian13|gentoo|opensuse-leap|almalinux9|rockylinux9|fedora-cloud>]
+                            [--os <ubuntu|ubuntu20.04|ubuntu22.04|ubuntu24.04|debian|debian12|debian13|gentoo|opensuse-leap|almalinux9|rockylinux9|fedora-cloud>]
                             [--init <openrc|systemd>]
 
 Environment overrides (selected):
@@ -23,6 +23,20 @@ Environment overrides (selected):
   DEPLOYMENT_INIT
   DEPLOYMENT_UBUNTU_IMAGE_URL
   DEPLOYMENT_UBUNTU_IMAGE_PATH
+  DEPLOYMENT_UBUNTU_IMAGE_SHA256
+  DEPLOYMENT_UBUNTU_SHA256SUMS_URL
+  DEPLOYMENT_UBUNTU2004_IMAGE_URL
+  DEPLOYMENT_UBUNTU2004_IMAGE_PATH
+  DEPLOYMENT_UBUNTU2004_IMAGE_SHA256
+  DEPLOYMENT_UBUNTU2004_SHA256SUMS_URL
+  DEPLOYMENT_UBUNTU2204_IMAGE_URL
+  DEPLOYMENT_UBUNTU2204_IMAGE_PATH
+  DEPLOYMENT_UBUNTU2204_IMAGE_SHA256
+  DEPLOYMENT_UBUNTU2204_SHA256SUMS_URL
+  DEPLOYMENT_UBUNTU2404_IMAGE_URL
+  DEPLOYMENT_UBUNTU2404_IMAGE_PATH
+  DEPLOYMENT_UBUNTU2404_IMAGE_SHA256
+  DEPLOYMENT_UBUNTU2404_SHA256SUMS_URL
   DEPLOYMENT_DEBIAN12_IMAGE_URL
   DEPLOYMENT_DEBIAN12_IMAGE_PATH
   DEPLOYMENT_DEBIAN12_IMAGE_SHA512
@@ -76,10 +90,11 @@ Environment overrides (selected):
 
 Notes:
   - Interface supports --target libvirt|qemu|proxmox (`qemu` maps to `libvirt`).
-  - Interface supports --os ubuntu|debian|debian12|debian13|gentoo|opensuse-leap|almalinux9|rockylinux9|fedora-cloud.
+  - Interface supports --os ubuntu|ubuntu20.04|ubuntu22.04|ubuntu24.04|debian|debian12|debian13|gentoo|opensuse-leap|almalinux9|rockylinux9|fedora-cloud.
+  - --os ubuntu is treated as an alias of ubuntu24.04 (current Ubuntu default profile).
   - --os debian is treated as an alias of debian13 (current Debian profile).
   - --init is only valid with --os gentoo and defaults to openrc.
-  - --target proxmox currently supports --os ubuntu.
+  - --target proxmox currently supports --os ubuntu24.04 (and alias ubuntu).
   - Gentoo/openrc and Gentoo/systemd use project-built experimental qcow2 images (built on demand if missing).
   - The wrapper auto-detects a local SSH public key if DEPLOYMENT_SSH_PUBKEY_PATH is not set.
 EOF
@@ -193,9 +208,14 @@ validate_target_os_init() {
     *) die "Unsupported --target '${TARGET}'. Supported values: libvirt, qemu, proxmox" ;;
   esac
   case "${OS_FAMILY}" in
-    ubuntu|debian|debian12|debian13|gentoo|opensuse-leap|almalinux9|rockylinux9|fedora-cloud) ;;
-    *) die "Unsupported --os '${OS_FAMILY}'. Supported values: ubuntu, debian, debian12, debian13, gentoo, opensuse-leap, almalinux9, rockylinux9, fedora-cloud" ;;
+    ubuntu|ubuntu20.04|ubuntu22.04|ubuntu24.04|debian|debian12|debian13|gentoo|opensuse-leap|almalinux9|rockylinux9|fedora-cloud) ;;
+    *) die "Unsupported --os '${OS_FAMILY}'. Supported values: ubuntu, ubuntu20.04, ubuntu22.04, ubuntu24.04, debian, debian12, debian13, gentoo, opensuse-leap, almalinux9, rockylinux9, fedora-cloud" ;;
   esac
+
+  if [[ "${OS_FAMILY}" == "ubuntu" ]]; then
+    warn "--os ubuntu is currently an alias for --os ubuntu24.04"
+    OS_FAMILY="ubuntu24.04"
+  fi
 
   if [[ "${OS_FAMILY}" == "debian" ]]; then
     warn "--os debian is currently an alias for --os debian13"
@@ -214,8 +234,8 @@ validate_target_os_init() {
     die "--init is only valid with --os gentoo (got --os ${OS_FAMILY}, --init ${INIT_SYSTEM})"
   fi
 
-  if [[ "${TARGET}" == "proxmox" && "${OS_FAMILY}" != "ubuntu" ]]; then
-    die "Unsupported --os '${OS_FAMILY}' for --target proxmox in v1 (supported: ubuntu)"
+  if [[ "${TARGET}" == "proxmox" && "${OS_FAMILY}" != "ubuntu24.04" ]]; then
+    die "Unsupported --os '${OS_FAMILY}' for --target proxmox in v1 (supported: ubuntu24.04, alias: ubuntu)"
   fi
 }
 
@@ -231,10 +251,32 @@ resolve_base_image_config() {
   TEMPLATE_OS_FAMILY="${OS_FAMILY}"
 
   case "${OS_FAMILY}" in
-    ubuntu)
-      BASE_IMAGE_LABEL="Ubuntu"
-      BASE_IMAGE_URL="${DEPLOYMENT_UBUNTU_IMAGE_URL:-https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img}"
-      BASE_IMAGE_PATH="${DEPLOYMENT_UBUNTU_IMAGE_PATH:-${REPO_ROOT}/infra/images/ubuntu/noble-server-cloudimg-amd64.img}"
+    ubuntu20.04)
+      BASE_IMAGE_LABEL="Ubuntu 20.04 LTS (Focal cloud image)"
+      BASE_IMAGE_URL="${DEPLOYMENT_UBUNTU2004_IMAGE_URL:-https://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-amd64.img}"
+      BASE_IMAGE_PATH="${DEPLOYMENT_UBUNTU2004_IMAGE_PATH:-${REPO_ROOT}/infra/images/ubuntu/focal-server-cloudimg-amd64.img}"
+      BASE_IMAGE_SHA256="${DEPLOYMENT_UBUNTU2004_IMAGE_SHA256:-}"
+      BASE_IMAGE_SHA256SUMS_URL="${DEPLOYMENT_UBUNTU2004_SHA256SUMS_URL:-https://cloud-images.ubuntu.com/focal/current/SHA256SUMS}"
+      BASE_IMAGE_EXPECTED_NAME="$(basename "${BASE_IMAGE_URL}")"
+      TEMPLATE_OS_FAMILY="ubuntu"
+      ;;
+    ubuntu22.04)
+      BASE_IMAGE_LABEL="Ubuntu 22.04 LTS (Jammy cloud image)"
+      BASE_IMAGE_URL="${DEPLOYMENT_UBUNTU2204_IMAGE_URL:-https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img}"
+      BASE_IMAGE_PATH="${DEPLOYMENT_UBUNTU2204_IMAGE_PATH:-${REPO_ROOT}/infra/images/ubuntu/jammy-server-cloudimg-amd64.img}"
+      BASE_IMAGE_SHA256="${DEPLOYMENT_UBUNTU2204_IMAGE_SHA256:-}"
+      BASE_IMAGE_SHA256SUMS_URL="${DEPLOYMENT_UBUNTU2204_SHA256SUMS_URL:-https://cloud-images.ubuntu.com/jammy/current/SHA256SUMS}"
+      BASE_IMAGE_EXPECTED_NAME="$(basename "${BASE_IMAGE_URL}")"
+      TEMPLATE_OS_FAMILY="ubuntu"
+      ;;
+    ubuntu24.04)
+      BASE_IMAGE_LABEL="Ubuntu 24.04 LTS (Noble cloud image)"
+      BASE_IMAGE_URL="${DEPLOYMENT_UBUNTU2404_IMAGE_URL:-${DEPLOYMENT_UBUNTU_IMAGE_URL:-https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img}}"
+      BASE_IMAGE_PATH="${DEPLOYMENT_UBUNTU2404_IMAGE_PATH:-${DEPLOYMENT_UBUNTU_IMAGE_PATH:-${REPO_ROOT}/infra/images/ubuntu/noble-server-cloudimg-amd64.img}}"
+      BASE_IMAGE_SHA256="${DEPLOYMENT_UBUNTU2404_IMAGE_SHA256:-${DEPLOYMENT_UBUNTU_IMAGE_SHA256:-}}"
+      BASE_IMAGE_SHA256SUMS_URL="${DEPLOYMENT_UBUNTU2404_SHA256SUMS_URL:-${DEPLOYMENT_UBUNTU_SHA256SUMS_URL:-https://cloud-images.ubuntu.com/noble/current/SHA256SUMS}}"
+      BASE_IMAGE_EXPECTED_NAME="$(basename "${BASE_IMAGE_URL}")"
+      TEMPLATE_OS_FAMILY="ubuntu"
       ;;
     debian12)
       BASE_IMAGE_LABEL="Debian 12 (genericcloud, pinned)"
@@ -521,7 +563,9 @@ fi
 
 if [[ -z "${DEPLOYMENT_VM_NAME:-}" ]]; then
   case "${OS_FAMILY}" in
-    ubuntu) DEPLOYMENT_VM_NAME="compose-traeffik-ubuntu" ;;
+    ubuntu24.04) DEPLOYMENT_VM_NAME="compose-traeffik-ubuntu" ;;
+    ubuntu22.04) DEPLOYMENT_VM_NAME="compose-traeffik-ubuntu2204" ;;
+    ubuntu20.04) DEPLOYMENT_VM_NAME="compose-traeffik-ubuntu2004" ;;
     debian12) DEPLOYMENT_VM_NAME="compose-traeffik-debian12" ;;
     debian13) DEPLOYMENT_VM_NAME="compose-traeffik-debian13" ;;
     opensuse-leap) DEPLOYMENT_VM_NAME="compose-traeffik-opensuse-leap" ;;
@@ -544,7 +588,7 @@ DEPLOYMENT_VM_GATEWAY="${DEPLOYMENT_VM_GATEWAY:-192.168.122.1}"
 DEPLOYMENT_DNS_SERVERS="${DEPLOYMENT_DNS_SERVERS:-1.1.1.1,8.8.8.8}"
 if [[ -z "${DEPLOYMENT_SSH_USER:-}" ]]; then
   case "${OS_FAMILY}" in
-    ubuntu) DEPLOYMENT_SSH_USER="ubuntu" ;;
+    ubuntu24.04|ubuntu22.04|ubuntu20.04) DEPLOYMENT_SSH_USER="ubuntu" ;;
     debian12) DEPLOYMENT_SSH_USER="debian" ;;
     debian13) DEPLOYMENT_SSH_USER="debian" ;;
     opensuse-leap) DEPLOYMENT_SSH_USER="opensuse" ;;
@@ -570,6 +614,20 @@ DEPLOYMENT_LIBVIRT_ATTACH_CLOUDINIT_AS_SCSI="${DEPLOYMENT_LIBVIRT_ATTACH_CLOUDIN
 DEPLOYMENT_LIBVIRT_REMOVE_IDE_CONTROLLER="${DEPLOYMENT_LIBVIRT_REMOVE_IDE_CONTROLLER:-false}"
 DEPLOYMENT_UBUNTU_IMAGE_URL="${DEPLOYMENT_UBUNTU_IMAGE_URL:-https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img}"
 DEPLOYMENT_UBUNTU_IMAGE_PATH="${DEPLOYMENT_UBUNTU_IMAGE_PATH:-${REPO_ROOT}/infra/images/ubuntu/noble-server-cloudimg-amd64.img}"
+DEPLOYMENT_UBUNTU_IMAGE_SHA256="${DEPLOYMENT_UBUNTU_IMAGE_SHA256:-}"
+DEPLOYMENT_UBUNTU_SHA256SUMS_URL="${DEPLOYMENT_UBUNTU_SHA256SUMS_URL:-https://cloud-images.ubuntu.com/noble/current/SHA256SUMS}"
+DEPLOYMENT_UBUNTU2004_IMAGE_URL="${DEPLOYMENT_UBUNTU2004_IMAGE_URL:-https://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-amd64.img}"
+DEPLOYMENT_UBUNTU2004_IMAGE_PATH="${DEPLOYMENT_UBUNTU2004_IMAGE_PATH:-${REPO_ROOT}/infra/images/ubuntu/focal-server-cloudimg-amd64.img}"
+DEPLOYMENT_UBUNTU2004_IMAGE_SHA256="${DEPLOYMENT_UBUNTU2004_IMAGE_SHA256:-}"
+DEPLOYMENT_UBUNTU2004_SHA256SUMS_URL="${DEPLOYMENT_UBUNTU2004_SHA256SUMS_URL:-https://cloud-images.ubuntu.com/focal/current/SHA256SUMS}"
+DEPLOYMENT_UBUNTU2204_IMAGE_URL="${DEPLOYMENT_UBUNTU2204_IMAGE_URL:-https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img}"
+DEPLOYMENT_UBUNTU2204_IMAGE_PATH="${DEPLOYMENT_UBUNTU2204_IMAGE_PATH:-${REPO_ROOT}/infra/images/ubuntu/jammy-server-cloudimg-amd64.img}"
+DEPLOYMENT_UBUNTU2204_IMAGE_SHA256="${DEPLOYMENT_UBUNTU2204_IMAGE_SHA256:-}"
+DEPLOYMENT_UBUNTU2204_SHA256SUMS_URL="${DEPLOYMENT_UBUNTU2204_SHA256SUMS_URL:-https://cloud-images.ubuntu.com/jammy/current/SHA256SUMS}"
+DEPLOYMENT_UBUNTU2404_IMAGE_URL="${DEPLOYMENT_UBUNTU2404_IMAGE_URL:-${DEPLOYMENT_UBUNTU_IMAGE_URL}}"
+DEPLOYMENT_UBUNTU2404_IMAGE_PATH="${DEPLOYMENT_UBUNTU2404_IMAGE_PATH:-${DEPLOYMENT_UBUNTU_IMAGE_PATH}}"
+DEPLOYMENT_UBUNTU2404_IMAGE_SHA256="${DEPLOYMENT_UBUNTU2404_IMAGE_SHA256:-${DEPLOYMENT_UBUNTU_IMAGE_SHA256}}"
+DEPLOYMENT_UBUNTU2404_SHA256SUMS_URL="${DEPLOYMENT_UBUNTU2404_SHA256SUMS_URL:-${DEPLOYMENT_UBUNTU_SHA256SUMS_URL}}"
 DEPLOYMENT_GENTOO_OPENRC_MANIFEST_PATH="${DEPLOYMENT_GENTOO_OPENRC_MANIFEST_PATH:-${REPO_ROOT}/experiments/gentoo-qemu/manifests/gentoo-openrc-stage3-hostkernel-20260222T170100Z.yaml}"
 DEPLOYMENT_GENTOO_SYSTEMD_MANIFEST_PATH="${DEPLOYMENT_GENTOO_SYSTEMD_MANIFEST_PATH:-${REPO_ROOT}/experiments/gentoo-qemu/manifests/gentoo-systemd-stage3-hostkernel-20260222T170100Z.yaml}"
 DEPLOYMENT_TF_STATE_PATH="${DEPLOYMENT_TF_STATE_PATH:-}"

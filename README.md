@@ -74,6 +74,7 @@ For detailed TLS workflows, see:
 - **Whoami**: `https://whoami.${DEV_DOMAIN}` (default stack; uses Traefik HTTPS)
 - **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth; enabled by default)
 - **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (profile `stepca`; enabled by default)
+- **OpenWebUI**: `https://openwebui.${DEV_DOMAIN}` (profile `webui`)
 
 <a id="services"></a>
 ## Services
@@ -81,6 +82,7 @@ For detailed TLS workflows, see:
 - [Traefik](services/traefik/README.md) - reverse proxy and routing core.
 - [Whoami](services/whoami/README.md) - demo service used for routing tests.
 - [DNS (BIND)](services/dns-bind/README.md) - optional profile `bind`.
+- [OpenWebUI](services/openwebui/README.md) - optional profile `webui`.
 - [Certbot](services/certbot/README.md) - optional profile `le`.
 - [Step-CA](services/step-ca/README.md) - optional profile `stepca`.
 

@@ -25,6 +25,8 @@ ROCKETCHAT_MANIFEST="$REPO_ROOT/deployment/projects/traefik-rocketchat/manifest.
 GITLAB_MANIFEST="$REPO_ROOT/deployment/projects/traefik-gitlab/manifest.json"
 DNS_BIND_MANIFEST="$REPO_ROOT/deployment/projects/traefik-dns-bind/manifest.json"
 LITELLM_MANIFEST="$REPO_ROOT/deployment/projects/traefik-litellm/manifest.json"
+DOCLING_MANIFEST="$REPO_ROOT/deployment/projects/traefik-docling/manifest.json"
+WEBUI_MANIFEST="$REPO_ROOT/deployment/projects/traefik-webui/manifest.json"
 
 check_command "jq"
 check_command "make"
@@ -61,8 +63,14 @@ fi
 if [ ! -f "$LITELLM_MANIFEST" ]; then
     log_error "Missing traefik-litellm manifest: $LITELLM_MANIFEST"
 fi
+if [ ! -f "$DOCLING_MANIFEST" ]; then
+    log_error "Missing traefik-docling manifest: $DOCLING_MANIFEST"
+fi
+if [ ! -f "$WEBUI_MANIFEST" ]; then
+    log_error "Missing traefik-webui manifest: $WEBUI_MANIFEST"
+fi
 list_output="$(make -s -C "$REPO_ROOT" deployment-project-list)"
-expected_list=$'traefik-stepca\ntraefik-keycloak\ntraefik-observability\ntraefik-wikijs\ntraefik-semaphoreui\ntraefik-rocketchat\ntraefik-gitlab\ntraefik-dns-bind\ntraefik-litellm'
+expected_list=$'traefik-stepca\ntraefik-keycloak\ntraefik-observability\ntraefik-wikijs\ntraefik-semaphoreui\ntraefik-rocketchat\ntraefik-gitlab\ntraefik-dns-bind\ntraefik-litellm\ntraefik-docling\ntraefik-webui'
 if [ "$list_output" != "$expected_list" ]; then
     log_error "deployment-project-list output drifted. Expected:\n${expected_list}\nGot:\n${list_output}"
 fi
@@ -97,6 +105,12 @@ if ! jq -e '.projects[] | select(.id=="traefik-dns-bind") | .manifest == "deploy
 fi
 if ! jq -e '.projects[] | select(.id=="traefik-litellm") | .manifest == "deployment/projects/traefik-litellm/manifest.json"' "$CATALOG" >/dev/null; then
     log_error "Catalog entry for traefik-litellm is missing or points to an unexpected manifest path"
+fi
+if ! jq -e '.projects[] | select(.id=="traefik-docling") | .manifest == "deployment/projects/traefik-docling/manifest.json"' "$CATALOG" >/dev/null; then
+    log_error "Catalog entry for traefik-docling is missing or points to an unexpected manifest path"
+fi
+if ! jq -e '.projects[] | select(.id=="traefik-webui") | .manifest == "deployment/projects/traefik-webui/manifest.json"' "$CATALOG" >/dev/null; then
+    log_error "Catalog entry for traefik-webui is missing or points to an unexpected manifest path"
 fi
 
 if ! jq -e '
@@ -272,6 +286,40 @@ if ! jq -e '
     .public_host == "litellm.local.test"
 ' "$LITELLM_MANIFEST" >/dev/null; then
   log_error "traefik-litellm manifest contract is invalid"
+fi
+
+if ! jq -e '
+    .id == "traefik-docling" and
+    (.description | type == "string" and length > 0) and
+    (.repo_url | type == "string" and length > 0) and
+    (.repo_ref | test("^[0-9a-f]{40}$")) and
+    .compose_profile == "docling" and
+    (.services == ["traefik", "docling"]) and
+    .deploy_playbook == "deployment/ansible/playbooks/project_deploy.yml" and
+    (.required_env | index("BASE_DOMAIN")) and
+    (.required_env | index("DEV_DOMAIN")) and
+    .tls_mode == "stepca-acme" and
+    (.depends_on_projects == ["traefik-stepca"]) and
+    .public_host == "docling.local.test"
+' "$DOCLING_MANIFEST" >/dev/null; then
+  log_error "traefik-docling manifest contract is invalid"
+fi
+
+if ! jq -e '
+    .id == "traefik-webui" and
+    (.description | type == "string" and length > 0) and
+    (.repo_url | type == "string" and length > 0) and
+    (.repo_ref | test("^[0-9a-f]{40}$")) and
+    .compose_profile == "webui" and
+    (.services == ["traefik", "openwebui"]) and
+    .deploy_playbook == "deployment/ansible/playbooks/project_deploy.yml" and
+    (.required_env | index("BASE_DOMAIN")) and
+    (.required_env | index("DEV_DOMAIN")) and
+    .tls_mode == "stepca-acme" and
+    (.depends_on_projects == ["traefik-stepca"]) and
+    .public_host == "openwebui.local.test"
+' "$WEBUI_MANIFEST" >/dev/null; then
+  log_error "traefik-webui manifest contract is invalid"
 fi
 
 

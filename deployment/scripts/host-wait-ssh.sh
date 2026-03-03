@@ -9,7 +9,7 @@ usage() {
 Usage:
   deployment/scripts/host-wait-ssh.sh [--host IP] [--user USER] [--port PORT] [--identity PATH]
                            [--target <libvirt|qemu|proxmox>]
-                           [--os <ubuntu|debian|debian12|debian13|gentoo|opensuse-leap|almalinux9|rockylinux9|fedora-cloud>]
+                           [--os <ubuntu|ubuntu20.04|ubuntu22.04|ubuntu24.04|debian|debian12|debian13|gentoo|opensuse-leap|almalinux9|rockylinux9|fedora-cloud>]
                            [--init <openrc|systemd>] [--terraform-dir DIR] [--state-path FILE]
                            [--timeout SECONDS] [--interval SECONDS] [--skip-cloud-init-wait]
 
@@ -51,9 +51,13 @@ validate_target_os_init() {
     *) die "Unsupported --target '${TARGET}'. Supported values: libvirt, qemu, proxmox" ;;
   esac
   case "${OS_FAMILY}" in
-    ubuntu|debian|debian12|debian13|gentoo|opensuse-leap|almalinux9|rockylinux9|fedora-cloud) ;;
-    *) die "Unsupported --os '${OS_FAMILY}'. Supported values: ubuntu, debian, debian12, debian13, gentoo, opensuse-leap, almalinux9, rockylinux9, fedora-cloud" ;;
+    ubuntu|ubuntu20.04|ubuntu22.04|ubuntu24.04|debian|debian12|debian13|gentoo|opensuse-leap|almalinux9|rockylinux9|fedora-cloud) ;;
+    *) die "Unsupported --os '${OS_FAMILY}'. Supported values: ubuntu, ubuntu20.04, ubuntu22.04, ubuntu24.04, debian, debian12, debian13, gentoo, opensuse-leap, almalinux9, rockylinux9, fedora-cloud" ;;
   esac
+
+  if [[ "${OS_FAMILY}" == "ubuntu" ]]; then
+    OS_FAMILY="ubuntu24.04"
+  fi
 
   if [[ "${OS_FAMILY}" == "debian" ]]; then
     OS_FAMILY="debian13"

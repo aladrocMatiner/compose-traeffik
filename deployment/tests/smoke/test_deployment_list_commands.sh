@@ -22,7 +22,7 @@ check_command "grep"
 os_output="$(make -s -C "$REPO_ROOT" deployment-list-os)"
 target_output="$(make -s -C "$REPO_ROOT" deployment-list-targets)"
 
-expected_os=$'ubuntu\ndebian12\ndebian13\ndebian\ngentoo\nopensuse-leap\nalmalinux9\nrockylinux9\nfedora-cloud'
+expected_os=$'ubuntu\nubuntu20.04\nubuntu22.04\nubuntu24.04\ndebian12\ndebian13\ndebian\ngentoo\nopensuse-leap\nalmalinux9\nrockylinux9\nfedora-cloud'
 if [ "$os_output" != "$expected_os" ]; then
     log_error "deployment-list-os output drifted.\nExpected:\n${expected_os}\nGot:\n${os_output}"
 fi

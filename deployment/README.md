@@ -8,6 +8,13 @@ Prerequisitos:
 - `ansible-playbook`
 - conectividad libvirt local (`qemu:///system`)
 
+Selectores Ubuntu LTS soportados en provisioning:
+
+- `ubuntu20.04`
+- `ubuntu22.04`
+- `ubuntu24.04`
+- `ubuntu` (alias retrocompatible de `ubuntu24.04`)
+
 Listado de proyectos disponibles:
 
 ```bash
@@ -26,6 +33,8 @@ make deployment-project project=traefik-semaphoreui target=qemu os=ubuntu
 make deployment-project project=traefik-rocketchat target=qemu os=ubuntu
 make deployment-project project=traefik-gitlab target=qemu os=ubuntu
 make deployment-project project=traefik-litellm target=qemu os=ubuntu
+make deployment-project project=traefik-webui target=qemu os=ubuntu
+make deployment-project project=traefik-docling target=qemu os=ubuntu
 ```
 
 Notas para `traefik-dns-bind`:
@@ -41,3 +50,15 @@ Notas para `traefik-litellm`:
 - Puedes sobreescribir backend/modelo con `OPENAI_API_BASE` y `LITELLM_MODEL` en `.env`.
 - El rol admin en LiteLLM se resuelve desde Keycloak: se crea `litellm_proxy_admin` y se asigna al usuario bootstrap (`KEYCLOAK_BOOTSTRAP_USERNAME`, por defecto `jose.romero`).
 - La UI/admin de LiteLLM queda accesible en `https://litellm.local.test/ui`.
+
+Notas para `traefik-docling`:
+
+- Estado actual: contrato de despliegue disponible en catálogo, pero runtime de servicio Docling no implementado.
+- `make deployment-project project=traefik-docling ...` falla de forma intencional antes de `docker compose up -d`.
+- Camino de transición esperado: implementar `services/docling/compose.yml` y soporte del profile `docling`; después retirar el guardrail de "deployment-only".
+
+Notas para `traefik-webui`:
+
+- Despliega `openwebui` detras de Traefik (`https://openwebui.local.test` por defecto).
+- Depende de `traefik-stepca` para TLS por defecto (`tls_mode=stepca-acme`), con override soportado via `tls_mode=letsencrypt-acme`.
+- Usa contrato de manifiesto cerrado: solo despliega `traefik` + `openwebui` (sin overrides ad-hoc de servicios).

@@ -12,7 +12,8 @@
   "deploy_playbook": "deployment/ansible/playbooks/project_deploy.yml",
   "required_env": [
     "BASE_DOMAIN",
-    "DEV_DOMAIN"
+    "DEV_DOMAIN",
+    "OPENAI_API_KEY"
   ],
   "tls_mode": "stepca-acme",
   "depends_on_projects": [

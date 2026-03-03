@@ -1,0 +1,38 @@
+services:
+  openwebui:
+    image: ${OPENWEBUI_IMAGE:-ghcr.io/open-webui/open-webui:main}
+    container_name: openwebui
+    restart: unless-stopped
+    profiles:
+      - webui
+    environment:
+      WEBUI_URL: https://${OPENWEBUI_HOSTNAME:-openwebui}.${DEV_DOMAIN}
+      ENABLE_SIGNUP: ${OPENWEBUI_ENABLE_SIGNUP:-false}
+      WEBUI_SECRET_KEY: ${OPENWEBUI_SECRET_KEY:-}
+      WEBUI_ADMIN_EMAIL: ${OPENWEBUI_ADMIN_EMAIL:-}
+      WEBUI_ADMIN_PASSWORD: ${OPENWEBUI_ADMIN_PASSWORD:-}
+      ENABLE_PERSISTENT_CONFIG: ${OPENWEBUI_ENABLE_PERSISTENT_CONFIG:-true}
+      OLLAMA_BASE_URL: ${OPENWEBUI_OLLAMA_BASE_URL:-}
+      OPENAI_API_BASE_URLS: ${OPENWEBUI_OPENAI_API_BASE_URLS:-}
+      OPENAI_API_KEYS: ${OPENWEBUI_OPENAI_API_KEYS:-}
+    volumes:
+      - openwebui-data:/app/backend/data
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-proxy"
+      - "traefik.http.routers.openwebui-web.rule=Host(`${OPENWEBUI_HOSTNAME:-openwebui}.${DEV_DOMAIN}`)"
+      - "traefik.http.routers.openwebui-web.entrypoints=web"
+      - "traefik.http.routers.openwebui-web.middlewares=${HTTP_TO_HTTPS_MIDDLEWARE:-redirect-to-https@file}"
+      - "traefik.http.routers.openwebui-websecure.rule=Host(`${OPENWEBUI_HOSTNAME:-openwebui}.${DEV_DOMAIN}`)"
+      - "traefik.http.routers.openwebui-websecure.entrypoints=websecure"
+      - "traefik.http.routers.openwebui-websecure.tls=true"
+      - "traefik.http.routers.openwebui-websecure.tls.certresolver=${TLS_CERT_RESOLVER}"
+      - "traefik.http.routers.openwebui-websecure.middlewares=security-headers@file"
+      - "traefik.http.routers.openwebui-websecure.service=openwebui-service"
+      - "traefik.http.services.openwebui-service.loadbalancer.server.port=8080"
+    networks:
+      - proxy
+
+volumes:
+  openwebui-data:
+    name: openwebui-data

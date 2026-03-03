@@ -22,6 +22,7 @@ SHELL := /bin/bash # Ensure bash is used for shell commands
         stepca-trust-install stepca-trust-uninstall stepca-trust-verify \
         hosts-generate hosts-apply hosts-remove hosts-status \
         bind-up bind-down bind-restart bind-logs bind-status bind-provision bind-provision-dry bind-port-check \
+        webui-up webui-down webui-restart webui-logs webui-status \
         deployment deployment-ubuntu deployment-plan deployment-destroy deployment-output deployment-ssh deployment-list deployment-list-os deployment-list-targets \
         deployment-project deployment-project-list \
         deployment-wait deployment-bootstrap deployment-bootstrap-check deployment-ready deployment-validate deployment-ansible-syntax deployment-ansible-lint \
@@ -45,7 +46,8 @@ COMPOSE_FILES := \
   -f services/keycloak/compose.yml \
   -f services/semaphoreui/compose.yml \
   -f services/rocketchat/compose.yml \
-  -f services/gitlab/compose.yml
+  -f services/gitlab/compose.yml \
+  -f services/openwebui/compose.yml
 
 # Pin compose project directory/name to avoid cross-CWD conflicts.
 COMPOSE_PROJECT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
@@ -89,7 +91,7 @@ DEPLOYMENT_PROJECT ?=
 DEPLOYMENT_PROJECT_TARGET ?= qemu
 DEPLOYMENT_PROJECT_OS ?= ubuntu
 DEPLOYMENT_PROJECT_TLS_MODE ?=
-DEPLOYMENT_SUPPORTED_OS_SELECTORS := ubuntu debian12 debian13 debian gentoo opensuse-leap almalinux9 rockylinux9 fedora-cloud
+DEPLOYMENT_SUPPORTED_OS_SELECTORS := ubuntu ubuntu20.04 ubuntu22.04 ubuntu24.04 debian12 debian13 debian gentoo opensuse-leap almalinux9 rockylinux9 fedora-cloud
 DEPLOYMENT_SUPPORTED_TARGET_SELECTORS := qemu
 
 # Lowercase convenience vars (GNU Make CLI style), e.g. `make deployment os=gentoo init=openrc`
@@ -133,6 +135,18 @@ endif
 ifneq (,$(filter ubuntu,$(MAKECMDGOALS)))
 DEPLOYMENT_OS := ubuntu
 $(eval ubuntu:;@:)
+endif
+ifneq (,$(filter ubuntu24.04,$(MAKECMDGOALS)))
+DEPLOYMENT_OS := ubuntu24.04
+$(eval ubuntu24.04:;@:)
+endif
+ifneq (,$(filter ubuntu22.04,$(MAKECMDGOALS)))
+DEPLOYMENT_OS := ubuntu22.04
+$(eval ubuntu22.04:;@:)
+endif
+ifneq (,$(filter ubuntu20.04,$(MAKECMDGOALS)))
+DEPLOYMENT_OS := ubuntu20.04
+$(eval ubuntu20.04:;@:)
 endif
 ifneq (,$(filter debian,$(MAKECMDGOALS)))
 DEPLOYMENT_OS := debian13
@@ -338,6 +352,27 @@ bind-provision-dry:
 bind-port-check:
 	@"$(SCRIPTS_DIR)/bind-port-check.sh"
 
+# --- OpenWebUI ---
+
+webui-up:
+	@echo "Starting OpenWebUI service (profile: webui)..."
+	COMPOSE_PROFILES=webui "$(SCRIPTS_DIR)/compose.sh" --profile webui $(COMPOSE_OPTS) up -d openwebui
+
+webui-down:
+	@echo "Stopping OpenWebUI service..."
+	COMPOSE_PROFILES=webui "$(SCRIPTS_DIR)/compose.sh" --profile webui $(COMPOSE_OPTS) stop openwebui || true
+	COMPOSE_PROFILES=webui "$(SCRIPTS_DIR)/compose.sh" --profile webui $(COMPOSE_OPTS) rm -f openwebui || true
+
+webui-restart: webui-down webui-up
+
+webui-logs:
+	@echo "Showing OpenWebUI service logs..."
+	COMPOSE_PROFILES=webui "$(SCRIPTS_DIR)/compose.sh" --profile webui $(COMPOSE_OPTS) logs -f openwebui
+
+webui-status:
+	@echo "OpenWebUI service status:"
+	COMPOSE_PROFILES=webui "$(SCRIPTS_DIR)/compose.sh" --profile webui $(COMPOSE_OPTS) ps openwebui
+
 # --- VM Deployment Provisioning (Phase 1 bootstrap host) ---
 
 deployment:
@@ -485,6 +520,13 @@ help:
 	@echo "  bind-provision-dry    Print the generated zone file without writing."
 	@echo "  bind-port-check       Validate host port 53 is free before starting BIND."
 	@echo ""
+	@echo "OpenWebUI:"
+	@echo "  webui-up              Start OpenWebUI behind Traefik (profile: webui)."
+	@echo "  webui-down            Stop and remove the OpenWebUI container."
+	@echo "  webui-restart         Restart OpenWebUI (webui-down + webui-up)."
+	@echo "  webui-logs            Follow OpenWebUI logs."
+	@echo "  webui-status          Show OpenWebUI service status."
+	@echo ""
 	@echo "VM Deployment Provisioning (Phase 1: libvirt + proxmox targets):"
 	@echo "  deployment            Provision a VM (default: target=libvirt os=ubuntu)."
 	@echo "  deployment-plan       Run terraform plan for the deployment VM."
@@ -506,11 +548,11 @@ help:
 	@echo "  deployment-ubuntu     Alias for 'make deployment DEPLOYMENT_TARGET=libvirt DEPLOYMENT_OS=ubuntu'."
 	@echo "                       You can also run: make deployment ubuntu"
 	@echo "                       (GNU Make does not support custom flags like '--ubuntu')."
-	@echo "  New selector syntax:  make deployment target=<libvirt|qemu|proxmox> os=<ubuntu|debian12|debian13|gentoo|opensuse-leap|almalinux9|rockylinux9|fedora-cloud> [init=<openrc|systemd>]"
-	@echo "                       'debian' is accepted as an alias of 'debian13'; qemu maps to libvirt."
+	@echo "  New selector syntax:  make deployment target=<libvirt|qemu|proxmox> os=<ubuntu|ubuntu20.04|ubuntu22.04|ubuntu24.04|debian12|debian13|gentoo|opensuse-leap|almalinux9|rockylinux9|fedora-cloud> [init=<openrc|systemd>]"
+	@echo "                       'ubuntu' is accepted as an alias of 'ubuntu24.04'; 'debian' is an alias of 'debian13'; qemu maps to libvirt."
 	@echo "                       'init' is only valid for os=gentoo and defaults to openrc."
-	@echo "                       target=proxmox currently supports os=ubuntu."
-	@echo "                       Docker bootstrap/checks currently support ubuntu, debian12 and debian13; gentoo remains separate/experimental."
+	@echo "                       target=proxmox currently supports os=ubuntu24.04 (alias: ubuntu)."
+	@echo "                       Docker bootstrap/checks currently support ubuntu20.04, ubuntu22.04, ubuntu24.04, debian12 and debian13; gentoo remains separate/experimental."
 	@echo "  SSH selector syntax:  make deployment-ssh target=<qemu|proxmox> name=<vm-name>"
 	@echo "                       make deployment-list target=<qemu|proxmox>"
 	@echo "  Project workflow:     make deployment-project project=<id> [target=<qemu>] [os=<ubuntu>] [tls_mode=<stepca-acme|letsencrypt-acme>]"
@@ -522,6 +564,6 @@ help:
 	@echo ""
 	@echo "Profiles:"
 	@echo "  Use COMPOSE_PROFILES=<profile_name> before make commands to activate profiles."
-	@echo "  Available profiles: bind, le, stepca, keycloak"
+	@echo "  Available profiles: bind, le, stepca, keycloak, webui"
 	@echo "  Example: COMPOSE_PROFILES=le make up"
 	@echo ""

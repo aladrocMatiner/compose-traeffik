@@ -74,6 +74,7 @@ Guias de TLS:
 - **Whoami**: `https://whoami.${DEV_DOMAIN}` (stack por defecto)
 - **Traefik dashboard**: `https://traefik.${DEV_DOMAIN}` (BasicAuth; habilitado por defecto)
 - **Step-CA UI**: `https://step-ca.${DEV_DOMAIN}` (perfil `stepca`; habilitado por defecto)
+- **OpenWebUI**: `https://openwebui.${DEV_DOMAIN}` (perfil `webui`)
 
 <a id="services"></a>
 ## Servicios
@@ -81,6 +82,7 @@ Guias de TLS:
 - [Traefik](services/traefik/README.es.md) - reverse proxy y nucleo de routing.
 - [Whoami](services/whoami/README.es.md) - servicio demo para pruebas de routing.
 - [DNS (BIND)](services/dns-bind/README.es.md) - perfil opcional `bind`.
+- [OpenWebUI](services/openwebui/README.es.md) - perfil opcional `webui`.
 - [Certbot](services/certbot/README.es.md) - perfil opcional `le`.
 - [Step-CA](services/step-ca/README.es.md) - perfil opcional `stepca`.
 

@@ -46,6 +46,23 @@ if ! printf '%s' "$unsupported_out" | grep -q "Unsupported project"; then
     log_error "Unsupported project error is not explicit"
 fi
 
+set +e
+docling_out="$($RUNNER run --project traefik-docling 2>&1)"
+docling_rc=$?
+set -e
+if [ "$docling_rc" -eq 0 ]; then
+    log_error "traefik-docling must fail while runtime service implementation is pending"
+fi
+if ! printf '%s' "$docling_out" | grep -q "deployment-contract only"; then
+    log_error "traefik-docling guardrail must declare deployment-only contract status"
+fi
+if ! printf '%s' "$docling_out" | grep -q "No compose apply was attempted"; then
+    log_error "traefik-docling guardrail must confirm compose apply was skipped"
+fi
+if ! printf '%s' "$docling_out" | grep -q "Transition path"; then
+    log_error "traefik-docling guardrail must provide explicit transition guidance"
+fi
+
 if ! awk '
   /run_stage provision/ { p=NR }
   /run_stage wait/ { w=NR }
@@ -96,6 +113,15 @@ if [ -z "$deps_line" ] || [ -z "$check_line" ] || [ -z "$bootstrap_line" ]; then
 fi
 if [ "$check_line" -le "$deps_line" ] || [ "$check_line" -ge "$bootstrap_line" ]; then
     log_error "dependency preflight must run after manifest dependency resolution and before system_bootstrap"
+fi
+
+docling_guard_line="$(grep -n 'check_project_runtime_implementation \"\${PROJECT_ID}\" \"\${manifest_path}\"' "$RUNNER" | head -n1 | cut -d: -f1)"
+provision_line="$(grep -n 'run_stage provision' "$RUNNER" | head -n1 | cut -d: -f1)"
+if [ -z "$docling_guard_line" ] || [ -z "$provision_line" ]; then
+    log_error "docling pre-compose guardrail ordering markers are missing in deployment-project runner"
+fi
+if [ "$docling_guard_line" -ge "$provision_line" ]; then
+    log_error "docling pre-compose guardrail must execute before provision stage"
 fi
 
 log_success "Deployment project workflow contract test passed."

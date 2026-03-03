@@ -226,6 +226,20 @@
     mode: "0644"
   when: "'litellm' in deployment_project_manifest_data.services"
 
+- name: Backport openwebui compose definition from controller workspace
+  ansible.builtin.file:
+    path: "{{ deployment_project_repo_dir }}/services/openwebui"
+    state: directory
+    mode: "0755"
+  when: "'openwebui' in deployment_project_manifest_data.services"
+
+- name: Backport openwebui compose definition from controller workspace
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../../services/openwebui/compose.yml"
+    dest: "{{ deployment_project_repo_dir }}/services/openwebui/compose.yml"
+    mode: "0644"
+  when: "'openwebui' in deployment_project_manifest_data.services"
+
 - name: Backport keycloak compose definition from controller workspace
   ansible.builtin.file:
     path: "{{ deployment_project_repo_dir }}/services/keycloak"
