@@ -144,12 +144,32 @@ if ! grep -q "auto_reconcile_keycloak_dependents" "$RUNNER"; then
     log_error "deployment-project runner must expose keycloak dependent auto-reconciliation helper"
 fi
 
+if ! grep -q "auto_reconcile_stepca_dependents" "$RUNNER"; then
+    log_error "deployment-project runner must expose stepca dependent auto-reconciliation helper"
+fi
+
 if ! grep -q "DEPLOYMENT_PROJECT_AUTO_RECONCILE_KEYCLOAK_DEPENDENTS" "$RUNNER"; then
     log_error "deployment-project runner must expose env toggle for keycloak dependent auto-reconciliation"
 fi
 
+if ! grep -q "DEPLOYMENT_PROJECT_AUTO_RECONCILE_STEPCA_DEPENDENTS" "$RUNNER"; then
+    log_error "deployment-project runner must expose env toggle for stepca dependent auto-reconciliation"
+fi
+
+if ! grep -q "DEPLOYMENT_PROJECT_STEPCA_RECONCILE_RUNNING_ONLY" "$RUNNER"; then
+    log_error "deployment-project runner must expose running-only toggle for stepca dependent auto-reconciliation"
+fi
+
+if ! grep -q "DEPLOYMENT_PROJECT_STEPCA_RECONCILE_EXCLUDE" "$RUNNER"; then
+    log_error "deployment-project runner must expose exclusion list for stepca dependent auto-reconciliation"
+fi
+
 if ! grep -q "Auto-reconciling Keycloak dependent project" "$RUNNER"; then
     log_error "deployment-project runner must emit explicit logs for keycloak dependent auto-reconciliation"
+fi
+
+if ! grep -q "Auto-reconciling StepCA dependent project" "$RUNNER"; then
+    log_error "deployment-project runner must emit explicit logs for stepca dependent auto-reconciliation"
 fi
 
 if ! grep -q "Missing required project dependencies in local registry" "$RUNNER"; then
@@ -194,6 +214,14 @@ if [ -z "$record_line" ] || [ -z "$reconcile_line" ]; then
 fi
 if [ "$reconcile_line" -le "$record_line" ]; then
     log_error "keycloak dependent auto-reconciliation must run after deployment state is recorded"
+fi
+
+stepca_reconcile_line="$(grep -n 'auto_reconcile_stepca_dependents' "$RUNNER" | tail -n1 | cut -d: -f1)"
+if [ -z "$record_line" ] || [ -z "$stepca_reconcile_line" ]; then
+    log_error "stepca dependent auto-reconciliation ordering markers are missing in deployment-project runner"
+fi
+if [ "$stepca_reconcile_line" -le "$record_line" ]; then
+    log_error "stepca dependent auto-reconciliation must run after deployment state is recorded"
 fi
 
 log_success "Deployment project workflow contract test passed."

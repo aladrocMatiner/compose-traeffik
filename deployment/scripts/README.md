@@ -118,6 +118,16 @@ Keycloak bootstrap + OIDC operational contract:
 - After `project=traefik-keycloak` succeeds, the runner auto-reconciles already deployed OIDC dependents (projects that declare `depends_on_projects` containing `traefik-keycloak` and `oidc.enabled=true`) based on local registry state (`deployment/state/projects.json`).
 - Auto-reconciliation is enabled by default and can be disabled with:
   - `DEPLOYMENT_PROJECT_AUTO_RECONCILE_KEYCLOAK_DEPENDENTS=false`
+- After `project=traefik-stepca` succeeds, the runner auto-reconciles deployed StepCA/TLS dependents that declare:
+  - `depends_on_projects` including `traefik-stepca`
+  - `tls_mode=stepca-acme`
+  - `traefik` in manifest services
+- StepCA dependent auto-reconcile defaults to running VMs only in local `qemu/libvirt` demo flow.
+- StepCA dependent auto-reconcile defaults to exclude `traefik-docling` for the current demo.
+- StepCA auto-reconcile toggles:
+  - `DEPLOYMENT_PROJECT_AUTO_RECONCILE_STEPCA_DEPENDENTS=false`
+  - `DEPLOYMENT_PROJECT_STEPCA_RECONCILE_RUNNING_ONLY=false`
+  - `DEPLOYMENT_PROJECT_STEPCA_RECONCILE_EXCLUDE=traefik-docling,another-project`
 
 Hostname contract for web projects:
 
