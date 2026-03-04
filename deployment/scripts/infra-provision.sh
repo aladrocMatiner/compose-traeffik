@@ -179,11 +179,15 @@ fetch_checksum_from_sums() {
   checksum="$(
     curl -fsSL "${sums_url}" | awk -v f="${image_name}" -v algo="${algorithm}" '
       BEGIN { IGNORECASE=1 }
-      $2 == f && $1 ~ /^[0-9A-Fa-f]{32,128}$/ {
+      {
+        file = $2
+        sub(/^\*/, "", file)
+      }
+      file == f && $1 ~ /^[0-9A-Fa-f]+$/ && length($1) >= 32 && length($1) <= 128 {
         print tolower($1)
         exit
       }
-      toupper($1) == toupper(algo) && $2 == "(" f ")" && $3 == "=" && $4 ~ /^[0-9A-Fa-f]{32,128}$/ {
+      toupper($1) == toupper(algo) && $2 == "(" f ")" && $3 == "=" && $4 ~ /^[0-9A-Fa-f]+$/ && length($4) >= 32 && length($4) <= 128 {
         print tolower($4)
         exit
       }

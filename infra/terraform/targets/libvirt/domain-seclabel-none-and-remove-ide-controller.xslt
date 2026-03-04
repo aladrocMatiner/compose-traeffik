@@ -16,7 +16,7 @@
     <xsl:copy>
       <xsl:apply-templates select="@*|node()"/>
       <xsl:if test="not(seclabel)">
-        <seclabel type="none" model="apparmor"/>
+        <seclabel type="none"/>
       </xsl:if>
     </xsl:copy>
   </xsl:template>
