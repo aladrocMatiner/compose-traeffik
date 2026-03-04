@@ -115,6 +115,9 @@ Keycloak bootstrap + OIDC operational contract:
 - OIDC clients are provisioned on demand only for deployed projects; clients are not globally pre-seeded.
 - Project manifests own OIDC client contract values under `oidc`:
   - `enabled`, `realm`, `client_id`, optional `redirect_uris`, optional `web_origins`
+- After `project=traefik-keycloak` succeeds, the runner auto-reconciles already deployed OIDC dependents (projects that declare `depends_on_projects` containing `traefik-keycloak` and `oidc.enabled=true`) based on local registry state (`deployment/state/projects.json`).
+- Auto-reconciliation is enabled by default and can be disabled with:
+  - `DEPLOYMENT_PROJECT_AUTO_RECONCILE_KEYCLOAK_DEPENDENTS=false`
 
 Hostname contract for web projects:
 

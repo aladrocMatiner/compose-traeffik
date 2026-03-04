@@ -140,6 +140,18 @@ if ! grep -q "check_dependencies_registry" "$RUNNER"; then
     log_error "deployment-project runner must validate dependencies from controller registry"
 fi
 
+if ! grep -q "auto_reconcile_keycloak_dependents" "$RUNNER"; then
+    log_error "deployment-project runner must expose keycloak dependent auto-reconciliation helper"
+fi
+
+if ! grep -q "DEPLOYMENT_PROJECT_AUTO_RECONCILE_KEYCLOAK_DEPENDENTS" "$RUNNER"; then
+    log_error "deployment-project runner must expose env toggle for keycloak dependent auto-reconciliation"
+fi
+
+if ! grep -q "Auto-reconciling Keycloak dependent project" "$RUNNER"; then
+    log_error "deployment-project runner must emit explicit logs for keycloak dependent auto-reconciliation"
+fi
+
 if ! grep -q "Missing required project dependencies in local registry" "$RUNNER"; then
     log_error "dependency preflight must emit explicit missing dependency message"
 fi
@@ -173,6 +185,15 @@ if [ -z "$docling_guard_line" ] || [ -z "$provision_line" ]; then
 fi
 if [ "$docling_guard_line" -ge "$provision_line" ]; then
     log_error "docling pre-compose guardrail must execute before provision stage"
+fi
+
+record_line="$(grep -n 'record_project_deployment' "$RUNNER" | head -n1 | cut -d: -f1)"
+reconcile_line="$(grep -n 'auto_reconcile_keycloak_dependents' "$RUNNER" | tail -n1 | cut -d: -f1)"
+if [ -z "$record_line" ] || [ -z "$reconcile_line" ]; then
+    log_error "keycloak dependent auto-reconciliation ordering markers are missing in deployment-project runner"
+fi
+if [ "$reconcile_line" -le "$record_line" ]; then
+    log_error "keycloak dependent auto-reconciliation must run after deployment state is recorded"
 fi
 
 log_success "Deployment project workflow contract test passed."
