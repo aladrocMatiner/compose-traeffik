@@ -1822,11 +1822,11 @@
       }}
   when: "'traefik' in deployment_project_manifest_data.services"
 
-- name: Set Traefik dashboard host aliases for traefik-dns-bind project
+- name: Remove legacy Traefik dashboard host aliases for traefik-dns-bind project
   ansible.builtin.lineinfile:
     path: "{{ deployment_project_repo_dir }}/.env"
     regexp: "^TRAEFIK_DASHBOARD_HOSTS="
-    line: "TRAEFIK_DASHBOARD_HOSTS=traefik-dns-bind.{{ deployment_project_base_domain_cmd.stdout | trim }},traefik-bind.{{ deployment_project_base_domain_cmd.stdout | trim }}"
+    state: absent
   when: deployment_project_manifest_data.id == "traefik-dns-bind"
 
 - name: Set whoami host for project
