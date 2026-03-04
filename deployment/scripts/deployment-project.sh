@@ -316,6 +316,41 @@ registry_get_project_field() {
   jq -r --arg id "${project_id}" --arg field "${field}" '.projects[$id][$field] // empty' "${PROJECT_REGISTRY_PATH}"
 }
 
+csv_contains_item() {
+  local csv="$1"
+  local item="$2"
+  local entry
+  local -a entries=()
+  IFS=',' read -r -a entries <<< "${csv}"
+  for entry in "${entries[@]}"; do
+    entry="${entry#"${entry%%[![:space:]]*}"}"
+    entry="${entry%"${entry##*[![:space:]]}"}"
+    if [[ "${entry}" == "${item}" ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+is_libvirt_vm_running() {
+  local vm_name="$1"
+  check_cmd virsh
+  local state
+  state="$(virsh domstate "${vm_name}" 2>/dev/null || true)"
+  [[ "${state}" =~ running ]]
+}
+
+list_stepca_tls_dependents() {
+  jq -r '
+    .projects[]
+    | select(.id != "traefik-stepca")
+    | select((.depends_on_projects // []) | index("traefik-stepca"))
+    | select(.tls_mode == "stepca-acme")
+    | select((.services // []) | index("traefik"))
+    | .id
+  ' "${CATALOG_PATH}"
+}
+
 list_keycloak_oidc_dependents() {
   jq -r '
     .projects[]
@@ -356,6 +391,61 @@ auto_reconcile_keycloak_dependents() {
 
     log "Auto-reconciling Keycloak dependent project=${dep_id} target=${dep_target} os=${dep_os}"
     DEPLOYMENT_PROJECT_SKIP_KEYCLOAK_AUTO_RECONCILE=true \
+      "${BASH_SOURCE[0]}" run \
+      --project "${dep_id}" \
+      --target "${dep_target}" \
+      --os "${dep_os}"
+  done
+}
+
+auto_reconcile_stepca_dependents() {
+  [[ "${PROJECT_ID}" == "traefik-stepca" ]] || return 0
+  [[ "${AUTO_RECONCILE_STEPCA_DEPENDENTS}" == "true" ]] || {
+    log "Skipping StepCA dependent reconciliation (DEPLOYMENT_PROJECT_AUTO_RECONCILE_STEPCA_DEPENDENTS=${AUTO_RECONCILE_STEPCA_DEPENDENTS})"
+    return 0
+  }
+  [[ "${SKIP_STEPCA_AUTO_RECONCILE}" == "true" ]] && return 0
+
+  local dep_id dep_host_ip dep_target dep_os dep_vm_name
+  local -a dependent_projects=()
+  mapfile -t dependent_projects < <(list_stepca_tls_dependents)
+  if [[ "${#dependent_projects[@]}" -eq 0 ]]; then
+    log "No StepCA TLS dependents declared in catalog; skipping auto-reconciliation."
+    return 0
+  fi
+
+  for dep_id in "${dependent_projects[@]}"; do
+    if csv_contains_item "${STEPCA_RECONCILE_EXCLUDE}" "${dep_id}"; then
+      log "Skipping StepCA dependent project=${dep_id}; excluded by DEPLOYMENT_PROJECT_STEPCA_RECONCILE_EXCLUDE."
+      continue
+    fi
+
+    dep_host_ip="$(registry_get_project_field "${dep_id}" "host_ip")"
+    if [[ -z "${dep_host_ip}" ]]; then
+      log "Skipping StepCA dependent project=${dep_id}; not present in local deployment registry."
+      continue
+    fi
+
+    dep_target="$(registry_get_project_field "${dep_id}" "target")"
+    dep_os="$(registry_get_project_field "${dep_id}" "os")"
+    dep_vm_name="$(registry_get_project_field "${dep_id}" "vm_name")"
+    [[ -n "${dep_target}" ]] || dep_target="${TARGET_INPUT}"
+    [[ -n "${dep_os}" ]] || dep_os="ubuntu"
+
+    if [[ "${STEPCA_RECONCILE_RUNNING_ONLY}" == "true" && ( "${dep_target}" == "qemu" || "${dep_target}" == "libvirt" ) ]]; then
+      if [[ -z "${dep_vm_name}" ]]; then
+        log "Skipping StepCA dependent project=${dep_id}; missing vm_name in registry for running-only mode."
+        continue
+      fi
+      if ! is_libvirt_vm_running "${dep_vm_name}"; then
+        log "Skipping StepCA dependent project=${dep_id}; VM not running (${dep_vm_name})."
+        continue
+      fi
+    fi
+
+    log "Auto-reconciling StepCA dependent project=${dep_id} target=${dep_target} os=${dep_os}"
+    DEPLOYMENT_PROJECT_SKIP_STEPCA_AUTO_RECONCILE=true \
+      DEPLOYMENT_PROJECT_SKIP_KEYCLOAK_AUTO_RECONCILE=true \
       "${BASH_SOURCE[0]}" run \
       --project "${dep_id}" \
       --target "${dep_target}" \
@@ -710,6 +800,7 @@ run_project() {
     --extra-vars "deployment_project_keycloak_bootstrap_username=${keycloak_bootstrap_username}"
 
   record_project_deployment "${PROJECT_ID}" "${TARGET_INPUT}" "${OS_SELECTOR}" "${deployment_vm_name}" "${deployment_tf_state_path}" "${host_ip}" "${ssh_user}"
+  auto_reconcile_stepca_dependents
   auto_reconcile_keycloak_dependents
   log "Project deployment finished successfully for project=${PROJECT_ID}"
 }
@@ -722,6 +813,10 @@ INIT_ARG=""
 IDENTITY_PATH="${DEPLOYMENT_SSH_PRIVATE_KEY_PATH:-}"
 SSH_PORT="${DEPLOYMENT_SSH_PORT:-22}"
 TLS_MODE_OVERRIDE=""
+AUTO_RECONCILE_STEPCA_DEPENDENTS="${DEPLOYMENT_PROJECT_AUTO_RECONCILE_STEPCA_DEPENDENTS:-true}"
+STEPCA_RECONCILE_RUNNING_ONLY="${DEPLOYMENT_PROJECT_STEPCA_RECONCILE_RUNNING_ONLY:-true}"
+STEPCA_RECONCILE_EXCLUDE="${DEPLOYMENT_PROJECT_STEPCA_RECONCILE_EXCLUDE:-traefik-docling}"
+SKIP_STEPCA_AUTO_RECONCILE="${DEPLOYMENT_PROJECT_SKIP_STEPCA_AUTO_RECONCILE:-false}"
 AUTO_RECONCILE_KEYCLOAK_DEPENDENTS="${DEPLOYMENT_PROJECT_AUTO_RECONCILE_KEYCLOAK_DEPENDENTS:-true}"
 SKIP_KEYCLOAK_AUTO_RECONCILE="${DEPLOYMENT_PROJECT_SKIP_KEYCLOAK_AUTO_RECONCILE:-false}"
 
