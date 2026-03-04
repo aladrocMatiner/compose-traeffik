@@ -4,7 +4,10 @@ options {
     listen-on-v6 { none; };
     allow-query { any; };
     recursion yes;
-    allow-recursion { localhost; localnets; };
+    allow-recursion { any; };
+    allow-recursion-on { any; };
+    allow-query-cache { any; };
+    allow-query-cache-on { any; };
     forwarders {
         1.1.1.1;
         1.0.0.1;

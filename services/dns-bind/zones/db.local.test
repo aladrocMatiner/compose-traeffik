@@ -1,6 +1,6 @@
 $TTL 1h
 @   IN  SOA ns1.local.test. hostmaster.local.test. (
-        2026012120 ; serial
+        2026030402 ; serial
         1h ; refresh
         15m ; retry
         1w ; expire
@@ -8,9 +8,30 @@ $TTL 1h
 )
 
 @   IN  NS  ns1.local.test.
-ns1 IN  A   127.0.10.254
-bind IN  A  127.0.10.254
-whoami IN  A   127.0.10.1
-traefik IN  A   127.0.10.2
-stepca IN  A   127.0.10.3
-dns IN  A   127.0.10.4
+@                       IN  A   192.168.122.57
+ns1                     IN  A   192.168.122.57
+bind                    IN  A   192.168.122.57
+dns                     IN  A   192.168.122.57
+traefik-dns-bind        IN  A   192.168.122.57
+traefik-bind            IN  A   192.168.122.57
+
+traefik-stepca          IN  A   192.168.122.50
+whoami-stepca           IN  A   192.168.122.50
+step-ca                 IN  A   192.168.122.50
+
+traefik-keycloak        IN  A   192.168.122.51
+whoami-keycloak         IN  A   192.168.122.51
+keycloak                IN  A   192.168.122.51
+
+traefik-observability   IN  A   192.168.122.52
+whoami-observability    IN  A   192.168.122.52
+grafana                 IN  A   192.168.122.52
+prometheus              IN  A   192.168.122.52
+loki                    IN  A   192.168.122.52
+tempo                   IN  A   192.168.122.52
+pyroscope               IN  A   192.168.122.52
+alloy                   IN  A   192.168.122.52
+
+traefik                 IN  A   192.168.122.50
+whoami                  IN  A   192.168.122.50
+stepca                  IN  A   192.168.122.50
