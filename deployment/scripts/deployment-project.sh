@@ -316,6 +316,53 @@ registry_get_project_field() {
   jq -r --arg id "${project_id}" --arg field "${field}" '.projects[$id][$field] // empty' "${PROJECT_REGISTRY_PATH}"
 }
 
+list_keycloak_oidc_dependents() {
+  jq -r '
+    .projects[]
+    | select(.id != "traefik-keycloak")
+    | select((.depends_on_projects // []) | index("traefik-keycloak"))
+    | select((.oidc.enabled // false) == true)
+    | .id
+  ' "${CATALOG_PATH}"
+}
+
+auto_reconcile_keycloak_dependents() {
+  [[ "${PROJECT_ID}" == "traefik-keycloak" ]] || return 0
+  [[ "${AUTO_RECONCILE_KEYCLOAK_DEPENDENTS}" == "true" ]] || {
+    log "Skipping Keycloak dependent reconciliation (DEPLOYMENT_PROJECT_AUTO_RECONCILE_KEYCLOAK_DEPENDENTS=${AUTO_RECONCILE_KEYCLOAK_DEPENDENTS})"
+    return 0
+  }
+  [[ "${SKIP_KEYCLOAK_AUTO_RECONCILE}" == "true" ]] && return 0
+
+  local dep_id dep_host_ip dep_target dep_os
+  local -a dependent_projects=()
+  mapfile -t dependent_projects < <(list_keycloak_oidc_dependents)
+  if [[ "${#dependent_projects[@]}" -eq 0 ]]; then
+    log "No Keycloak OIDC dependents declared in catalog; skipping auto-reconciliation."
+    return 0
+  fi
+
+  for dep_id in "${dependent_projects[@]}"; do
+    dep_host_ip="$(registry_get_project_field "${dep_id}" "host_ip")"
+    if [[ -z "${dep_host_ip}" ]]; then
+      log "Skipping Keycloak dependent project=${dep_id}; not present in local deployment registry."
+      continue
+    fi
+
+    dep_target="$(registry_get_project_field "${dep_id}" "target")"
+    dep_os="$(registry_get_project_field "${dep_id}" "os")"
+    [[ -n "${dep_target}" ]] || dep_target="${TARGET_INPUT}"
+    [[ -n "${dep_os}" ]] || dep_os="ubuntu"
+
+    log "Auto-reconciling Keycloak dependent project=${dep_id} target=${dep_target} os=${dep_os}"
+    DEPLOYMENT_PROJECT_SKIP_KEYCLOAK_AUTO_RECONCILE=true \
+      "${BASH_SOURCE[0]}" run \
+      --project "${dep_id}" \
+      --target "${dep_target}" \
+      --os "${dep_os}"
+  done
+}
+
 fetch_stepca_root_cert_from_dependency() {
   local stepca_host_ip="$1"
   local stepca_ssh_user="$2"
@@ -663,6 +710,7 @@ run_project() {
     --extra-vars "deployment_project_keycloak_bootstrap_username=${keycloak_bootstrap_username}"
 
   record_project_deployment "${PROJECT_ID}" "${TARGET_INPUT}" "${OS_SELECTOR}" "${deployment_vm_name}" "${deployment_tf_state_path}" "${host_ip}" "${ssh_user}"
+  auto_reconcile_keycloak_dependents
   log "Project deployment finished successfully for project=${PROJECT_ID}"
 }
 
@@ -674,6 +722,8 @@ INIT_ARG=""
 IDENTITY_PATH="${DEPLOYMENT_SSH_PRIVATE_KEY_PATH:-}"
 SSH_PORT="${DEPLOYMENT_SSH_PORT:-22}"
 TLS_MODE_OVERRIDE=""
+AUTO_RECONCILE_KEYCLOAK_DEPENDENTS="${DEPLOYMENT_PROJECT_AUTO_RECONCILE_KEYCLOAK_DEPENDENTS:-true}"
+SKIP_KEYCLOAK_AUTO_RECONCILE="${DEPLOYMENT_PROJECT_SKIP_KEYCLOAK_AUTO_RECONCILE:-false}"
 
 if [[ "$#" -eq 0 ]]; then
   usage
